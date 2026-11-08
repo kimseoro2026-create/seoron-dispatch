@@ -1,0 +1,43 @@
+# ── 비밀값 ────────────────────────────────────────────────────────────────
+.env
+osrm/.env
+
+# ── 실행 부산물 ───────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+.pytest_cache/
+.streamlit/
+streamlit_log.txt
+
+# ── 대용량·재생성 가능 파일 ───────────────────────────────────────────────
+# travel_matrix.csv 는 519,120행(약 61MB)이라 저장소에 넣지 않는다.
+# 없으면 planner.data.load_travel 이 nodes.csv 좌표로 추정 행렬을 만든다.
+data/processed/travel_matrix.csv
+
+# OSRM 지도 데이터(수 GB). prepare.bat 으로 다시 만든다.
+osrm/data/
+
+# 한국 OSM 원본(약 700MB)
+data/raw/*.osm.pbf
+
+# ── 합성 데이터는 포함한다 ────────────────────────────────────────────────
+# 심사용 링크가 데이터 없이 뜨지 않도록, 작은 합성 산출물은 커밋한다.
+# 모든 값은 가상이며 실제 개인정보가 아니다.
+!data/raw/hospitals.csv
+!data/raw/population.csv
+!data/raw/boundaries.geojson
+!data/processed/beneficiaries.csv
+!data/processed/workers.csv
+!data/processed/hospitals.csv
+!data/processed/requests.csv
+!data/processed/nodes.csv
+!data/processed/summary.json
+!data/processed/.gitkeep
+!data/raw/.gitkeep
+
+# 실험 결과는 최종 1회만 남긴다(중간 산출물 제외)
+data/experiments/optcheck-*.csv
+data/experiments/summary-optcheck-*.csv
+data/experiments/summary-pilot-*.csv
+data/experiments/summary-repaircheck-*.csv
+data/experiments/repaircheck-*.csv

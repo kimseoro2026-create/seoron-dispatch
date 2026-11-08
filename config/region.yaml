@@ -1,0 +1,40 @@
+# 가상 구(區) 설정 — 동탄 권역
+# simulation 아래 값은 모두 '초기 가정'이다. 현장 인터뷰로 실측치가 나오면 교체한다.
+
+region:
+  name: "동탄 권역(가상 구)"
+  # 데이터 수집·좌표 생성 범위 (위도·경도)
+  bbox: {min_lat: 37.16, max_lat: 37.24, min_lon: 127.03, max_lon: 127.13}
+  center: {lat: 37.200, lon: 127.075}
+  # 협력기관 위치: 실제 주소가 아니라 권역 중심 근처의 가정 위치
+  agency: {name: "협력기관(가정 위치)", lat: 37.200, lon: 127.075}
+  # 병원 조회 반경(미터) — center 기준
+  hospital_search_radius_m: 6000
+  # 동행 대상 병원 종별(병원기본목록의 종별명 기준)
+  hospital_classes: ["상급종합", "종합병원", "병원", "요양병원", "의원"]
+  # 행정동 경계 파일(최신본 GeoJSON). 없으면 --offline 모의 경계를 사용
+  boundaries_file: "data/raw/boundaries.geojson"
+  dong_name_field: "adm_nm"
+
+simulation:
+  start_date: "2026-11-02"      # 월요일
+  days: 30
+  weekdays_only: true
+  beneficiaries: 300
+  workers:
+    hospital_escort: 8          # 동행 가능(가사도 가능)
+    household_support: 12       # 가사 전담
+  shift: {start: "09:00", end: "18:00", break_start: "12:00", break_minutes: 60, max_work_minutes: 480}
+  requests_per_day_mean: 60
+  service_mix: {hospital_escort: 0.4, household_support: 0.6}
+  escort_hospital_stay_minutes: [120, 240]   # 접수·대기·진료·수납·약국
+  homecare_minutes: 120
+  appointment_hours: [9, 16]
+  morning_weight: 0.6           # 오전(9~12시) 예약 비율
+  same_day_cancel_rate: 0.10
+  discharge_case_rate: 0.20     # 퇴원 후 14일 이내 사례 비율
+  mobility_mix: {independent: 0.50, walker: 0.35, wheelchair: 0.15}
+  joint_consent_rate: 0.50      # 자립 보행 어르신 중 공동 동행 동의 비율
+  hospital_class_weights: {"상급종합": 3.0, "종합병원": 3.0, "병원": 2.0, "요양병원": 1.0, "의원": 0.5}
+  hospital_distance_decay_km: 5.0
+  hourly_cost_krw: 13000        # 서울시 동행매니저 시급 기준(가정)

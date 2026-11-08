@@ -1,0 +1,42 @@
+{
+  "_note": "verify_set.json 의 손 계산 정답. 검증기 계산값이 이 값과 같은지 테스트로 확인한다. 값의 근거는 _derivation 참고.",
+  "_derivation": {
+    "W01": [
+      "N_W01→N_B01 이동 10분. 출발 590 (근무시작 540 이상) → 도착 600.",
+      "동행: 픽업 600 + 병원까지 20 = 병원 도착 620. 예약 660 - 여유 15 = 645 이므로 620 ≤ 645 통과.",
+      "병원 체류 120 → 740, 귀가 20 → 집 도착 760. 점유 600~760 (20+120+20=160).",
+      "휴게 780~840 전에 끝나 휴게 침범 없음.",
+      "R04: 760 + B01→B04 이동 25 = 785 ≤ 도착 865.",
+      "픽업 865 + 20 = 병원 885. 900 - 15 = 885 이므로 885 ≤ 885 (여유 0분, 통과).",
+      "체류 150 → 1035, 귀가 20 → 1055. 점유 865~1055 (190). 근무종료 1080 이내.",
+      "서비스 350 + 이동 35 = 근무 385분 ≤ 상한 480."
+    ],
+    "W02": [
+      "N_W02→N_B02 이동 10. 출발 560 → 도착 570. 가사 120 → 690.",
+      "R05: 690 + B02→B05 이동 10 = 700 ≤ 도착 700 (여유 0분, 통과). 700은 최늦출발 720 이내.",
+      "가사 60 → 760. 휴게 780~840 전에 끝나 침범 없음.",
+      "R03: 760 + B05→B03 이동 15 = 775 ≤ 도착 865. 865는 시간창 780~900 안.",
+      "이동 출발 850 ≥ 휴게종료 840 이므로 휴게 침범 없음. (850 이면 835 로 휴게와 겹쳐 위반이 된다)",
+      "가사 90 → 955. 근무종료 1080 이내.",
+      "서비스 270 + 이동 35 = 근무 305분 ≤ 480."
+    ]
+  },
+  "expected": {
+    "ok": true,
+    "violation_count": 0,
+    "unassigned": [],
+    "timelines": [
+      {"request_id": "R01", "worker_id": "W01", "depart_min": 590, "arrive_min": 600,
+       "end_min": 760, "travel_min": 10, "hospital_arrive_min": 620},
+      {"request_id": "R02", "worker_id": "W02", "depart_min": 560, "arrive_min": 570,
+       "end_min": 690, "travel_min": 10, "hospital_arrive_min": null},
+      {"request_id": "R03", "worker_id": "W02", "depart_min": 850, "arrive_min": 865,
+       "end_min": 955, "travel_min": 15, "hospital_arrive_min": null},
+      {"request_id": "R04", "worker_id": "W01", "depart_min": 840, "arrive_min": 865,
+       "end_min": 1055, "travel_min": 25, "hospital_arrive_min": 885},
+      {"request_id": "R05", "worker_id": "W02", "depart_min": 690, "arrive_min": 700,
+       "end_min": 760, "travel_min": 10, "hospital_arrive_min": null}
+    ],
+    "work_minutes": {"W01": 385, "W02": 305}
+  }
+}

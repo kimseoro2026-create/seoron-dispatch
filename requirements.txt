@@ -1,0 +1,9 @@
+numpy>=1.26
+pandas>=2.1
+shapely>=2.0
+pyyaml>=6.0
+requests>=2.31
+python-dotenv>=1.0
+pytest>=8.0
+ortools>=9.8
+streamlit>=1.30

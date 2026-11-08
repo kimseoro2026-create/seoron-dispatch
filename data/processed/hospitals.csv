@@ -1,0 +1,401 @@
+﻿hospital_id,name,class_name,address,lat,lon
+JDQ4MTYyMiM1MSMkMSMkMCMkODkkMzgxMzUxIzExIyQxIyQ3IyQ3OSQ0NjEwMDIjNzEjJDEjJDgjJDgz,한림대학교동탄성심병원,종합병원,"경기도 화성시 동탄구 큰재봉길 7, (석우동)",37.2165141,127.0799502
+JDQ4MTYyMiM1MSMkMSMkMCMkOTkkMzgxOTYxIzExIyQyIyQ3IyQwMCQ0NjEwMDIjODEjJDEjJDYjJDgz,동탄성모병원,병원,"경기도 화성시 동탄구 동탄순환대로 127-19, 동탄에스비타운 3(일부),6,7층 (산척동)",37.1674053,127.1072593
+JDQ4MTYyMiM1MSMkMSMkMCMkOTkkMzgxMzUxIzQxIyQxIyQ3IyQ4MiQzNjE4MzIjNzEjJDEjJDgjJDgz,동탄시티병원,병원,"경기도 화성시 동탄구 동탄지성로 113, 117 (반송동)",37.2084782,127.0626243
+JDQ4MTYyMiM1MSMkMSMkMCMkOTkkMzgxOTYxIzIxIyQxIyQxIyQ4OSQyNjEwMDIjNjEjJDEjJDQjJDgz,매듭병원,병원,"경기도 수원시 영통구 태장로 68, 매듭병원 (망포동)",37.2389192,127.0535389
+JDQ4MTYyMiM1MSMkMSMkMCMkOTkkMzgxOTYxIzExIyQxIyQ3IyQ4MiQzNjE0ODEjNDEjJDEjJDQjJDgz,바르다임병원,병원,"경기도 화성시 동탄구 동탄신리천로 408, M메디컬프라자 4,5,6층 (목동)",37.1821079,127.1234931
+JDQ4MTYyMiM1MSMkMSMkMCMkOTkkMzgxOTYxIzExIyQxIyQ3IyQ5OSQ0NjE0ODEjNTEjJDEjJDYjJDgz,베스트아이들병원,병원,"경기도 화성시 동탄구 동탄지성로 20, 2~7층 (반송동)",37.2053061,127.0724115
+JDQ4MTYyMiM1MSMkMSMkMCMkOTkkMzgxOTYxIzExIyQyIyQ3IyQwMCQyNjEyMjIjNDEjJDEjJDgjJDgz,삼성본병원,병원,"경기도 오산시 북삼미로 175, 삼성본병원 A동 및 B동 (외삼미동)",37.1909363,127.0614731
+JDQ4MTYyMiM1MSMkMSMkMCMkOTkkMzgxMzUxIzUxIyQxIyQ1IyQwMyQzNjE0ODEjNDEjJDEjJDQjJDgz,센트럴아동병원,병원,"경기도 화성시 동탄구 동탄지성로 17, 지하1~2층 일부층 (반송동, 풍성위버폴리스)",37.2046148,127.0720455
+JDQ4MTYyMiM1MSMkMSMkMCMkOTkkMzgxOTYxIzExIyQxIyQzIyQwMyQzNjE0ODEjODEjJDEjJDIjJDgz,송호욱병원,병원,"경기도 오산시 내삼미로79번길 19, 6층~8층, 10층 (수청동)",37.1694653,127.0643748
+JDQ4MTYyMiM1MSMkMSMkMCMkOTkkMzgxOTYxIzExIyQxIyQ3IyQ4OSQyNjE0ODEjNDEjJDEjJDgjJDgz,웰봄병원,병원,"경기도 오산시 경기대로 534, 3층 303호, 5~10층 (수청동)",37.1706269,127.0640749
+JDQ4MTYyMiM1MSMkMSMkMCMkOTkkMzgxMzUxIzUxIyQxIyQxIyQxMyQyNjEwMDIjNjEjJDEjJDgjJDgz,의료법인상운의료재단 동탄제일병원,병원,"경기도 화성시 동탄구 삼성1로 144-6, (석우동)",37.2165467,127.0785386
+JDQ4MTYyMiM1MSMkMSMkMCMkOTkkMzgxMzUxIzMxIyQxIyQzIyQxMyQzNjEwMDIjNDEjJDEjJDQjJDgz,튼튼병원,병원,"경기도 화성시 병점구 영통로 66, 3~8층 (반월동)",37.2361844,127.0617747
+JDQ4MTYyMiM1MSMkMSMkMCMkOTkkMzgxOTYxIzIxIyQxIyQxIyQ2MiQzNjE4MzIjNjEjJDEjJDgjJDgz,평안한사랑병원,병원,"경기도 오산시 수목원로 606, 오산세교CL타워 6층 (세교동)",37.185912,127.0422336
+JDQ4MTYyMiM1MSMkMSMkMCMkOTkkMzgxOTYxIzExIyQxIyQ3IyQ4OSQzNjE0ODEjNTEjJDEjJDYjJDgz,희망찬병원,병원,"경기도 화성시 병점구 병점중앙로 174, (진안동)",37.2131952,127.0373966
+JDQ4MTYyMiM1MSMkMSMkMCMkOTkkNTgxMzUxIzUxIyQxIyQ1IyQ3OSQyNjE4MzIjNzEjJDEjJDgjJDgz,더퍼스트요양병원,요양병원,"경기도 화성시 병점구 경기대로 1020, 병점 우즈베리 (병점동)",37.2069919,127.0362476
+JDQ4MTYyMiM1MSMkMSMkMCMkOTkkNTgxMzUxIzUxIyQxIyQxIyQwMyQyNjE0ODEjNjEjJDEjJDAjJDgz,삼성우리요양병원,요양병원,"경기도 화성시 병점구 효행로 1051, 메인프라자 6일부,7, 8일부층 (진안동)",37.214627,127.0419608
+JDQ4MTYyMiM1MSMkMSMkMCMkOTkkNTgxMzUxIzMxIyQxIyQ3IyQ2MiQyNjE0ODEjNTEjJDEjJDIjJDgz,세교요양병원,요양병원,"경기도 오산시 수목원로 462, 3,6,7층 (금암동, 무한메디칼)",37.1750538,127.050255
+JDQ4MTYyMiM1MSMkMSMkMCMkOTkkNTgxMzUxIzUxIyQxIyQxIyQ4OSQyNjE0ODEjNTEjJDEjJDYjJDgz,세마그린요양병원,요양병원,"경기도 오산시 수목원로 606, 오산세교CL타워 5,7,8,9층 (세교동)",37.185912,127.0422336
+JDQ4MTYyMiM1MSMkMSMkMCMkOTkkNTgxMzUxIzUxIyQxIyQxIyQ2MiQyNjEyMjIjNDEjJDEjJDgjJDgz,스타트요양병원,요양병원,"경기도 오산시 청학로 264, W-타워 3-8층 (수청동)",37.1718992,127.0607253
+JDQ4MTYyMiM1MSMkMSMkMCMkOTkkNTgxMzUxIzUxIyQxIyQxIyQ3MiQyNjE0ODEjNTEjJDEjJDIjJDgz,영통효요양병원,요양병원,"경기도 수원시 영통구 영통로90번길 4-16, 2층~5층 (망포동)",37.237797,127.0608445
+JDQ4MTYyMiM1MSMkMSMkMCMkOTkkNTgxMzUxIzExIyQxIyQzIyQ2MiQzNjE0ODEjNzEjJDEjJDgjJDgz,오산노인전문병원,요양병원,"경기도 오산시 가장산업동로 69-27, (궐동)",37.1656759,127.0438767
+JDQ4MTYyMiM1MSMkMSMkMCMkOTkkNTgxMzUxIzIxIyQyIyQ1IyQwMCQzNjEwMDIjNzEjJDEjJDgjJDgz,의료법인 아주효성의료재단 효성요양병원,요양병원,"경기도 화성시 병점구 효행로 1063, 메디프렌드 (진안동)",37.2149864,127.0431434
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzIxIyQxIyQ1IyQwMyQ0NjE0ODEjNjEjJDEjJDQjJDgz,21세기우리의원,의원,"경기도 화성시 동탄구 동탄솔빛로 48, 2,3,4,층 (반송동, 거택프라자)",37.193149,127.0733201
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMzUxIzMxIyQxIyQzIyQ4MiQzNjEyMjIjNjEjJDEjJDQjJDgz,21세기우리정형외과의원,의원,"경기도 화성시 동탄구 동탄솔빛로 48, 3층 (반송동, 거택프라자)",37.193149,127.0733201
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMzUxIzExIyQyIyQzIyQwMCQ0NjEwMDIjNjEjJDEjJDgjJDgz,Y정신건강의학과의원,의원,"경기도 화성시 동탄구 동탄반석로 134, 302호 (반송동, 에이치원메디컬센터)",37.201082,127.0713357
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzExIyQyIyQ3IyQwMCQyNjEwMDIjNjEjJDEjJDAjJDgz,감탄정형외과의원,의원,"경기도 화성시 동탄구 동탄영천로 81-13, 2,3,4,5층 (영천동)",37.2096745,127.1021025
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNDgxNzAyIzIxIyQxIyQ5IyQ4MiQzNjE0ODEjNjEjJDEjJDgjJDgz,강남성모이비인후과의원,의원,"경기도 오산시 수청로 193, P&P세교프라자 3층 303,302-1호 (금암동)",37.1766517,127.0455185
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNTgxMzUxIzIxIyQxIyQ1IyQxMyQ0NjE0ODEjNDEjJDEjJDQjJDgz,강내과의원,의원,"경기도 화성시 병점구 영통로61번길 6, (반월동, 제일프라자)",37.2354934,127.0611413
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNDgxNzAyIzExIyQxIyQzIyQ4OSQzNjEyMjIjNDEjJDEjJDgjJDgz,강소아청소년과의원,의원,"경기도 화성시 동탄구 동탄지성로 139, 양진빌딩 (능동)",37.2093431,127.0601939
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzUxIyQxIyQxIyQ5MiQyNjEwMDIjODEjJDEjJDIjJDgz,강안과의원,의원,"경기도 화성시 병점구 영통로 74, 502호 일부, 503호 전체호 (반월동)",37.2365275,127.0611628
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMTkxIzUxIyQxIyQ1IyQ5OSQyNjE0ODEjNDEjJDEjJDgjJDgz,건강한유외과의원,의원,"경기도 화성시 동탄구 동탄반석로 196, 305~307호 (반송동, 아이프라자)",37.206105,127.0724294
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzIxIyQxIyQ5IyQ5OSQzNjEwMDIjNTEjJDEjJDIjJDgz,고려튼튼 마취통증의학과의원,의원,"경기도 화성시 병점구 효행로 1036, 2층 (진안동, 아시아빌딩)",37.213259,127.0406655
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzMxIyQyIyQ3IyQwMCQyNjE4MzIjNDEjJDEjJDgjJDgz,고운세상피부과의원,의원,"경기도 화성시 동탄구 동탄순환대로 696, 5층 501.502호 (영천동, 경서프라자)",37.2070396,127.1112511
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxNzAyIzMxIyQxIyQ3IyQ3OSQ0NjEwMDIjNzEjJDEjJDgjJDgz,고은미의원,의원,"경기도 화성시 동탄구 동탄원천로 163, 403호 (반송동, 위너스타빌딩)",37.2073856,127.0737048
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzExIyQxIyQ3IyQ4OSQzNjEwMDIjNzEjJDEjJDgjJDgz,골드만비뇨의학과의원,의원,"경기도 화성시 동탄구 동탄대로 489, 906,907,908호 (오산동)",37.1973592,127.0982637
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkMzgxNzAyIzIxIyQxIyQ5IyQ2MiQzNjE0ODEjNDEjJDEjJDQjJDgz,굿모닝항외과의원,의원,"경기도 화성시 동탄구 동탄지성로 136, 우리프라자 3층 (능동)",37.2096686,127.0606973
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxOTYxIzUxIyQxIyQxIyQ3MiQzNjE4MzIjODEjJDEjJDYjJDgz,굿아이동탄이안과의원,의원,"경기도 화성시 동탄구 동탄솔빛로 44, 6층 (반송동, 신성프라자)",37.1928999,127.0729529
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxOTYxIzIxIyQxIyQ1IyQ5MiQyNjEyMjIjNDEjJDEjJDgjJDgz,굿키즈소아청소년과의원,의원,"경기도 화성시 병점구 효행로 1051, 409호 (진안동, 메인프라자)",37.214627,127.0419608
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzUxIyQyIyQ1IyQwMCQyNjEwMDIjNDEjJDEjJDQjJDgz,그랑본여성의원,의원,"경기도 화성시 동탄구 동탄대로5길 9, 그랑파사쥬 4027~4045호 (송동)",37.1676291,127.1058272
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxNzAyIzIxIyQxIyQ1IyQ4MiQyNjE0ODEjODEjJDEjJDIjJDgz,그레이스피부과의원,의원,"경기도 화성시 동탄구 동탄중앙로 200, B동 3층 E03호 (반송동, 메타폴리스)",37.2027924,127.0688912
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzExIyQyIyQzIyQwMCQzNjEyMjIjNTEjJDEjJDIjJDgz,근앤본정형신경외과의원,의원,"경기도 화성시 동탄구 동탄중앙로 200, 3층 302호 (반송동, 메타폴리스)",37.2027924,127.0688912
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNDgxOTYxIzQxIyQxIyQ3IyQ5MiQzNjEyMjIjODEjJDEjJDIjJDgz,기흥성모의원,의원,"경기도 용인시 기흥구 공세로 91, 2층 (공세동, 남일빌딩)",37.2326965,127.1086027
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNTgxOTYxIzIxIyQxIyQ5IyQ4OSQyNjEwMDIjNjEjJDEjJDgjJDgz,김경희산부인과의원,의원,"경기도 수원시 영통구 영통로 136, 403호 (망포동, 센트럴타워)",37.2396921,127.0561768
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMTkxIzExIyQxIyQ3IyQ4MiQzNjE4MzIjNzEjJDEjJDgjJDgz,김덕하소아청소년과의원,의원,"경기도 화성시 동탄구 동탄지성로 134, 한솔프라자, 402호 (능동)",37.2095824,127.0609874
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxNzAyIzMxIyQxIyQzIyQ4MiQyNjEwMDIjODEjJDEjJDYjJDgz,김현미산부인과의원,의원,"경기도 화성시 동탄구 동탄솔빛로 68, 계림빌딩 204,205호 (반송동)",37.1944452,127.0748602
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzUxIyQxIyQ1IyQ3OSQ0NjEwMDIjODEjJDEjJDIjJDgz,김형식이비인후과의원,의원,"경기도 화성시 동탄구 동탄오산로 86-3, 동탄MK타워 502호 (오산동)",37.1981205,127.0977805
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzQxIyQyIyQ3IyQwMCQyNjEwMDIjNzEjJDEjJDgjJDgz,나노성형외과의원,의원,"경기도 화성시 동탄구 동탄역로 196, 202~207호 (오산동, 동탄역 예미지 시그너스)",37.2040416,127.0974221
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzUxIyQxIyQxIyQ5OSQ0NjEwMDIjNDEjJDEjJDgjJDgz,나보다 정형외과의원,의원,"경기도 화성시 동탄구 남여울2길 4, 2층 (능동)",37.1992048,127.0526839
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzIxIyQxIyQ5IyQ5MiQyNjEyMjIjNDEjJDEjJDQjJDgz,남동탄두리이비인후과의원,의원,"경기도 화성시 동탄구 동탄대로5길 9, 그랑파사쥬 4022~4024호 (송동)",37.1676291,127.1058272
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzUxIyQxIyQxIyQwMyQzNjE0ODEjNTEjJDEjJDYjJDgz,남승우소아청소년과의원,의원,"경기도 화성시 동탄구 동탄대로 469-12, 2003~2005호 (오산동, 동탄역 린스트라우스)",37.1962985,127.0974953
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMzUxIzMxIyQxIyQ3IyQ4OSQzNjEyMjIjNTEjJDEjJDYjJDgz,넥스트라인의원,의원,"경기도 화성시 동탄구 동탄순환대로 686, 401~403호 (영천동)",37.2063306,127.1117227
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxNzAyIzIxIyQxIyQ5IyQ5OSQzNjEyMjIjNjEjJDEjJDAjJDgz,노블클래식의원,의원,"경기도 화성시 병점구 영통로26번길 15, 명성프라자 401, 402, 405호 (반월동)",37.2341013,127.0655708
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMzUxIzExIyQxIyQzIyQ4OSQzNjEwMDIjNzEjJDEjJDgjJDgz,노블피부과의원,의원,"경기도 화성시 동탄구 동탄대로 489, 409호 (오산동)",37.1973592,127.0982637
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNTgxOTYxIzExIyQxIyQ3IyQ5MiQzNjE0ODEjNjEjJDEjJDQjJDgz,늘푸른비뇨기과의원,의원,"경기도 화성시 병점구 경기대로 990, 201호 (병점동, sk뷰상가)",37.2048846,127.0384624
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzMxIyQxIyQzIyQwMyQyNjEyMjIjNTEjJDEjJDYjJDgz,다시봄날의원,의원,"경기도 오산시 수목원로 466, 성민리치 3층 303,304,305호 및 6층 603,604,605호 (금암동)",37.1752733,127.0499884
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzIxIyQxIyQxIyQwMyQ0NjE0ODEjODEjJDEjJDYjJDgz,다시봄날의원,의원,"경기도 화성시 동탄구 동탄순환대로 245, SMP타워 3층 (산척동)",37.1696232,127.1181968
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzIxIyQxIyQ5IyQ4MiQyNjE0ODEjNjEjJDEjJDgjJDgz,닥터디자이너의원 동탄점,의원,"경기도 화성시 동탄구 동탄순환대로 701, SR리버스빌 401~402호 (영천동)",37.2071309,127.1100641
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzQxIyQxIyQ3IyQ4OSQyNjEwMDIjNzEjJDEjJDgjJDgz,닥터윤정신건강의학과의원,의원,"경기도 화성시 동탄구 동탄대로 495, 동탄역리치안 302호 (오산동)",37.197969,127.0982597
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzQxIyQxIyQ3IyQ5MiQ0NjEwMDIjNzEjJDEjJDgjJDgz,더마웰피부과의원,의원,"경기도 화성시 동탄구 동탄중앙로 76, 서건프라자 4층 402-3호 (반송동)",37.1931792,127.0725751
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzExIyQxIyQ3IyQ4MiQzNjEwMDIjNTEjJDEjJDIjJDgz,더메이피부과의원,의원,"경기도 화성시 동탄구 동탄대로 495, 303, 304호 (오산동)",37.197969,127.0982597
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzQxIyQxIyQ3IyQ3MiQzNjE0ODEjNDEjJDEjJDgjJDgz,더블유워너비여성의원,의원,"경기도 화성시 병점구 병점노을4로 29, 4층 403~405호 (병점동)",37.2058724,127.031861
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzUxIyQyIyQ1IyQwMCQyNjEyMjIjNTEjJDEjJDYjJDgz,더서울연세심장혈관흉부외과의원,의원,"경기도 화성시 병점구 병점노을4로 29, 7층 703~706호 (병점동)",37.2058724,127.031861
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzIxIyQxIyQxIyQ3OSQ0NjE0ODEjNjEjJDEjJDgjJDgz,데미안안과의원,의원,"경기도 화성시 병점구 병점노을4로 29, 5층 501~510호 (병점동)",37.2058724,127.031861
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzIxIyQxIyQ5IyQ5OSQzNjE4MzIjNDEjJDEjJDQjJDgz,데이샤인의원,의원,"경기도 화성시 병점구 효행로 1052, 씨네샤르망 A동 4층 407호 (병점동)",37.213946,127.042457
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzIxIyQxIyQ1IyQ3OSQyNjE0ODEjNjEjJDEjJDgjJDgz,동탄365키즈소아청소년과의원,의원,"경기도 화성시 동탄구 동탄순환대로20길 124, 우성스타파크 A 301,302,508,509,510호 (목동)",37.1826526,127.1246944
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzIxIyQxIyQxIyQwMyQyNjEyMjIjNDEjJDEjJDQjJDgz,동탄365힘찬신경외과의원,의원,"경기도 화성시 동탄구 동탄순환대로16길 15, 2,3층 (산척동)",37.1737888,127.1204061
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNTgxOTYxIzExIyQxIyQzIyQ5MiQzNjEyMjIjNjEjJDEjJDQjJDgz,동탄누네안과의원,의원,"경기도 화성시 동탄구 동탄대로시범길 146, 502호 (청계동, 포트센트럴시티)",37.2003439,127.1131432
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzUxIyQxIyQ1IyQ2MiQyNjEwMDIjNzEjJDEjJDgjJDgz,동탄다건연세내과의원,의원,"경기도 화성시 동탄구 10용사로 316, 2,3층 (능동, 다건빌딩)",37.1992302,127.052448
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzIxIyQxIyQ1IyQ5MiQyNjEwMDIjNDEjJDEjJDgjJDgz,동탄닥터에버스의원,의원,"경기도 화성시 동탄구 동탄대로 537, A동 517~523호 (여울동)",37.2022262,127.097959
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzExIyQxIyQzIyQ5MiQzNjEyMjIjNTEjJDEjJDIjJDgz,동탄대방튼튼재활의학과의원,의원,"경기도 화성시 동탄구 동탄오산로 29, B동 101~108호 (오산동)",37.1993238,127.0901895
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzExIyQxIyQ3IyQxMyQzNjE0ODEjNzEjJDEjJDgjJDgz,동탄라온여성의원,의원,"경기도 화성시 동탄구 동탄문화센터로 61, 아시아 프라자 502호 (반송동)",37.1997406,127.0721422
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMTkxIzExIyQxIyQzIyQ5OSQyNjEyMjIjNDEjJDEjJDgjJDgz,동탄마취통증의학과의원,의원,"경기도 화성시 동탄구 동탄오산로 82, 305호 (오산동, 동탄역퍼스트프라자)",37.198165,127.0971269
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzMxIyQyIyQ3IyQwMCQ0NjEwMDIjNjEjJDEjJDQjJDgz,동탄맑은이비인후과의원,의원,"경기도 화성시 동탄구 동탄순환대로 263, 풍산리치안타워 306,307호 (산척동)",37.1711527,127.1185789
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzIxIyQxIyQxIyQ4OSQ0NjEwMDIjNjEjJDEjJDgjJDgz,동탄맥스웰의원,의원,"경기도 화성시 동탄구 동탄대로 537, 라스플로레스 201,202,203,216호 (오산동)",37.2022262,127.097959
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzIxIyQxIyQxIyQ3OSQzNjE4MzIjNDEjJDEjJDgjJDgz,동탄메디365의원,의원,"경기도 화성시 동탄구 동탄역로 150, B동 312,313호 (오산동, 동탄역 롯데캐슬)",37.1995005,127.0967855
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzExIyQxIyQzIyQ3OSQyNjE0ODEjNDEjJDEjJDgjJDgz,동탄미소소아청소년과의원,의원,"경기도 화성시 동탄구 동탄대로시범길 142, 403호 (청계동, 센텀프라자)",37.1999195,127.1133874
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzIxIyQxIyQxIyQ4OSQzNjE4MzIjNDEjJDEjJDQjJDgz,동탄바로척의원,의원,"경기도 화성시 동탄구 동탄기흥로353번길 99-3, 301,302,303,304,305호 (오산동)",37.1878129,127.0861728
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzIxIyQxIyQxIyQ3OSQzNjEwMDIjNjEjJDEjJDgjJDgz,동탄바로튼튼365의원,의원,"경기도 화성시 동탄구 동탄솔빛로 68, 계림개발 502~505호호 (반송동)",37.1944452,127.0748602
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzMxIyQyIyQ3IyQwMCQyNjE0ODEjNDEjJDEjJDgjJDgz,동탄바른정형외과의원,의원,"경기도 화성시 동탄구 동탄순환대로 263, 풍산리치안타워 4층 402,403호 (산척동)",37.1711527,127.1185789
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkMzgxNzAyIzUxIyQyIyQxIyQwMCQyNjEyMjIjNDEjJDEjJDgjJDgz,동탄밝은안과의원,의원,"경기도 화성시 동탄구 동탄반석로 204, 401호 (반송동, 동탄제일프라자)",37.2066808,127.07282
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzIxIyQxIyQxIyQ3MiQ0NjE0ODEjNzEjJDEjJDgjJDgz,동탄밴스의원,의원,"경기도 화성시 동탄구 동탄대로5길 15, 그랑파사쥬 4077~4089호 (송동)",37.1662742,127.1058934
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzMxIyQyIyQ3IyQwMCQ0NjE0ODEjNzEjJDEjJDgjJDgz,동탄본정형외과재활의학과의원,의원,"경기도 화성시 동탄구 동탄대로시범길 134, 2026~2032,2035~2038호 (청계동, 동탄역시범반도유보라아이비파크4.0)",37.1992157,127.1142339
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzExIyQxIyQ3IyQwMyQ0NjEwMDIjNDEjJDEjJDgjJDgz,동탄뿌리정형외과의원,의원,"경기도 화성시 동탄구 동탄대로시범길 146, 202,203호 (청계동)",37.2003439,127.1131432
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzIxIyQxIyQxIyQ3MiQ0NjEwMDIjNjEjJDEjJDQjJDgz,동탄삼성365정형외과내과의원,의원,"경기도 화성시 동탄구 동탄신리천로 406, 401~411호 (목동)",37.1821552,127.1229707
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzIxIyQxIyQxIyQ3OSQzNjEyMjIjNTEjJDEjJDYjJDgz,동탄삼성의원,의원,"경기도 화성시 동탄구 동탄신리천로 278, 303,304호 (오산동)",37.1833723,127.1088524
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzUxIyQxIyQxIyQ2MiQzNjE0ODEjNjEjJDEjJDAjJDgz,동탄삼성이비인후과의원,의원,"경기도 화성시 동탄구 동탄순환대로 127-5, 우성센트럴타워 4층 408~410호 (산척동)",37.1660595,127.1072823
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzIxIyQxIyQ1IyQ4MiQyNjE0ODEjNDEjJDEjJDQjJDgz,동탄삼성정신건강의학과의원,의원,"경기도 화성시 동탄구 동탄대로19길 10, 신유메디프라자 403,404호 (오산동)",37.1971942,127.0977682
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzUxIyQxIyQxIyQ4MiQzNjEyMjIjNjEjJDEjJDQjJDgz,동탄서울내과의원,의원,"경기도 화성시 동탄구 동탄순환대로 127-5, 우성센트럴타워 309~314호, 501~511호 (산척동)",37.1660595,127.1072823
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzIxIyQxIyQxIyQ3MiQ0NjE0ODEjNjEjJDEjJDgjJDgz,동탄서울아산내과의원,의원,"경기도 화성시 동탄구 동탄순환대로 686, 302,303호 (영천동)",37.2063306,127.1117227
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzUxIyQxIyQxIyQ4MiQyNjEyMjIjNTEjJDEjJDIjJDgz,동탄서울안과의원,의원,"경기도 화성시 동탄구 동탄순환대로 127-17, 우성메디피아 5층 508~510호 (산척동)",37.1670009,127.1072679
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzExIyQxIyQzIyQwMyQyNjEwMDIjODEjJDEjJDYjJDgz,동탄서울의원,의원,"경기도 화성시 동탄구 동탄솔빛로 68, 계림개발 301호 (반송동)",37.1944452,127.0748602
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNDgxMzUxIzIxIyQxIyQxIyQ2MiQzNjE4MzIjNzEjJDEjJDgjJDgz,동탄서울이비인후과의원,의원,"경기도 화성시 동탄구 동탄지성로 133, 덕천프라자, 303호 (능동)",37.209138,127.0607765
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzIxIyQxIyQ5IyQ3OSQyNjEyMjIjODEjJDEjJDIjJDgz,동탄성모이비인후과의원,의원,"경기도 화성시 동탄구 동탄순환대로 686, 501, 502호 (영천동)",37.2063306,127.1117227
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzExIyQxIyQ3IyQ5MiQzNjE4MzIjNzEjJDEjJDgjJDgz,동탄센텀정형외과의원,의원,"경기도 화성시 동탄구 동탄순환대로12길 4, 301,302,303호 (산척동)",37.168921,127.1189643
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzIxIyQxIyQ5IyQ3MiQ0NjE0ODEjNjEjJDEjJDQjJDgz,동탄센트럴이비인후과의원,의원,"경기도 화성시 동탄구 동탄대로4길 39, 포트센트럴파크 203호 (장지동)",37.1618176,127.1102472
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzUxIyQyIyQ1IyQwMCQzNjE0ODEjNjEjJDEjJDAjJDgz,동탄센트럴정형외과의원,의원,"경기도 화성시 동탄구 동탄대로5길 9, 그랑파사쥬 4001~4007,4011~4018호 (송동)",37.1676291,127.1058272
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzIxIyQxIyQ5IyQwMyQyNjEwMDIjNTEjJDEjJDYjJDgz,동탄송도항외과의원,의원,"경기도 화성시 동탄구 동탄대로 489, 동탄역우성타워 7층 701~704호 (오산동)",37.1973592,127.0982637
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzIxIyQxIyQxIyQ2MiQzNjEwMDIjODEjJDEjJDYjJDgz,동탄수내과의원,의원,"경기도 화성시 동탄구 동탄대로시범길 146, 4층 401,402호 (청계동, 포트센트럴시티)",37.2003439,127.1131432
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzExIyQyIyQ3IyQwMCQyNjE0ODEjNjEjJDEjJDgjJDgz,동탄숲정신건강의학과의원,의원,"경기도 화성시 동탄구 동탄솔빛로 67, 성우프라자 401호 (반송동)",37.1948353,127.0743036
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzIxIyQxIyQ5IyQxMyQzNjE0ODEjNjEjJDEjJDgjJDgz,동탄스노우의원,의원,"경기도 화성시 동탄구 동탄대로 446, 그란비아스타 3017호~3023호 (청계동)",37.1933905,127.1000579
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzIxIyQyIyQ5IyQwMCQzNjE4MzIjNTEjJDEjJDIjJDgz,동탄신경외과의원,의원,"경기도 화성시 동탄구 동탄순환대로14길 7, 401~408호 (산척동)",37.170943,127.1195808
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzExIyQxIyQzIyQ3OSQzNjE4MzIjNDEjJDEjJDQjJDgz,동탄아이디의원,의원,"경기도 화성시 동탄구 동탄대로 489, 동탄역우성타워 706,707호 (오산동)",37.1973592,127.0982637
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzExIyQxIyQzIyQ3OSQzNjEwMDIjNTEjJDEjJDYjJDgz,동탄아이언소아청소년과의원,의원,"경기도 화성시 동탄구 동탄대로시범길 261, 리더스프라자 203호 (청계동)",37.2016986,127.1021941
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzExIyQxIyQzIyQ5MiQzNjE4MzIjNDEjJDEjJDgjJDgz,동탄아이엠유의원,의원,"경기도 화성시 동탄구 노작로1가길 8, 나루프라자 117~124호 (반송동)",37.1949274,127.0816032
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzIxIyQxIyQ5IyQ3MiQzNjE0ODEjNTEjJDEjJDIjJDgz,동탄엄이비인후과의원,의원,"경기도 화성시 동탄구 동탄순환대로14길 7, 블랑파크 5층 503,504호 (산척동)",37.170943,127.1195808
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxNzAyIzIxIyQxIyQxIyQ5OSQzNjEyMjIjNDEjJDEjJDgjJDgz,동탄에스소아청소년과의원,의원,"경기도 화성시 동탄구 동탄순환대로18길 16, 센타프라자 404~406호 (목동)",37.1831044,127.1243017
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzQxIyQxIyQ3IyQ3MiQyNjEyMjIjODEjJDEjJDYjJDgz,동탄역아주시원한이비인후과의원,의원,"경기도 화성시 동탄구 동탄대로 489, 동탄역우성타워 211일부,304,305,903,904호 (오산동)",37.1973592,127.0982637
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzMxIyQxIyQzIyQwMyQzNjEyMjIjNDEjJDEjJDgjJDgz,동탄역튼튼척의원,의원,"경기도 화성시 동탄구 동탄대로 495, 2층 201호 (오산동)",37.197969,127.0982597
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzIxIyQxIyQ1IyQ2MiQzNjEwMDIjNzEjJDEjJDgjJDgz,동탄연세맑은내과의원,의원,"경기도 화성시 동탄구 동탄반석로 134, 10층 (반송동)",37.201082,127.0713357
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxOTYxIzQxIyQxIyQ3IyQ3MiQyNjE4MzIjNDEjJDEjJDQjJDgz,동탄연세소아청소년과의원,의원,"경기도 화성시 동탄구 동탄중앙로 200, B블럭(상가동) 312~313호호 (반송동, 메타폴리스)",37.2027924,127.0688912
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxOTYxIzQxIyQxIyQ3IyQ5MiQzNjEyMjIjODEjJDEjJDYjJDgz,동탄연세안과의원,의원,"경기도 화성시 동탄구 동탄중심상가1길 40, 403~405호 (반송동, 엔터프라임빌딩)",37.2014916,127.0712389
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzQxIyQxIyQ3IyQ3MiQzNjEwMDIjODEjJDEjJDIjJDgz,동탄연세의원,의원,"경기도 화성시 병점구 동탄원천로 382-46, (반월동)",37.2230229,127.0584085
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMTkxIzExIyQxIyQzIyQ3MiQzNjEyMjIjNjEjJDEjJDQjJDgz,동탄연세이비인후과의원,의원,"경기도 화성시 동탄구 동탄지성로 141, 아크리아빌딩, 403호 (능동)",37.2094353,127.059924
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzMxIyQxIyQzIyQ5MiQzNjE4MzIjNzEjJDEjJDgjJDgz,동탄연세정형외과의원,의원,"경기도 화성시 동탄구 동탄대로 537, 라스플로레스 A동 435~439호 (오산동)",37.2022262,127.097959
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzUxIyQxIyQ1IyQxMyQyNjE4MzIjNjEjJDEjJDAjJDgz,동탄오라클피부과의원,의원,"경기도 화성시 동탄구 동탄역로 150, B동 314~316호 (오산동, 동탄역 롯데캐슬)",37.1995005,127.0967855
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzUxIyQxIyQ1IyQ2MiQzNjE4MzIjNDEjJDEjJDgjJDgz,동탄올바른안과의원,의원,"경기도 화성시 동탄구 동탄대로 489, 동탄역우성타워 503~506호 (오산동)",37.1973592,127.0982637
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzIxIyQxIyQ1IyQ3OSQyNjEyMjIjODEjJDEjJDIjJDgz,동탄웰니스내과의원,의원,"경기도 화성시 동탄구 동탄대로 676, 힐스테이트 동탄역 멀티플라이어 b113~b115, 101~114, 116~117호 (영천동)",37.2130837,127.1012152
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzMxIyQxIyQ3IyQ4OSQzNjEyMjIjNjEjJDEjJDgjJDgz,동탄이소아청소년과의원,의원,"경기도 화성시 동탄구 동탄순환대로 263, 풍산리치안타워 301호 (산척동)",37.1711527,127.1185789
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzUxIyQxIyQ1IyQ2MiQyNjEyMjIjNjEjJDEjJDQjJDgz,동탄이엠365의원,의원,"경기도 화성시 동탄구 동탄대로4길 47, AJ프라자 204~220호 (장지동)",37.1617914,127.1112837
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzIxIyQxIyQxIyQ5OSQyNjE4MzIjNTEjJDEjJDYjJDgz,동탄정신건강의학과의원,의원,"경기도 화성시 동탄구 동탄순환대로 704, A동 302호 (영천동)",37.2075871,127.1107808
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMzUxIzMxIyQyIyQzIyQwMCQyNjE0ODEjNTEjJDEjJDIjJDgz,동탄정형외과의원,의원,"경기도 화성시 동탄구 동탄순환대로 708, 서건에듀프라자빌딩 1동 602~604호 (영천동)",37.2079972,127.1104235
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzMxIyQxIyQ3IyQ5OSQzNjE0ODEjNDEjJDEjJDgjJDgz,동탄조은내과의원,의원,"경기도 화성시 동탄구 동탄순환대로 706, 302.303.304호 (영천동, 서건에듀프라자2동)",37.2078125,127.1105919
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMzUxIzIxIyQxIyQ5IyQ3MiQyNjEwMDIjODEjJDEjJDYjJDgz,동탄키즈웰소아청소년과의원,의원,"경기도 화성시 동탄구 동탄대로 198, 드림타워 4층 406호 (산척동)",37.1721233,127.1073075
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzIxIyQxIyQ5IyQxMyQzNjE4MzIjNDEjJDEjJDgjJDgz,동탄탑내과의원,의원,"경기도 화성시 동탄구 동탄중앙로 76, 서건프라자 2층 (반송동)",37.1931792,127.0725751
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzUxIyQxIyQxIyQxMyQ0NjEwMDIjNTEjJDEjJDIjJDgz,동탄퍼스트안과의원,의원,"경기도 화성시 동탄구 동탄오산로 82, 퍼스트프라자 403호,404호,606호,7층전체호 (여울동)",37.198165,127.0971269
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzUxIyQxIyQ1IyQxMyQyNjE4MzIjNjEjJDEjJDQjJDgz,동탄해와달소아청소년과의원,의원,"경기도 화성시 동탄구 동탄순환대로 707, 대성프라자 201호 (영천동)",37.2076133,127.1096443
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzUxIyQxIyQ1IyQxMyQzNjE0ODEjNTEjJDEjJDYjJDgz,동탄헤스티아여성의원,의원,"경기도 화성시 동탄구 동탄대로 495, 동탄역리치안 203호 (오산동)",37.197969,127.0982597
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMzUxIzUxIyQyIyQ1IyQwMCQyNjEyMjIjNjEjJDEjJDgjJDgz,동탄호수소아청소년과의원,의원,"경기도 화성시 동탄구 동탄대로5길 15, 그랑파사쥬 4027~4029호 (송동)",37.1661162,127.1051213
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzUxIyQxIyQxIyQ2MiQyNjE4MzIjNTEjJDEjJDIjJDgz,동탄화외과의원,의원,"경기도 화성시 동탄구 동탄대로5길 9, 더샵 동탄센텀폴리스 2단지 5009,5010,5011호 (송동)",37.1676291,127.1058272
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzUxIyQxIyQxIyQ4MiQzNjE0ODEjODEjJDEjJDYjJDgz,드림이비인후과의원,의원,"경기도 화성시 동탄구 동탄순환대로20길 118, 우성스타파크 B동 304,305호 (목동)",37.1830112,127.1248249
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzExIyQxIyQ3IyQ4MiQ0NjE0ODEjNzEjJDEjJDgjJDgz,디딤정신건강의학과의원,의원,"경기도 화성시 동탄구 동탄대로 489, 동탄역우성타워 801,802,803-1호 (오산동)",37.1973592,127.0982637
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzQxIyQxIyQ3IyQxMyQ0NjE0ODEjNDEjJDEjJDgjJDgz,디온여성의원,의원,"경기도 화성시 동탄구 동탄오산로 82, 10층 (오산동, 동탄역퍼스트프라자)",37.198165,127.0971269
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzUxIyQyIyQ1IyQwMCQyNjEwMDIjNjEjJDEjJDQjJDgz,러브유외과의원,의원,"경기도 화성시 동탄구 동탄순환대로 127-5, 우성센트럴타워 512~514호 (산척동)",37.1660595,127.1072823
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzMxIyQxIyQzIyQ4OSQyNjEyMjIjNTEjJDEjJDIjJDgz,레벨업의원,의원,"경기도 화성시 동탄구 동탄오산로 82, 동탄역퍼스트프라자 1동 2층 202~204호 (오산동)",37.198165,127.0971269
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzMxIyQxIyQzIyQ4OSQyNjEwMDIjNjEjJDEjJDAjJDgz,레이크봄봄이비인후과의원,의원,"경기도 화성시 동탄구 동탄대로 181, A동 301~303호, 307~309호일부호, 226호 (송동, 동탄린스트라우스더레이크)",37.1720762,127.104078
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzMxIyQxIyQzIyQ4OSQzNjE0ODEjODEjJDEjJDYjJDgz,레이크봄봄피부과의원,의원,"경기도 화성시 동탄구 동탄대로 181, 304,305,306호 (송동, 동탄린스트라우스더레이크)",37.1720762,127.104078
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzIxIyQyIyQ5IyQwMCQyNjEyMjIjNDEjJDEjJDgjJDgz,리멤버피부과의원 동탄점,의원,"경기도 화성시 동탄구 동탄순환대로 127-9, 우성애비뉴타워 405~408호 (산척동)",37.1665533,127.1072808
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzIxIyQxIyQxIyQ4MiQzNjEwMDIjNjEjJDEjJDAjJDgz,리모어의원,의원,"경기도 화성시 동탄구 동탄원천로 163, 위너스타 2층 201호 (반송동)",37.2073856,127.0737048
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzIxIyQxIyQxIyQ5MiQ0NjEwMDIjNjEjJDEjJDQjJDgz,리베리의원 화성동탄점,의원,"경기도 화성시 병점구 병점노을4로 29, 6층 (병점동)",37.2058724,127.031861
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzMxIyQxIyQ3IyQ4OSQzNjEwMDIjNjEjJDEjJDAjJDgz,리본여성의원,의원,"경기도 화성시 동탄구 동탄반석로 124, 쎈타프라자 703호 (반송동)",37.2000317,127.0715755
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzIxIyQxIyQxIyQ4OSQzNjEyMjIjNDEjJDEjJDgjJDgz,리프탑의원,의원,"경기도 화성시 동탄구 동탄대로 537, 라스플로레스 325.326 (오산동)",37.2022262,127.097959
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxNzAyIzExIyQxIyQzIyQ5MiQzNjE0ODEjODEjJDEjJDYjJDgz,마음담은내과의원,의원,"경기도 화성시 동탄구 동탄지성로 134, 한솔프라자, 403호 (능동)",37.2095824,127.0609874
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzUxIyQxIyQxIyQxMyQzNjE4MzIjNjEjJDEjJDQjJDgz,마음본정신건강의학과의원,의원,"경기도 화성시 동탄구 동탄대로5길 15, 그랑파샤쥬 4030~4034호 (송동)",37.1661162,127.1051213
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzUxIyQxIyQxIyQ4OSQ0NjEwMDIjNTEjJDEjJDYjJDgz,마음아안녕정신건강의학과의원,의원,"경기도 화성시 동탄구 동탄대로 495, 동탄역리치안 406호 (오산동)",37.197969,127.0982597
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzExIyQxIyQ3IyQ5MiQ0NjE0ODEjNjEjJDEjJDAjJDgz,마이더스산부인과의원,의원,"경기도 화성시 동탄구 동탄대로 537, 라스플로레스빌딩 A동 1118,1119,1120,1080,1081,1082호 (오산동)",37.2022262,127.097959
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzExIyQxIyQ3IyQ4MiQzNjEyMjIjNDEjJDEjJDgjJDgz,맑은샘내과의원,의원,"경기도 수원시 권선구 곡선로49번길 2, 3층 (곡반정동, 하이디프라자)",37.2390405,127.0302489
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxNzAyIzExIyQxIyQ3IyQ3MiQyNjE4MzIjNTEjJDEjJDIjJDgz,맑은숨이비인후과의원,의원,"경기도 오산시 수청로 201, 302호 (금암동, 센타프라자 )",37.1763951,127.0445545
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzIxIyQxIyQ1IyQ4MiQyNjE4MzIjNDEjJDEjJDQjJDgz,망포 스마일 산부인과의원,의원,"경기도 수원시 영통구 태장로 33, 어반스퀘어 512호~514호 (망포동)",37.2393615,127.0498204
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkMzgxMTkxIzIxIyQxIyQ5IyQxMyQyNjE0ODEjODEjJDEjJDIjJDgz,메디피움동탄의원,의원,"경기도 화성시 동탄구 동탄대로 557-9, 우성르보아시티 A동 3층 301~311호,4층401~410호,B동 305~311호 (오산동)",37.2031891,127.0979656
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzQxIyQxIyQ3IyQ4MiQyNjEyMjIjNTEjJDEjJDIjJDgz,메이퓨어의원,의원,"경기도 화성시 병점구 효행로 1052, 씨네샤르망 A동 2층 207호 (병점동)",37.213946,127.042457
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzExIyQxIyQzIyQ4OSQzNjEyMjIjNTEjJDEjJDIjJDgz,메타폴리스내과의원,의원,"경기도 화성시 동탄구 동탄중앙로 200, B동 3층 312-2호 (반송동, 메타폴리스)",37.2027924,127.0688912
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMTkxIzMxIyQxIyQzIyQ3OSQyNjEwMDIjNDEjJDEjJDQjJDgz,명의원,의원,"경기도 화성시 동탄구 동탄지성로 148, 제이스프라자, 304호 (능동)",37.210094,127.0596161
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzIxIyQxIyQ1IyQ4OSQzNjE0ODEjNDEjJDEjJDgjJDgz,모두튼튼365의원,의원,"경기도 화성시 병점구 병점1로 221, 6층 (진안동, 화인메디컬프라자)",37.2135979,127.0418331
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzExIyQyIyQzIyQwMCQzNjEyMjIjNTEjJDEjJDYjJDgz,뮤즈의원,의원,"경기도 화성시 동탄구 동탄대로 557-9, 우성르보아시티 B동 601~603호 (오산동)",37.2031891,127.0979656
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzUxIyQxIyQ1IyQ2MiQyNjE4MzIjODEjJDEjJDYjJDgz,미뉴얼의원,의원,"경기도 화성시 동탄구 동탄순환대로 263, 409~410호 (산척동)",37.1711527,127.1185789
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMzUxIzUxIyQxIyQxIyQxMyQyNjEyMjIjNDEjJDEjJDgjJDgz,미라클의원,의원,"경기도 화성시 병점구 영통로 14-10, 토마토프라자 201,202,203호 (반월동)",37.2331184,127.0650648
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxOTYxIzMxIyQxIyQzIyQ4MiQyNjEwMDIjODEjJDEjJDIjJDgz,미래정신건강의학과의원,의원,"경기도 화성시 병점구 떡전골로 72-3, 4층 402호 (병점동)",37.2052713,127.0348905
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzIxIyQyIyQ1IyQwMCQyNjEwMDIjNDEjJDEjJDgjJDgz,미올린의원,의원,"경기도 오산시 내삼미로 83, 5층 502,503,504호 (수청동)",37.1696464,127.0660073
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMzUxIzQxIyQxIyQ3IyQ5MiQzNjE0ODEjNzEjJDEjJDgjJDgz,미즈맘산부인과의원,의원,"경기도 화성시 병점구 효행로 1063, 301호 (진안동, 메디프렌드)",37.2149864,127.0431434
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzExIyQyIyQ3IyQwMCQzNjEwMDIjNDEjJDEjJDgjJDgz,미즈파크산부인과의원,의원,"경기도 화성시 동탄구 동탄지성로 139, 양진빌딩, 2~8층 (능동)",37.2093431,127.0601939
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMzUxIzIxIyQyIyQxIyQwMCQzNjE4MzIjNTEjJDEjJDIjJDgz,바로본신경외과의원,의원,"경기도 화성시 동탄구 동탄순환대로 706, 에듀프라자2 501,502호일부호 (영천동)",37.2078125,127.1105919
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNDgxOTYxIzQxIyQxIyQ3IyQ2MiQzNjE0ODEjNDEjJDEjJDQjJDgz,박동수외과의원,의원,"경기도 화성시 병점구 효행로 1385, (반월동)",37.2310243,127.0652818
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNTgxMzUxIzIxIyQyIyQ5IyQwMCQzNjE0ODEjNDEjJDEjJDQjJDgz,반디소아청소년과의원,의원,"경기도 화성시 동탄구 동탄광역환승로 73, 124,125호 (오산동, 동탄역 반도유보라 아이비파크 8.0)",37.2026473,127.0907013
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzUxIyQxIyQxIyQ3OSQ0NjEwMDIjNzEjJDEjJDgjJDgz,배영민소아청소년과의원,의원,"경기도 화성시 병점구 병점2로 30, 2층 207호 (병점동, 명신프라자)",37.2060923,127.0402958
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzIxIyQxIyQ1IyQ5MiQzNjEwMDIjNTEjJDEjJDYjJDgz,베리미의원,의원,"경기도 화성시 동탄구 동탄대로5길 21, 205~212호 (송동)",37.1669449,127.1055944
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMzUxIzMxIyQxIyQzIyQ3MiQyNjEyMjIjNjEjJDEjJDQjJDgz,베스탑비뇨기과의원,의원,"경기도 화성시 동탄구 동탄반석로 196, 302,303호 (반송동, 아이프라자)",37.206105,127.0724294
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzMxIyQxIyQzIyQ3OSQzNjEwMDIjNDEjJDEjJDQjJDgz,베스트내과의원,의원,"경기도 화성시 동탄구 동탄대로 537, 라스플로레스 A동 235~239,244~247호 (오산동)",37.2022262,127.097959
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNDgxMzUxIzMxIyQxIyQ3IyQ4MiQzNjE0ODEjNTEjJDEjJDIjJDgz,병점메디칼의원,의원,"경기도 화성시 병점구 경기대로 1008, 2층 (병점동)",37.206053,127.0368538
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzUxIyQxIyQ1IyQ5MiQzNjE0ODEjODEjJDEjJDYjJDgz,병점성모정형외과의원,의원,"경기도 화성시 병점구 병점노을5로 28, 203~212호 (병점동)",37.2063132,127.0316143
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzIxIyQxIyQ1IyQ5MiQyNjEyMjIjNjEjJDEjJDAjJDgz,병점센트럴이비인후과의원,의원,"경기도 화성시 병점구 병점노을4로 29, 408~411호 (병점동)",37.2058724,127.031861
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNTgxOTYxIzIxIyQxIyQxIyQ5MiQyNjEwMDIjNzEjJDEjJDgjJDgz,병점신안과의원,의원,"경기도 화성시 병점구 병점1로 221, 4층 (진안동, 화인메디칼프라자)",37.2135979,127.0418331
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzExIyQxIyQzIyQ5OSQzNjE4MzIjNjEjJDEjJDAjJDgz,병점역바로내과의원,의원,"경기도 화성시 병점구 병점노을4로 29, 10층 1001~1010(1004-가호,1010-가호 제외)호 (병점동)",37.2058724,127.031861
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzIxIyQxIyQxIyQ4OSQyNjEyMjIjNjEjJDEjJDAjJDgz,병점역본튼튼365의원,의원,"경기도 화성시 병점구 병점노을4로 29, 8,9,11층 808~810, 9층전체, 1105~1110호 (병점동)",37.2058724,127.031861
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMzUxIzIxIyQxIyQ5IyQ3OSQyNjEwMDIjNjEjJDEjJDAjJDgz,병점정형외과의원,의원,"경기도 화성시 병점구 경기대로 1008, 1층 (병점동, 동호빌딩)",37.206053,127.0368538
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMzUxIzIxIyQxIyQxIyQ4MiQ0NjEwMDIjNDEjJDEjJDgjJDgz,병점탑내과의원,의원,"경기도 화성시 병점구 효행로 1065, 2층 201~202호 (진안동, 나라프라자)",37.2151272,127.0434054
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzMxIyQxIyQ3IyQ4OSQ0NjE0ODEjODEjJDEjJDIjJDgz,병점프라임본의원,의원,"경기도 화성시 병점구 효행로 1052, 씨네샤르망 A동 2층 203-204호 (병점동)",37.213946,127.042457
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzExIyQxIyQzIyQwMyQzNjE4MzIjODEjJDEjJDIjJDgz,병점힘내라정형외과의원,의원,"경기도 화성시 병점구 병점2로 30, 명신프라자 3층 309~310,304~305일부호 (병점동)",37.2060923,127.0402958
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzMxIyQxIyQzIyQ2MiQyNjE4MzIjNTEjJDEjJDIjJDgz,보령이가정의원,의원,"경기도 화성시 동탄구 동탄신리천로 254, 양지프라자 401일부호 (오산동)",37.184041,127.1062266
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMzUxIzExIyQxIyQ3IyQ4OSQyNjEyMjIjODEjJDEjJDYjJDgz,본비뇨기과의원,의원,"경기도 화성시 병점구 효행로 1069, 502호 (진안동, 우성메디피아)",37.2152458,127.0436526
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzExIyQyIyQzIyQwMCQyNjE0ODEjNjEjJDEjJDAjJDgz,뷰레스트의원,의원,"경기도 화성시 동탄구 동탄대로 537, 226~228호 (오산동)",37.2022262,127.097959
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzUxIyQxIyQ1IyQ4OSQyNjE4MzIjNzEjJDEjJDgjJDgz,뷰티라운지의원,의원,"경기도 화성시 동탄구 동탄대로 537, 라스플로레스 309,408호 (여울동)",37.2022262,127.097959
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNTgxMzUxIzIxIyQxIyQ5IyQwMyQzNjE0ODEjNjEjJDEjJDgjJDgz,뷰티밸런스의원,의원,"경기도 화성시 동탄구 10용사로 349-7, 세란메디빌딩, 2층 (능동)",37.1998196,127.0561876
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzIxIyQxIyQxIyQwMyQyNjE4MzIjNDEjJDEjJDgjJDgz,블리비의원,의원,"경기도 화성시 동탄구 동탄원천로 163, 위너스타 302-1호 (반송동)",37.2073856,127.0737048
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzIxIyQxIyQ5IyQ4OSQzNjE4MzIjNjEjJDEjJDgjJDgz,비씨티명인의원,의원,"경기도 오산시 수목원로 600, 103,104호 (세교동)",37.18506,127.0425623
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzQxIyQyIyQ3IyQwMCQ0NjEwMDIjNDEjJDEjJDgjJDgz,빌라드스킨피부과의원,의원,"경기도 화성시 동탄구 동탄대로 537, 라스플로레스  A동 440,442,443호 (오산동)",37.2022262,127.097959
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzQxIyQxIyQ3IyQ3MiQzNjEyMjIjODEjJDEjJDIjJDgz,삶신경과의원,의원,"경기도 화성시 동탄구 동탄오산로 82, 401,402호 (오산동)",37.198165,127.0971269
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzExIyQxIyQzIyQ2MiQzNjE4MzIjNTEjJDEjJDYjJDgz,삼성365소아청소년과의원,의원,"경기도 화성시 동탄구 동탄순환대로20길 45, 201호 (목동, 동탄 금강펜테리움 센트럴파크Ⅳ)",37.1896357,127.1288205
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkMzgxOTYxIzMxIyQxIyQzIyQ4OSQzNjEwMDIjNDEjJDEjJDgjJDgz,삼성SDI(주) 기흥부속의원,의원,"경기도 용인시 기흥구 공세로 150-34, 삼성물산(주) 1층 (공세동)",37.2382644,127.1117064
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzMxIyQxIyQzIyQ5OSQyNjE0ODEjNTEjJDEjJDYjJDgz,삼성나노시티의원,의원,"경기도 화성시 병점구 삼성전자로 1, 삼성전자(주)  EUV라인 1층 (반월동)",37.2234547,127.0633657
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxOTYxIzQxIyQxIyQ3IyQxMyQyNjE4MzIjODEjJDEjJDYjJDgz,삼성내과의원,의원,"경기도 화성시 동탄구 동탄반석로 204, 6층 602호 (반송동, 제일프라자)",37.2066808,127.07282
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxNzAyIzIxIyQxIyQxIyQ4MiQ0NjEwMDIjNjEjJDEjJDQjJDgz,삼성드림내과의원,의원,"경기도 용인시 기흥구 탑실로 32, 204,205,206호 (공세동) (공세동)",37.2389467,127.1101872
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzIxIyQxIyQxIyQ4MiQ0NjE0ODEjNTEjJDEjJDYjJDgz,삼성드림소아청소년과의원,의원,"경기도 오산시 수목원로 458, 3층 302호 (금암동)",37.1747417,127.0505166
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzMxIyQxIyQ3IyQ5MiQyNjEwMDIjNjEjJDEjJDQjJDgz,삼성디스플레이(주)기흥부속의원,의원,"경기도 용인시 기흥구 삼성로 1, 삼성전자(주)기흥캠퍼스 삼성디스플레이리서치동 2층 (농서동)",37.231524,127.0853334
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNDgxNzAyIzIxIyQxIyQ1IyQ2MiQzNjE4MzIjNDEjJDEjJDQjJDgz,삼성메디칼정형외과의원,의원,"경기도 화성시 병점구 영통로80번길 2, (반월동)",37.2367335,127.060829
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzUxIyQxIyQxIyQ5OSQzNjE4MzIjNjEjJDEjJDQjJDgz,삼성봄그린산부인과의원,의원,"경기도 화성시 동탄구 동탄순환대로 257, 종산타워 304(일부)~305호 (산척동)",37.1706204,127.1185212
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxNzAyIzMxIyQxIyQzIyQwMyQzNjEyMjIjNjEjJDEjJDAjJDgz,삼성연합의원,의원,"경기도 화성시 병점구 병점2로 46, 3층 302,303호 (병점동, 테성빌딩)",37.2066612,127.0417739
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzExIyQyIyQzIyQwMCQ0NjEwMDIjNzEjJDEjJDgjJDgz,삼성연합의원,의원,"경기도 오산시 오산대역로 214, G플레이스 오산 404,405호 (수청동)",37.1708567,127.0655846
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzUxIyQyIyQxIyQwMCQzNjE0ODEjNTEjJDEjJDYjJDgz,삼성원스정형외과의원,의원,"경기도 오산시 죽담안로 38-15, 4,3층 401~405호,305호 (궐동)",37.1636716,127.0521088
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzExIyQxIyQ3IyQ5MiQ0NjE0ODEjNDEjJDEjJDgjJDgz,삼성전자 화성 H2 부속의원,의원,"경기도 화성시 동탄구 동탄중앙로 307, GATE2 경비동 2층 (석우동)",37.2121897,127.0725301
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMzUxIzMxIyQxIyQzIyQ4MiQyNjE4MzIjNDEjJDEjJDgjJDgz,삼성전자(주) 부품연구동부속의원,의원,"경기도 화성시 병점구 삼성전자로 1-1, (반월동, 부품연구동)",37.2252184,127.0701206
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMzUxIzExIyQxIyQzIyQ5OSQzNjEyMjIjNTEjJDEjJDIjJDgz,삼성전자(주)화성부속의원,의원,"경기도 화성시 병점구 삼성전자로 1, (반월동)",37.2234547,127.0633657
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkMzgxMTkxIzIxIyQxIyQ5IyQ3OSQ0NjE0ODEjODEjJDEjJDIjJDgz,삼성전자㈜기흥부속의원,의원,"경기도 용인시 기흥구 삼성로 1, 삼성전자(주)기흥캠퍼스 (농서동)",37.231524,127.0853333
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzIxIyQxIyQ1IyQ2MiQ0NjEwMDIjODEjJDEjJDYjJDgz,삼성제이웰비뇨의학과의원,의원,"경기도 화성시 동탄구 동탄대로5길 15, 그랑파사쥬 4051~4056호 (송동)",37.1661162,127.1051213
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMzUxIzUxIyQxIyQ1IyQ3MiQyNjEyMjIjODEjJDEjJDYjJDgz,삼성제일소아청소년과의원,의원,"경기도 화성시 동탄구 동탄솔빛로 67, 303호 (반송동, 성우프라자)",37.1948353,127.0743036
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzExIyQyIyQzIyQwMCQ0NjEwMDIjODEjJDEjJDIjJDgz,삼성진재활의학과의원,의원,"경기도 화성시 동탄구 동탄중심상가2길 32, 3층 301,302,303호 (반송동)",37.2065899,127.0738825
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzUxIyQxIyQxIyQ4MiQyNjE4MzIjNDEjJDEjJDgjJDgz,삼성키즈소아청소년과의원,의원,"경기도 화성시 동탄구 동탄순환대로20길 118, 우성스타파크 B동 5층 506,507호 (목동)",37.1830112,127.1248249
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzIxIyQxIyQ5IyQ4MiQzNjEwMDIjNTEjJDEjJDIjJDgz,삼성플러스안과의원,의원,"경기도 화성시 동탄구 동탄순환대로20길 118, 우성스타파크 B 201호~203호 (목동)",37.1830112,127.1248249
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzExIyQxIyQzIyQ5OSQzNjE0ODEjNTEjJDEjJDYjJDgz,삼성항외과의원,의원,"경기도 화성시 동탄구 동탄순환대로 693, 대성메디컬프라자 4층 404호 (영천동)",37.2065265,127.1105117
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxOTYxIzUxIyQxIyQ1IyQ5OSQzNjEyMjIjNjEjJDEjJDQjJDgz,상쾌한이비인후과의원,의원,"경기도 화성시 동탄구 동탄솔빛로 44, 301, 302호 (반송동, 신성프라자)",37.1928999,127.0729529
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMzUxIzIxIyQxIyQxIyQ3OSQyNjEwMDIjNDEjJDEjJDgjJDgz,상쾌한이비인후과의원,의원,"경기도 용인시 기흥구 서천로 121, 원희캐슬 406호 (서천동)",37.2371504,127.0727242
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMzUxIzMxIyQxIyQzIyQ4OSQyNjE4MzIjNjEjJDEjJDAjJDgz,새롬안과의원,의원,"경기도 오산시 수청로 199, 302호 (금암동, 정원프라자)",37.1764456,127.0448233
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkMzgxNzAyIzUxIyQxIyQ1IyQ5OSQ0NjEwMDIjODEjJDEjJDIjJDgz,새서울메디컬의원,의원,"경기도 화성시 병점구 경기대로 1042, (진안동)",37.2087138,127.034737
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNDgxMzUxIzUxIyQxIyQ1IyQ4MiQyNjE4MzIjNTEjJDEjJDYjJDgz,새수원의원,의원,"경기도 수원시 영통구 태장로 73, 정석 그린프라자 503호 (망포동)",37.2393257,127.0543271
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzMxIyQxIyQzIyQ3OSQzNjEyMjIjNTEjJDEjJDYjJDgz,샤인룩스의원,의원,"경기도 화성시 동탄구 동탄역로 150, 301~305호 (오산동, 동탄역 롯데캐슬)",37.1995005,127.0967855
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzUxIyQxIyQ1IyQ5OSQ0NjEwMDIjODEjJDEjJDIjJDgz,샤일리안과의원,의원,"경기도 화성시 동탄구 동탄대로5길 15, 그랑파사쥬 4061~4076호 (송동)",37.1661162,127.1051213
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzUxIyQxIyQ1IyQxMyQzNjEwMDIjNjEjJDEjJDQjJDgz,서울 선 정신건강의학과 의원,의원,"경기도 화성시 동탄구 동탄원천로 163, 위너스타 4층 404호 (반송동)",37.2073856,127.0737048
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzExIyQxIyQzIyQ5OSQyNjEwMDIjNjEjJDEjJDAjJDgz,서울365메디칼의원,의원,"경기도 화성시 동탄구 동탄신리천로1길 73, 3층 301~306호 (산척동)",37.1794414,127.1193389
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMzUxIzExIyQxIyQ3IyQxMyQzNjEwMDIjNDEjJDEjJDgjJDgz,서울내과의원,의원,"경기도 화성시 병점구 효행로 1072, 405,406호 (병점동, 상록프라자)",37.2149646,127.0442957
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzQxIyQxIyQ3IyQ5MiQzNjE4MzIjNDEjJDEjJDgjJDgz,서울동탄비뇨의학과의원,의원,"경기도 화성시 동탄구 동탄순환대로 257, 종산타워 504~505호 (산척동)",37.1706204,127.1185212
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzUxIyQxIyQ1IyQxMyQyNjEwMDIjODEjJDEjJDYjJDgz,서울바른내과의원,의원,"경기도 화성시 동탄구 동탄순환대로20길 118, 우성스타파크 B동 5층 501~505호 (목동)",37.1830112,127.1248249
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzUxIyQyIyQxIyQwMCQ0NjEwMDIjODEjJDEjJDIjJDgz,서울바른정형외과의원,의원,"경기도 화성시 동탄구 동탄순환대로20길 118, 우성스타파크 B동 401~403,408~410호 (목동)",37.1830112,127.1248249
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzExIyQxIyQzIyQ3OSQyNjE0ODEjODEjJDEjJDIjJDgz,서울베스트의원,의원,"경기도 화성시 동탄구 동탄신리천로 406, 리더스퀘어 309~311호 (목동)",37.1821552,127.1229707
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzIxIyQxIyQxIyQwMyQzNjEyMjIjODEjJDEjJDIjJDgz,서울봄연합의원,의원,"경기도 오산시 궐리사로 41, 2,4층 (궐동)",37.1602511,127.0572393
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzUxIyQyIyQxIyQwMCQyNjE4MzIjNjEjJDEjJDQjJDgz,서울브라이트안과의원,의원,"경기도 화성시 동탄구 동탄순환대로 257, 종산타워 501~503호 (산척동)",37.1706204,127.1185212
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxOTYxIzMxIyQxIyQzIyQ3MiQzNjEyMjIjNDEjJDEjJDgjJDgz,서울삼성내과의원,의원,"경기도 화성시 병점구 병점2로 38, 2층(전체),3층 (302~303)호 (병점동)",37.2064035,127.0410123
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNTgxMzUxIzUxIyQxIyQ1IyQwMyQyNjE0ODEjNjEjJDEjJDQjJDgz,서울성모이비인후과의원,의원,"경기도 화성시 병점구 병점서로 33, 302호 (병점동, 두산탑프라자)",37.2055335,127.0399264
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzIxIyQxIyQxIyQ5MiQyNjE4MzIjNjEjJDEjJDgjJDgz,서울센트럴신경외과의원,의원,"경기도 화성시 병점구 효행로 1051, 메인프라자 303, 304호 (진안동)",37.214627,127.0419608
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzIxIyQxIyQxIyQ2MiQyNjEyMjIjNjEjJDEjJDAjJDgz,서울소망이비인후과의원,의원,"경기도 화성시 동탄구 동탄대로시범길 146, 4층 403호 (청계동, 포트센트럴시티)",37.2003439,127.1131432
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzQxIyQxIyQ3IyQ5MiQyNjE4MzIjNTEjJDEjJDIjJDgz,서울아산센트럴내과의원,의원,"경기도 화성시 동탄구 동탄순환대로 257, 종산타워 301~304호 (산척동)",37.1706204,127.1185212
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMzUxIzMxIyQxIyQzIyQ5OSQ0NjE0ODEjNTEjJDEjJDIjJDgz,서울여성의원,의원,"경기도 화성시 병점구 경기대로1010번길 6, (병점동)",37.2061925,127.0370128
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNTgxMzUxIzMxIyQyIyQzIyQwMCQzNjE4MzIjNDEjJDEjJDgjJDgz,서울연합의원,의원,"경기도 오산시 궐리사로 37, 2층 (궐동)",37.1603723,127.0566888
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzIxIyQxIyQ1IyQ5MiQ0NjEwMDIjNDEjJDEjJDQjJDgz,서울연합의원,의원,"경기도 화성시 동탄구 동탄대로 446, 그란비아스타 3001~3004호 (청계동)",37.1933905,127.1000579
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzMxIyQxIyQ3IyQ4MiQ0NjEwMDIjNTEjJDEjJDYjJDgz,서울오케이유외과의원,의원,"경기도 화성시 동탄구 동탄대로 537, 라스플로레스 432호 (오산동)",37.2022262,127.097959
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMTkxIzIxIyQxIyQ5IyQ5OSQzNjE4MzIjNzEjJDEjJDgjJDgz,서울우리내과의원,의원,"경기도 화성시 동탄구 동탄순환대로 685, 501호, 504호 (영천동)",37.2059564,127.1109261
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkMzgxMTkxIzIxIyQxIyQ5IyQ3MiQyNjEyMjIjNjEjJDEjJDQjJDgz,서울참소아과의원,의원,"경기도 화성시 병점구 병점2로 30, 명신프라자 308호 (병점동)",37.2060923,127.0402958
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNDgxNzAyIzUxIyQxIyQxIyQ3OSQzNjE4MzIjNTEjJDEjJDIjJDgz,서울큰별의원,의원,"경기도 화성시 병점구 효행로 1051, 4층 404호 (진안동, 메인프라자)",37.214627,127.0419608
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzIxIyQxIyQ5IyQ5MiQyNjE4MzIjNTEjJDEjJDIjJDgz,성모브이아이피신경외과의원,의원,"경기도 화성시 동탄구 동탄순환대로 127-9, 우성애비뉴타워 301~305호 (산척동)",37.1665533,127.1072808
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzIxIyQxIyQ5IyQ3MiQyNjEwMDIjNjEjJDEjJDgjJDgz,성모오케이마취통증의학과의원,의원,"경기도 화성시 동탄구 동탄솔빛로 67, 2층 203호 (반송동, 성우프라자)",37.1948353,127.0743036
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzIxIyQxIyQ5IyQwMyQyNjEyMjIjNjEjJDEjJDgjJDgz,성모우리이비인후과의원,의원,"경기도 화성시 동탄구 동탄대로시범길 134, 판매시설 2125호~2132호 (청계동, 시범 반도유보라 아이비파크4.0)",37.1992157,127.1142339
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxOTYxIzMxIyQxIyQ3IyQ3MiQyNjE4MzIjNTEjJDEjJDYjJDgz,성모플러스내과의원,의원,"경기도 화성시 동탄구 동탄반석로 196, 401,402호 (반송동, 아이프라자)",37.206105,127.0724294
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzIxIyQxIyQ5IyQ4MiQyNjE4MzIjNDEjJDEjJDgjJDgz,세가지소원의원 동탄점,의원,"경기도 화성시 동탄구 동탄중심상가2길 32, 골드프라자 5층 (반송동)",37.2065899,127.0738825
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzIxIyQxIyQxIyQ4MiQyNjEwMDIjNzEjJDEjJDgjJDgz,세교바른안과의원,의원,"경기도 오산시 죽담1로 29, 3층 301~302호 (궐동)",37.1603755,127.0522044
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzIxIyQxIyQxIyQ4MiQyNjEyMjIjNDEjJDEjJDQjJDgz,세교삼성내과의원,의원,"경기도 오산시 수목원로 458, 5층 (금암동)",37.1747417,127.0505166
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzExIyQxIyQ3IyQ5MiQyNjEyMjIjNjEjJDEjJDQjJDgz,세교서울이비인후과의원,의원,"경기도 오산시 내삼미로79번길 11, 2층 207,208호 (수청동, 선우중앙타워)",37.1690388,127.065276
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzUxIyQyIyQxIyQwMCQyNjE0ODEjNDEjJDEjJDgjJDgz,세교센트럴이비인후과의원,의원,"경기도 오산시 죽담안로 38-15, 2층 201~204호 (궐동)",37.1636716,127.0521088
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNTgxMzUxIzIxIyQxIyQ5IyQ5MiQyNjE4MzIjNDEjJDEjJDgjJDgz,세교아주소아청소년과의원,의원,"경기도 오산시 수청로 189, 402,403호 (금암동, 웅신아트프라자)",37.1768205,127.0459084
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzExIyQyIyQ3IyQwMCQzNjEyMjIjODEjJDEjJDYjJDgz,세교중앙내과의원,의원,"경기도 오산시 수청로 189, 601,602호 (금암동, 웅신아트프라자)",37.1768205,127.0459084
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxOTYxIzUxIyQxIyQ1IyQ4OSQzNjE0ODEjNDEjJDEjJDgjJDgz,속편한내과의원,의원,"경기도 화성시 동탄구 동탄솔빛로 67, 6층 603~605호 (반송동, 성우프라자)",37.1948353,127.0743036
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMzUxIzIxIyQxIyQ1IyQ3MiQyNjEyMjIjNTEjJDEjJDIjJDgz,솔빛소아청소년과의원,의원,"경기도 화성시 동탄구 동탄솔빛로 53, 2층 204-205호 (반송동, 모닝타운)",37.1939137,127.0733162
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMzUxIzExIyQxIyQ3IyQ3MiQyNjE4MzIjODEjJDEjJDIjJDgz,솔이비인후과의원,의원,"경기도 수원시 영통구 태장로 84, (망포동, 망포프라자 306,307호)",37.238974,127.0555208
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxOTYxIzUxIyQxIyQxIyQwMyQ0NjE0ODEjODEjJDEjJDYjJDgz,수피부과의원,의원,"경기도 화성시 동탄구 동탄솔빛로 67, 301호 (반송동, 성우프라자)",37.1948353,127.0743036
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzQxIyQxIyQ3IyQwMyQzNjEyMjIjNDEjJDEjJDQjJDgz,숨앤잠이비인후과의원,의원,"경기도 오산시 죽담3로 6, 4층 404,405호 (궐동)",37.1636863,127.0504457
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzMxIyQxIyQzIyQxMyQyNjEwMDIjNTEjJDEjJDIjJDgz,슈링톡스의원,의원,"경기도 화성시 동탄구 동탄대로 537, 라스플로레스  A동 233,234호 (오산동)",37.2022262,127.097959
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzIxIyQxIyQ1IyQxMyQ0NjEwMDIjNDEjJDEjJDgjJDgz,스마일피부과의원,의원,"경기도 화성시 동탄구 동탄순환대로 127-5, 우성센트럴타워 4층 411~414호 (산척동)",37.1660595,127.1072823
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzMxIyQxIyQ3IyQ3OSQ0NjE0ODEjNjEjJDEjJDQjJDgz,신나는신경외과의원,의원,"경기도 화성시 동탄구 동탄대로 495, 동탄역리치안 407~409호 (오산동)",37.197969,127.0982597
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzExIyQxIyQ3IyQwMyQzNjE4MzIjODEjJDEjJDIjJDgz,신세계마취통증의학과의원,의원,"경기도 화성시 병점구 떡전골로 60, 107동 205-206호 (병점동, 효성해링턴플레이스)",37.2050623,127.0362476
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxNzAyIzIxIyQxIyQ5IyQxMyQ0NjE0ODEjNDEjJDEjJDgjJDgz,신수아소아청소년과의원,의원,"경기도 화성시 동탄구 동탄순환대로 690, 애플스퀘어 301,304,305호 (영천동)",37.2065462,127.1115591
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzExIyQxIyQzIyQxMyQzNjE0ODEjNDEjJDEjJDgjJDgz,신영통 삼성원 정형외과의원,의원,"경기도 화성시 병점구 영통로 14-10, 토마토프라자 301~303호 (반월동)",37.2331184,127.0650648
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzIxIyQxIyQ1IyQ3OSQzNjE0ODEjNDEjJDEjJDQjJDgz,신영통마디척척의원,의원,"경기도 화성시 병점구 영통로 62, 3층 (반월동)",37.2358094,127.0622896
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNDgxNzAyIzUxIyQxIyQ1IyQ2MiQ0NjE0ODEjNjEjJDEjJDgjJDgz,신영통삼성내과의원,의원,"경기도 수원시 영통구 영통로 136, 센트럴타워 401호 (망포동)",37.2396921,127.0561768
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzIxIyQxIyQ5IyQ3OSQyNjEyMjIjNDEjJDEjJDQjJDgz,신영통성모내과의원,의원,"경기도 화성시 병점구 영통로 62, 4층 (반월동)",37.2358094,127.0622896
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzIxIyQyIyQ5IyQwMCQzNjE4MzIjNDEjJDEjJDgjJDgz,신통방통의원,의원,"경기도 화성시 동탄구 동탄반석로 134, 에이치원메디컬 6층 (반송동)",37.201082,127.0713357
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxOTYxIzQxIyQxIyQ3IyQ5MiQzNjEwMDIjNDEjJDEjJDgjJDgz,심현남동탄제일산부인과의원,의원,"경기도 화성시 동탄구 동탄반석로 196, 6층 601~603호 (반송동, 아이프라자)",37.206105,127.0724294
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzIxIyQxIyQ5IyQ3OSQyNjE0ODEjODEjJDEjJDIjJDgz,아로성형외과의원,의원,"경기도 화성시 동탄구 동탄대로 489, 동탄역우성타워 309호 (여울동)",37.1973592,127.0982637
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzMxIyQxIyQ3IyQxMyQyNjE4MzIjNjEjJDEjJDgjJDgz,아산튼튼신경외과의원,의원,"경기도 오산시 수청로 193, 2층 203호, 204호 (금암동)",37.1766517,127.0455185
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzIxIyQxIyQxIyQ2MiQyNjEyMjIjNDEjJDEjJDgjJDgz,아우라엘의원,의원,"경기도 화성시 동탄구 동탄순환대로20길 124, 우성스타파크 A 402~405호 (목동)",37.1826526,127.1246944
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkMzgxNzAyIzMxIyQxIyQzIyQwMyQyNjE0ODEjNTEjJDEjJDIjJDgz,아이사랑의원,의원,"경기도 수원시 영통구 태장로 83, 302호 (망포동, 엘지프라자)",37.239326,127.055317
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMzUxIzIxIyQxIyQ1IyQ2MiQyNjEwMDIjNzEjJDEjJDgjJDgz,아이웰봄 소아청소년과의원,의원,"경기도 용인시 기흥구 서천로 121, (서천동)",37.2371504,127.0727242
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzIxIyQxIyQ5IyQ2MiQzNjEyMjIjNDEjJDEjJDgjJDgz,아이편한소아청소년과의원,의원,"경기도 화성시 병점구 효행로 1337-23, 201동 209-211호 (반월동, e편한세상 신동탄)",37.2253506,127.0618121
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzIxIyQxIyQ5IyQ5OSQzNjEyMjIjNjEjJDEjJDQjJDgz,아주사랑마취통증의학과의원,의원,"경기도 오산시 수청로 189, 201호 (금암동, 웅신아트프라자)",37.1768205,127.0459084
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNTgxOTYxIzQxIyQyIyQ3IyQwMCQyNjE4MzIjNjEjJDEjJDgjJDgz,아주상쾌한이비인후과의원,의원,"경기도 화성시 병점구 영통로61번길 6, 406호 (반월동, 제일프라자)",37.2354934,127.0611413
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzIxIyQxIyQxIyQ4MiQyNjE0ODEjODEjJDEjJDYjJDgz,아주큰나무정신건강의학과의원,의원,"경기도 화성시 동탄구 동탄대로시범길 134, 1033,1034호 (청계동, 동탄역시범반도유보라아이비파크4.0)",37.1992157,127.1142339
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMzUxIzExIyQxIyQ3IyQ2MiQyNjE0ODEjNjEjJDEjJDgjJDgz,아트라인성형외과의원,의원,"경기도 화성시 동탄구 동탄중심상가2길 2, 701,702,703호 (반송동, 아인슈타인타워)",37.2057103,127.0722751
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMTkxIzIxIyQxIyQ5IyQ3OSQyNjE0ODEjNjEjJDEjJDQjJDgz,아티뉴성형외과의원,의원,"경기도 화성시 동탄구 동탄반석로 134, 8층 (반송동, 에이치원메디컬빌딩)",37.201082,127.0713357
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzMxIyQxIyQ3IyQwMyQzNjE4MzIjNDEjJDEjJDgjJDgz,애플산부인과의원,의원,"경기도 화성시 동탄구 동탄대로 489, 동탄역우성타워 1002~1004호 (오산동)",37.1973592,127.0982637
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzIxIyQxIyQxIyQwMyQyNjE0ODEjNTEjJDEjJDYjJDgz,에르샤몽의원,의원,"경기도 화성시 동탄구 동탄신리천로 406, 204~209호, 216~218호 (목동)",37.1821552,127.1229707
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzQxIyQxIyQ3IyQ2MiQyNjEwMDIjNjEjJDEjJDAjJDgz,에미뜨의원,의원,"경기도 화성시 동탄구 동탄원천로 157, 오피스타워 3층 (반송동)",37.2070418,127.0742895
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzIxIyQxIyQxIyQ3OSQyNjEwMDIjODEjJDEjJDIjJDgz,에스케이가정의학과의원,의원,"경기도 화성시 동탄구 동탄순환대로20길 118, 우성스타파크 B동 306,307호 (목동)",37.1830112,127.1248249
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzExIyQxIyQ3IyQ4OSQyNjE0ODEjNDEjJDEjJDQjJDgz,에스플랜의원,의원,"경기도 화성시 동탄구 동탄반석로 134, H1 메디컬센터 702호 (반송동)",37.201082,127.0713357
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxOTYxIzUxIyQxIyQ1IyQ3OSQyNjEyMjIjODEjJDEjJDIjJDgz,에이치드림정형외과의원,의원,"경기도 화성시 동탄구 동탄솔빛로 64, 3층 (반송동, 가희프라자)",37.1942175,127.0746368
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzMxIyQxIyQ3IyQ2MiQzNjE0ODEjNzEjJDEjJDgjJDgz,엔의원,의원,"경기도 화성시 동탄구 동탄순환대로 127-23, 우성에듀파크 309~312호 (산척동)",37.167765,127.107263
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNTgxMzUxIzExIyQxIyQzIyQ3MiQyNjEyMjIjNTEjJDEjJDIjJDgz,연세기쁨의원,의원,"경기도 화성시 동탄구 동탄영천로 81-5, 골든프라자 301,302호 (영천동)",37.2096788,127.102974
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzIxIyQyIyQxIyQwMCQyNjEyMjIjODEjJDEjJDIjJDgz,연세김&리피부과의원,의원,"경기도 화성시 동탄구 동탄반석로 134, 메디컬빌딩 401호 (반송동)",37.201082,127.0713357
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNTgxOTYxIzIxIyQxIyQ1IyQ3MiQzNjEwMDIjNDEjJDEjJDgjJDgz,연세꿈스의원,의원,"경기도 수원시 영통구 영통로 136, (망포동, 신영통센트럴타워 405호)",37.2396921,127.0561768
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNDgxMzUxIzQxIyQxIyQ3IyQ4MiQzNjEwMDIjNzEjJDEjJDgjJDgz,연세내과의원,의원,"경기도 화성시 동탄구 10용사로 343-2, (능동)",37.1994317,127.0558339
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMzUxIzExIyQxIyQ3IyQxMyQyNjE4MzIjNzEjJDEjJDgjJDgz,연세뉴키즈소아청소년과의원,의원,"경기도 용인시 기흥구 서천로127번길 3-3, (서천동, 에스비타운 403호)",37.2362956,127.0721781
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzExIyQxIyQ3IyQ2MiQzNjE4MzIjNDEjJDEjJDQjJDgz,연세더바른내과의원,의원,"경기도 용인시 기흥구 서천로127번길 3-3, 502,503호 (서천동)",37.2362956,127.0721781
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzIxIyQxIyQxIyQ2MiQzNjE0ODEjNTEjJDEjJDIjJDgz,연세든든외과의원,의원,"경기도 화성시 동탄구 동탄대로5길 9, 그랑파사쥬 3004~3006호 (송동)",37.1676291,127.1058272
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzMxIyQxIyQ3IyQ3MiQyNjE4MzIjNzEjJDEjJDgjJDgz,연세바른내과의원,의원,"경기도 화성시 병점구 효행로 1073, 거성프라자 401호 (진안동)",37.2154145,127.0439977
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzUxIyQxIyQxIyQ5OSQyNjEyMjIjNTEjJDEjJDYjJDgz,연세본내과의원,의원,"경기도 화성시 동탄구 동탄대로5길 15, 그랑파사쥬 4009~4022호 (송동)",37.1661162,127.1051213
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMzUxIzExIyQxIyQ3IyQ3MiQzNjE4MzIjODEjJDEjJDYjJDgz,연세소아과의원,의원,"경기도 화성시 병점구 효행로 1073, 501,502호 (진안동, 거성프라자)",37.2154145,127.0439977
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzIxIyQxIyQxIyQxMyQ0NjEwMDIjNTEjJDEjJDYjJDgz,연세아이힐안과의원,의원,"경기도 화성시 동탄구 동탄순환대로 704, A동 303호 (영천동)",37.2075871,127.1107808
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzIxIyQxIyQ1IyQ5MiQyNjE4MzIjNzEjJDEjJDgjJDgz,연세올리브내과의원,의원,"경기도 화성시 병점구 영통로60번길 7, 232~239호 (반월동)",37.2368074,127.0619473
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzMxIyQxIyQzIyQxMyQyNjEyMjIjNjEjJDEjJDQjJDgz,연세원내과의원,의원,"경기도 오산시 내삼미로 93, 백현프라자 3층 (수청동)",37.170536,127.0657863
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzIxIyQxIyQxIyQxMyQzNjE4MzIjNTEjJDEjJDIjJDgz,연세이룬소아청소년과의원,의원,"경기도 화성시 동탄구 동탄대로4길 39, 포트센트럴파크 305호 (장지동)",37.1618176,127.1102472
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMzUxIzQxIyQxIyQ3IyQ4OSQzNjEwMDIjNDEjJDEjJDgjJDgz,연세이비인후과의원,의원,"경기도 화성시 병점구 효행로 1073, 602호 (진안동, 거성프라자)",37.2154145,127.0439977
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzUxIyQxIyQxIyQ3OSQ0NjEwMDIjNDEjJDEjJDgjJDgz,연세인정신건강의학과의원,의원,"경기도 화성시 동탄구 동탄순환대로 127-5, 우성센트럴타워 611,612호 (산척동)",37.1660595,127.1072823
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzIxIyQxIyQ1IyQ3MiQyNjE0ODEjNTEjJDEjJDIjJDgz,연세참비뇨의학과의원,의원,"경기도 화성시 동탄구 동탄반석로 134, H1메디컬센터 5층 (반송동)",37.201082,127.0713357
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxNzAyIzIxIyQxIyQ1IyQ5OSQyNjE0ODEjODEjJDEjJDYjJDgz,연세참빛안과의원,의원,"경기도 수원시 영통구 영통로 115, (망포동, 알파빌딩 301호)",37.2379243,127.0568306
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzUxIyQxIyQxIyQ3MiQzNjEwMDIjNDEjJDEjJDQjJDgz,연세키즈365소아청소년과의원,의원,"경기도 화성시 동탄구 동탄순환대로 263, 풍산리치안타워 406,407호 (산척동)",37.1711527,127.1185789
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxNzAyIzIxIyQxIyQ5IyQ5OSQyNjE4MzIjNDEjJDEjJDQjJDgz,연세키즈소아청소년과의원,의원,"경기도 화성시 동탄구 동탄지성로 136, 우리프라자, 2층 201호,202호 (능동)",37.2096686,127.0606973
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzExIyQxIyQ3IyQxMyQyNjEyMjIjNDEjJDEjJDgjJDgz,연세튼튼재활의학과의원,의원,"경기도 오산시 내삼미로79번길 23, 라온누리빌딩 203호 (수청동)",37.169778,127.0643121
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzExIyQxIyQ3IyQ5OSQzNjE0ODEjNjEjJDEjJDgjJDgz,연세편안한비뇨의학과의원,의원,"경기도 화성시 병점구 병점노을4로 29, 8층 803~805호 (병점동)",37.2058724,127.031861
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxOTYxIzUxIyQxIyQ1IyQ5MiQyNjE0ODEjNTEjJDEjJDIjJDgz,연세프라임이비인후과의원,의원,"경기도 화성시 동탄구 동탄솔빛로 64, 가희프라자2 302호,506일부호 (반송동)",37.1942175,127.0746368
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzExIyQxIyQzIyQ3OSQ0NjEwMDIjNjEjJDEjJDgjJDgz,연세헤븐피부과의원,의원,"경기도 화성시 병점구 병점1로 221, 5층 (진안동, 화인메디컬프라자)",37.2135979,127.0418331
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzIxIyQxIyQ5IyQ4OSQzNjEwMDIjNDEjJDEjJDgjJDgz,연세호수이비인후과의원,의원,"경기도 화성시 동탄구 동탄순환대로 127-9, 우성애비뉴타워 503~506호 (산척동)",37.1665533,127.1072808
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzUxIyQyIyQxIyQwMCQ0NjE0ODEjNDEjJDEjJDQjJDgz,연세휴내과의원,의원,"경기도 화성시 동탄구 동탄순환대로20길 124, 우성스타파크A동 5층 501~505호 (목동)",37.1826526,127.1246944
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMTkxIzUxIyQxIyQxIyQ5OSQzNjEwMDIjNjEjJDEjJDgjJDgz,열린성모이비인후과의원,의원,"경기도 화성시 동탄구 동탄원천로 163, 위너스타 5층 507-1호 (반송동)",37.2073856,127.0737048
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNDgxMTkxIzQxIyQxIyQ3IyQ4MiQzNjEwMDIjODEjJDEjJDIjJDgz,영통연세가정의학과의원,의원,"경기도 수원시 영통구 영통로90번길 4-2, (망포동)",37.2373831,127.0600923
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzExIyQxIyQ3IyQ3MiQzNjEyMjIjNDEjJDEjJDQjJDgz,영통척튼튼의원,의원,"경기도 수원시 영통구 영통로 136, 센트럴타워 2층 207호 (망포동)",37.2396921,127.0561768
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNTgxMzUxIzExIyQxIyQzIyQ5MiQzNjEwMDIjNDEjJDEjJDgjJDgz,예가정의학과의원,의원,"경기도 오산시 수청로 201, 402호 (금암동, 센타프라자)",37.1763951,127.0445545
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxOTYxIzExIyQxIyQ3IyQ5OSQzNjE4MzIjNTEjJDEjJDIjJDgz,예다움정신건강의학과의원,의원,"경기도 화성시 병점구 경기대로 1014, 6층 601호 (병점동, 병점프라자)",37.2064934,127.0366054
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMTkxIzUxIyQxIyQxIyQ5MiQyNjE4MzIjNjEjJDEjJDgjJDgz,예지항외과의원,의원,"경기도 화성시 동탄구 동탄원천로 163, 505,506호 (반송동, 위너스타)",37.2073856,127.0737048
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkMzgxNzAyIzIxIyQxIyQxIyQ5MiQyNjEyMjIjNTEjJDEjJDIjJDgz,오내과의원,의원,"경기도 화성시 병점구 효행로 1069, 404호 (진안동, 우성메디피아)",37.2152458,127.0436526
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzIxIyQxIyQxIyQ2MiQyNjEyMjIjNjEjJDEjJDgjJDgz,오산뷰티온의원,의원,"경기도 오산시 내삼미로79번길 23, 102~110호 (수청동)",37.169778,127.0643121
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzIxIyQxIyQ1IyQ2MiQzNjEwMDIjNDEjJDEjJDgjJDgz,오산세교정신건강의학과의원,의원,"경기도 오산시 죽담1로 29, 2층 202호 (궐동)",37.1603755,127.0522044
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzQxIyQyIyQ3IyQwMCQzNjEyMjIjNTEjJDEjJDYjJDgz,오직탄력의원,의원,"경기도 화성시 동탄구 동탄역로 150, A동 203~204호 (오산동, 동탄역 롯데캐슬)",37.1995005,127.0967855
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzQxIyQxIyQ3IyQ2MiQyNjEyMjIjNzEjJDEjJDgjJDgz,온가족소아청소년과의원,의원,"경기도 오산시 문시로 183-4, 더샵프라자 2층 206-208호 (외삼미동)",37.1907964,127.0673341
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzIxIyQxIyQxIyQ5MiQyNjE4MzIjNDEjJDEjJDgjJDgz,올바른삼성내과의원,의원,"경기도 오산시 죽담1로 29, 메디타워 4층 401~402호 (궐동)",37.1603755,127.0522044
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzIxIyQxIyQ5IyQ5MiQzNjE0ODEjNDEjJDEjJDgjJDgz,올바른소아청소년과의원,의원,"경기도 화성시 동탄구 동탄신리천로 406, 리더스퀘어 301호~305호 3층 (목동)",37.1821552,127.1229707
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzIxIyQxIyQ5IyQ5MiQyNjE4MzIjODEjJDEjJDYjJDgz,올포유외과의원,의원,"경기도 화성시 동탄구 동탄대로 489, 동탄역우성타워 601호 (오산동)",37.1973592,127.0982637
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMzUxIzUxIyQxIyQxIyQ4MiQzNjE4MzIjNDEjJDEjJDgjJDgz,왕이비인후과의원,의원,"경기도 화성시 병점구 병점2로 30, 303호 (병점동, 명신프라자)",37.2060923,127.0402958
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzExIyQxIyQzIyQwMyQ0NjEwMDIjNjEjJDEjJDAjJDgz,용인속편한내과의원,의원,"경기도 용인시 기흥구 서천로 121, 원희캐슬 서천프라자 301,302호 (서천동)",37.2371504,127.0727242
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzMxIyQxIyQzIyQ5OSQzNjEyMjIjNTEjJDEjJDYjJDgz,용인이엠365의원,의원,"경기도 용인시 기흥구 서천로127번길 11-4, 블라스타워 서천 3,4,5층 (서천동)",37.2360825,127.0733167
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMTkxIzUxIyQyIyQxIyQwMCQyNjE4MzIjNzEjJDEjJDgjJDgz,우리들내과의원,의원,"경기도 화성시 동탄구 동탄원천로 163, 504호 (반송동, 위너스타)",37.2073856,127.0737048
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzUxIyQxIyQxIyQxMyQzNjE4MzIjNDEjJDEjJDQjJDgz,우리들의원,의원,"경기도 화성시 병점구 병점2로 65, 201호 (병점동, 우남프라자)",37.2079983,127.0433538
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxOTYxIzQxIyQxIyQ3IyQxMyQyNjEyMjIjNDEjJDEjJDgjJDgz,우리아이소아청소년과의원,의원,"경기도 화성시 동탄구 동탄반석로 204, 603호 (반송동, 제일프라자)",37.2066808,127.07282
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzUxIyQxIyQ1IyQ3OSQyNjE4MzIjODEjJDEjJDYjJDgz,우주소아청소년과의원,의원,"경기도 화성시 동탄구 동탄기흥로 393-20, 216,217호 (오산동, 동탄역 파라곤)",37.1962516,127.0907192
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNDgxMzUxIzExIyQxIyQ3IyQwMyQzNjEyMjIjNDEjJDEjJDgjJDgz,원소아청소년과의원,의원,"경기도 화성시 동탄구 동탄순환대로 26, 골든프라자2 205호 (장지동)",37.1644988,127.0963837
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzMxIyQxIyQ3IyQ3OSQzNjE0ODEjODEjJDEjJDYjJDgz,웰본의원,의원,"경기도 화성시 병점구 병점노을4로 29, 7층 707~710호 (병점동)",37.2058724,127.031861
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzUxIyQxIyQxIyQ3MiQzNjE4MzIjNjEjJDEjJDgjJDgz,웰봄내과의원,의원,"경기도 오산시 경기대로 534, 4층 (수청동)",37.1706269,127.0640749
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzUxIyQxIyQ1IyQ3OSQyNjEwMDIjODEjJDEjJDIjJDgz,위대한탄생여성의원,의원,"경기도 화성시 동탄구 동탄대로 537, 라스플로레스A동332~335,337,343~346,B동322,C동 328호 (여울동)",37.2022262,127.097959
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzExIyQyIyQ3IyQwMCQzNjE4MzIjNTEjJDEjJDYjJDgz,유앤아이의원,의원,"경기도 화성시 동탄구 동탄대로5길 15, 더샵 동탄센텀폴리스 1단지 2001~2010호, 2096~2098호 (송동)",37.1661162,127.1051213
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMzUxIzIxIyQxIyQ1IyQ5MiQzNjE4MzIjNjEjJDEjJDgjJDgz,유준상가정의학과의원,의원,"경기도 오산시 양산로410번길 12, 306호 (양산동, 엠스퀘어빌딩)",37.1953895,127.0301703
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzExIyQxIyQ3IyQ4MiQyNjEyMjIjODEjJDEjJDYjJDgz,의료법인 마리아의료재단 동탄마리아의원,의원,"경기도 화성시 동탄구 동탄신리천로 260, (오산동)",37.1838357,127.1069999
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzMxIyQxIyQ3IyQ3MiQyNjE4MzIjNjEjJDEjJDgjJDgz,의료법인상운의료재단(분소) 동탄제일아이희망의원,의원,"경기도 화성시 동탄구 삼성1로 130, 세정인디안타워 101,201호 (석우동)",37.2154052,127.0790262
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzIxIyQxIyQ1IyQwMyQzNjEyMjIjNTEjJDEjJDYjJDgz,이뽀라성형외과의원,의원,"경기도 화성시 동탄구 동탄순환대로 127-5, 우성센트럴타워 212~214호 (산척동)",37.1660595,127.1072823
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzExIyQxIyQzIyQ4MiQyNjEyMjIjNzEjJDEjJDgjJDgz,이솜이비인후과의원,의원,"경기도 화성시 동탄구 동탄순환대로 127-17, 우성메디피아 501~503호 (산척동)",37.1670009,127.1072679
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMzUxIzExIyQxIyQ3IyQ2MiQ0NjE0ODEjNDEjJDEjJDQjJDgz,이지이비인후과의원,의원,"경기도 화성시 병점구 효행로 1069, 403호 (진안동, 우성메디피아)",37.2152458,127.0436526
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNTgxMzUxIzExIyQxIyQzIyQxMyQyNjE4MzIjNDEjJDEjJDQjJDgz,이향주내과의원,의원,"경기도 수원시 영통구 태장로 77, (망포동)",37.2393222,127.0548379
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMTkxIzUxIyQxIyQ1IyQ4OSQzNjEwMDIjNjEjJDEjJDQjJDgz,일동탄정형외과의원,의원,"경기도 화성시 동탄구 동탄반석로 120, 제일프라자(201호) (반송동)",37.1996591,127.0716829
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNDgxMzUxIzExIyQxIyQ3IyQ5OSQ0NjE0ODEjNjEjJDEjJDAjJDgz,임승빈내과의원,의원,"경기도 화성시 동탄구 동탄반석로 124, 504호 (반송동, 센타프라자)",37.2000317,127.0715755
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzUxIyQxIyQ1IyQ2MiQ0NjEwMDIjNzEjJDEjJDgjJDgz,잇츠미의원,의원,"경기도 화성시 동탄구 동탄오산로 86-3, 동탄역MK타워 8층 (오산동)",37.1981205,127.0977805
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzExIyQxIyQzIyQ4MiQzNjEwMDIjNzEjJDEjJDgjJDgz,자연미인의원,의원,"경기도 화성시 동탄구 동탄신리천로 411, 우성스타타워B 311~312호 (목동)",37.1826884,127.124087
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzIxIyQxIyQxIyQxMyQzNjE0ODEjNzEjJDEjJDgjJDgz,자연속내과의원,의원,"경기도 화성시 동탄구 동탄대로시범길 148-54, 304.305호 (청계동, 헤븐리원)",37.2005425,127.1137164
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzMxIyQxIyQzIyQ4OSQ0NjE0ODEjNDEjJDEjJDgjJDgz,잘보는서울안과의원,의원,"경기도 화성시 동탄구 동탄중앙로 220, B동 316호 (반송동, 메타폴리스)",37.2051565,127.0683148
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkMzgxNzAyIzUxIyQxIyQxIyQwMyQ0NjE0ODEjNzEjJDEjJDgjJDgz,장주은피부과의원,의원,"경기도 화성시 병점구 영통로61번길 6, 3층 (반월동, 제일프라자)",37.2354934,127.0611413
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzMxIyQxIyQzIyQ3OSQzNjEwMDIjNjEjJDEjJDQjJDgz,제이엠가정의학과의원,의원,"경기도 화성시 동탄구 동탄대로 489, 동탄역우성타워 401호~402호 (오산동)",37.1973592,127.0982637
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzMxIyQxIyQ3IyQ4OSQzNjE4MzIjNjEjJDEjJDQjJDgz,제일삼성정형외과의원,의원,"경기도 수원시 권선구 곡반정로 121, 2층 일부호 (곡반정동)",37.2389316,127.0308933
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzIxIyQxIyQ1IyQ3MiQzNjE0ODEjNDEjJDEjJDgjJDgz,조아온내과의원,의원,"경기도 수원시 영통구 태장로 33, 어반스퀘어 517호~526호 (망포동)",37.2393615,127.0498204
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzIxIyQxIyQ5IyQ2MiQyNjE4MzIjNDEjJDEjJDgjJDgz,좋은날 정신건강의학과의원,의원,"경기도 화성시 동탄구 동탄순환대로 400, 우성스타시티 A동 401호 (목동)",37.1829648,127.1231421
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzIxIyQxIyQxIyQ4MiQyNjE4MzIjNTEjJDEjJDIjJDgz,준365의원,의원,"경기도 화성시 동탄구 동탄대로시범길 185, 중앙프라자 204호 (청계동)",37.2015456,127.1092548
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMzUxIzIxIyQxIyQ1IyQxMyQyNjE0ODEjNTEjJDEjJDYjJDgz,차소아청소년과의원,의원,"경기도 수원시 영통구 태장로 73, (망포동, 정석그린프라자 404호)",37.2393257,127.0543271
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzExIyQxIyQ3IyQ4MiQyNjEwMDIjNjEjJDEjJDgjJDgz,청담드림정신건강의학과의원,의원,"경기도 화성시 동탄구 동탄지성로 141, 아크리아, 301호 (능동)",37.2094353,127.059924
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkMzgxMTkxIzUxIyQxIyQxIyQwMyQyNjE0ODEjNjEjJDEjJDgjJDgz,청담맑은피부과의원,의원,"경기도 용인시 기흥구 삼성로 1, 삼성전자(주)기흥캠퍼스 세미콘프라자동 3층 (농서동)",37.231524,127.0853334
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMTkxIzExIyQxIyQ3IyQ4OSQ0NjEwMDIjNzEjJDEjJDgjJDgz,청담맑은피부과의원,의원,"경기도 화성시 동탄구 동탄반석로 204, 402,403호 (반송동, 제일프라자)",37.2066808,127.07282
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzMxIyQxIyQ3IyQ5MiQzNjE0ODEjNjEjJDEjJDAjJDgz,청담탑정형외과의원,의원,"경기도 화성시 동탄구 동탄지성로 134, 한솔프라자 2층 (능동)",37.2095824,127.0609874
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzUxIyQxIyQxIyQ2MiQzNjEwMDIjNTEjJDEjJDIjJDgz,캠프나인정형외과의원,의원,"경기도 화성시 동탄구 동탄순환대로 127-5, 우성센트럴타워 201~208호, 301~306호, 606호 (산척동)",37.1660595,127.1072823
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzUxIyQxIyQ1IyQ3MiQzNjE0ODEjNTEjJDEjJDIjJDgz,코끼리소아청소년과의원,의원,"경기도 화성시 동탄구 동탄대로시범길 142, 센텀프라자 206,207호 (청계동)",37.1999195,127.1133874
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzUxIyQyIyQxIyQwMCQzNjE0ODEjNzEjJDEjJDgjJDgz,코로나이비인후과의원,의원,"경기도 화성시 동탄구 동탄순환대로20길 124, 우성스타파크 A동 6층 605~607호 (목동)",37.1826526,127.1246944
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxNzAyIzMxIyQxIyQzIyQ3MiQzNjE4MzIjNDEjJDEjJDgjJDgz,코벤트더웰의원,의원,"경기도 화성시 동탄구 동탄첨단산업1로 27, 금강펜테리움 IX타워 근린생활시설동 지하1층 MB2,MB3,MB4호 (영천동)",37.2109757,127.0895601
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxNzAyIzQxIyQxIyQ3IyQxMyQyNjEyMjIjNDEjJDEjJDgjJDgz,코아이비인후과의원,의원,"경기도 화성시 동탄구 동탄순환대로 685, 502-2~503호 (영천동)",37.2059564,127.1109261
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkMzgxNzAyIzMxIyQxIyQzIyQ4MiQyNjE4MzIjNTEjJDEjJDIjJDgz,코앤미이비인후과의원,의원,"경기도 화성시 동탄구 동탄반석로 196, 5층 505호 (반송동, 아이프라자)",37.206105,127.0724294
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxOTYxIzMxIyQxIyQ3IyQ4MiQzNjEyMjIjNjEjJDEjJDQjJDgz,코즈이비인후과의원,의원,"경기도 화성시 동탄구 동탄반석로 130, 602호 (반송동, 드림프라자)",37.2004684,127.0714265
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzExIyQxIyQzIyQwMyQzNjEyMjIjNTEjJDEjJDYjJDgz,클레어의원,의원,"경기도 화성시 동탄구 동탄반석로 120, 3층 303호 (반송동, 제일프라자)",37.1996591,127.0716829
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzUxIyQxIyQxIyQ3OSQyNjEyMjIjNDEjJDEjJDQjJDgz,키즈앤하이성장의원,의원,"경기도 화성시 동탄구 동탄대로 446, 동탄역 그란비아스타 3008호 (청계동)",37.1933905,127.1000579
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzIxIyQxIyQxIyQwMyQyNjE4MzIjNTEjJDEjJDIjJDgz,킹스의원,의원,"경기도 화성시 동탄구 동탄대로 551-16, 동탄역푸르지오시티 314.315호 (오산동)",37.2031679,127.0968913
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzExIyQxIyQzIyQ5MiQzNjE4MzIjNjEjJDEjJDAjJDgz,타임피부과의원,의원,"경기도 오산시 수청로 197, 403.406호 (금암동, 백현프라자)",37.1765166,127.045109
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMTkxIzMxIyQxIyQ3IyQ5MiQyNjEyMjIjNjEjJDEjJDQjJDgz,탑엔미정형외과마취통증의학과의원,의원,"경기도 화성시 동탄구 동탄원천로 163, 501호 (반송동, 위너스타)",37.2073856,127.0737048
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxNzAyIzExIyQxIyQ3IyQ4OSQyNjE0ODEjODEjJDEjJDYjJDgz,태림의원,의원,"경기도 오산시 수청로 188, 201호 (금암동, 롯데슈퍼)",37.1773828,127.0457071
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNDgxNzAyIzUxIyQxIyQ1IyQ3MiQ0NjE0ODEjNTEjJDEjJDYjJDgz,태안내과의원,의원,"경기도 화성시 병점구 효행로 1051, 메인프라자 4층 402,403호 (진안동)",37.214627,127.0419608
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMzUxIzIxIyQxIyQxIyQxMyQyNjE0ODEjNzEjJDEjJDgjJDgz,태안밝은안과의원,의원,"경기도 화성시 병점구 효행로 1051, 406호 (진안동, 메인프라자)",37.214627,127.0419608
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMzUxIzMxIyQyIyQ3IyQwMCQzNjEyMjIjODEjJDEjJDIjJDgz,태안정형외과의원,의원,"경기도 화성시 병점구 효행로 990, 비젼월드 3층 303,302일부호 (진안동)",37.2112053,127.0363522
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzIxIyQxIyQ5IyQ5OSQ0NjE0ODEjNTEjJDEjJDIjJDgz,테라산부인과의원,의원,"경기도 화성시 동탄구 동탄순환대로 127-19, 동탄에스비타운 301~304호 (산척동)",37.1674053,127.1072593
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzMxIyQxIyQ3IyQ2MiQzNjE0ODEjODEjJDEjJDIjJDgz,톤즈의원 동탄점,의원,"경기도 화성시 동탄구 동탄원천로 153, 2층 201~208호 (반송동)",37.2068711,127.074491
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxNzAyIzMxIyQxIyQzIyQ3MiQyNjE0ODEjNTEjJDEjJDYjJDgz,파란이비인후과의원,의원,"경기도 화성시 동탄구 여울로 19, 101호 (능동)",37.2010452,127.0531563
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzQxIyQxIyQ3IyQ3OSQ0NjEwMDIjNjEjJDEjJDAjJDgz,팔팔신경외과의원,의원,"경기도 화성시 동탄구 동탄순환대로 715, 스타프라자 501~503호 (영천동)",37.208023,127.1091175
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzMxIyQxIyQ3IyQ3OSQ0NjE0ODEjNjEjJDEjJDgjJDgz,패스트본정형외과의원,의원,"경기도 화성시 동탄구 동탄순환대로 127-27, 201~203, 801호 (산척동)",37.1681658,127.1072462
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxOTYxIzQxIyQxIyQ3IyQ2MiQyNjEwMDIjNjEjJDEjJDgjJDgz,편안한내과의원,의원,"경기도 화성시 동탄구 동탄반석로 130, 502호 (반송동, 드림프라자)",37.2004684,127.0714265
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMzUxIzIxIyQxIyQ5IyQwMyQ0NjE0ODEjNDEjJDEjJDQjJDgz,프라임의원,의원,"경기도 화성시 동탄구 동탄반석로 144, 402호 (반송동, 스카이뷰빌딩)",37.2017132,127.0712427
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzMxIyQxIyQ3IyQxMyQyNjEyMjIjNzEjJDEjJDgjJDgz,플랜에이성형외과의원,의원,"경기도 화성시 동탄구 동탄대로 489, 동탄역우성타워 1001호 (오산동)",37.1973592,127.0982637
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNDgxMzUxIzMxIyQxIyQzIyQ2MiQzNjE0ODEjNDEjJDEjJDgjJDgz,플러스정형외과의원,의원,"경기도 화성시 동탄구 동탄반석로 204, 604,605호 (반송동, 제일프라자)",37.2066808,127.07282
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzUxIyQxIyQxIyQ5OSQ0NjEwMDIjNjEjJDEjJDgjJDgz,플레니어피부과의원,의원,"경기도 화성시 동탄구 동탄순환대로 400, 우성스타시티 A동 403~406호 (목동)",37.1829648,127.1231421
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMTkxIzMxIyQxIyQzIyQ5MiQyNjE4MzIjNzEjJDEjJDgjJDgz,피어나의원,의원,"경기도 화성시 병점구 영통로 62, 5층 503,504,505호 (반월동)",37.2358094,127.0622896
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzIxIyQxIyQxIyQ3OSQzNjE0ODEjNTEjJDEjJDYjJDgz,피어봄의원,의원,"경기도 화성시 동탄구 동탄대로 537, 라스플로레스 501호 (오산동)",37.2022262,127.097959
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkMzgxNzAyIzUxIyQyIyQxIyQwMCQzNjE4MzIjNTEjJDEjJDIjJDgz,하나가정의학과의원,의원,"경기도 화성시 병점구 효행로 990, 비젼월드 3층 (진안동)",37.2112053,127.0363522
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxOTYxIzMxIyQxIyQ3IyQ3MiQzNjE0ODEjNDEjJDEjJDgjJDgz,하나비뇨기과의원,의원,"경기도 화성시 동탄구 동탄중심상가1길 40, 301호 (반송동, 엔터프라임빌딩)",37.2014916,127.0712389
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxNzAyIzExIyQxIyQ3IyQ4OSQzNjEwMDIjNDEjJDEjJDQjJDgz,하나이비인후과의원,의원,"경기도 화성시 동탄구 동탄반석로 120, 2층 (반송동, 제일프라자)",37.1996591,127.0716829
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxNzAyIzMxIyQxIyQ3IyQ4MiQzNjEyMjIjNjEjJDEjJDgjJDgz,하얀세상의원,의원,"경기도 화성시 동탄구 동탄반석로 130, 드림프라자 403호 (반송동)",37.2004684,127.0714265
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzUxIyQxIyQ1IyQwMyQzNjE4MzIjNjEjJDEjJDAjJDgz,하이맨비뇨의학과의원,의원,"경기도 화성시 동탄구 동탄대로 537, 라스플로레스 C동 329호 (오산동)",37.2022262,127.097959
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMzUxIzUxIyQxIyQ1IyQ2MiQ0NjEwMDIjNDEjJDEjJDgjJDgz,한그루 소아청소년과 의원,의원,"경기도 화성시 동탄구 여울로 21, 1층 (능동)",37.2011638,127.0531877
+JDQ4MTYyMiM1MSMkMiMkMCMkMDAkNDgxOTYxIzMxIyQxIyQzIyQxMyQyNjEyMjIjNzEjJDEjJDgjJDgz,한솔가정의원,의원,"경기도 오산시 매홀로 71, (수청동, 오산대우아파트)",37.1638174,127.062032
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxMzUxIzUxIyQxIyQxIyQ5OSQyNjEwMDIjNjEjJDEjJDgjJDgz,한양류마유내과의원,의원,"경기도 화성시 동탄구 동탄대로 446, 동탄역 그란비아스타 3009, 3010호 (청계동)",37.1933905,127.1000579
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNTgxOTYxIzUxIyQxIyQxIyQ4MiQyNjE0ODEjNTEjJDEjJDIjJDgz,한울성모내과의원,의원,"경기도 화성시 병점구 효행로 1059, 10층 (진안동, 미래프라자)",37.2147367,127.0426677
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMzUxIzMxIyQxIyQzIyQwMyQ0NjE0ODEjNjEjJDEjJDgjJDgz,해솔정신건강의학과의원,의원,"경기도 화성시 동탄구 동탄반석로 120, 8층 803호 (반송동, 제일프라자)",37.1996591,127.0716829
+JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzIxIyQxIyQ1IyQ5OSQzNjE0ODEjODEjJDEjJDYjJDgz,행복주는의원,의원,"경기도 화성시 동탄구 동탄순환대로 263, 302호 (산척동)",37.1711527,127.1185789
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxMTkxIzExIyQxIyQ3IyQ3OSQyNjE4MzIjNDEjJDEjJDgjJDgz,행복한가정의학과의원,의원,"경기도 화성시 병점구 동탄지성로 320, 302호 (반월동, 신풍프라자)",37.2221726,127.0510581
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkMzgxOTYxIzQxIyQxIyQ3IyQ3OSQzNjEwMDIjNDEjJDEjJDQjJDgz,현이비인후과의원,의원,"경기도 화성시 동탄구 동탄반석로 204, 502호 (반송동, 동탄제일프라자)",37.2066808,127.07282
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzIxIyQxIyQ1IyQ3MiQzNjE4MzIjODEjJDEjJDYjJDgz,후즈후피부과의원,의원,"경기도 화성시 동탄구 동탄대로시범길 146, 3층 303-304호 (청계동, 포트센트럴시티)",37.2003439,127.1131432
+JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxOTYxIzIxIyQxIyQxIyQ2MiQ0NjEwMDIjNDEjJDEjJDgjJDgz,휴먼피부과의원,의원,"경기도 화성시 동탄구 동탄대로시범길 134, 2층 2080~2086호 (청계동, 시범 반도유보라 아이비파크4.0)",37.1992157,127.1142339

@@ -1,0 +1,11 @@
+# OSRM 경로 서버 — prepare.sh 실행 후 'docker compose up -d'
+services:
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
+    # max-table-size: 한 번에 계산할 행렬 크기(노드 361개 → 1000이면 한 번에 가능)
+    command: osrm-routed --algorithm mld --max-table-size 1000 /data/${OSRM_BASE:-region}.osrm
+    volumes:
+      - ./data:/data
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
