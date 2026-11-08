@@ -101,11 +101,19 @@ def _source():
 
 @st.cache_data(show_spinner=False)
 def _matrix_source(stamp: str):  # stamp 는 캐시 키 역할
+    """이동시간 출처. travel_matrix.csv 가 없으면 추정 행렬을 쓰므로 'estimate' 다.
+
+    파일이 없는데 unknown 이라고 적으면, 실제로는 추정값을 쓰면서 출처를 숨기는 셈이 된다
+    (CLAUDE.md 절대원칙 3: 대략값은 estimate 로 표시한다).
+    """
+    path = ROOT / "data" / "processed" / "travel_matrix.csv"
+    if not path.exists():
+        return "estimate"
     try:
-        df = pd.read_csv(ROOT / "data" / "processed" / "travel_matrix.csv", nrows=1)
-        return df["source"].iloc[0] if "source" in df.columns else "unknown"
+        df = pd.read_csv(path, nrows=1)
+        return df["source"].iloc[0] if "source" in df.columns else "estimate"
     except Exception:
-        return "unknown"
+        return "estimate"
 
 
 # ── 사이드바 ──────────────────────────────────────────────────────────────
