@@ -12,12 +12,17 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
+
+# Streamlit Cloud 에서는 app/main.py 를 루트로 실행한다.
+# planner/, verifier/, f0/ 패키지는 프로젝트 루트 아래 있으므로 경로를 추가한다.
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 import pandas as pd
 import streamlit as st
-
-ROOT = Path(__file__).resolve().parent.parent
 
 st.set_page_config(page_title="서로ON 돌봄배정 AI", layout="wide")
 
