@@ -189,6 +189,8 @@ class ReplayResult:
             "delays": len(self.delays),
             "delay_kept": sum(1 for d in self.delays if d.kept),
             "delay_lost": sum(1 for d in self.delays if d.had_assignment and not d.kept),
+            # 다른 인력으로 넘겨 지킨 건수 (Task 1 핵심)
+            "delay_moved": sum(1 for d in self.delays if d.moved_to_worker is not None),
             # 지연 폭(분) — '몇 건'이 아니라 '얼마나 늦게 시작했나'.
             # 지켜진 지연만 센다. 시작이 앞당겨진 경우는 0으로 둔다(늦지 않았으므로).
             "delay_late_avg": _avg(self._late_minutes()),

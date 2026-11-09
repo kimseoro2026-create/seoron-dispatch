@@ -8,7 +8,18 @@
       "Bash(docker:*)",
       "Bash(dir:*)",
       "Bash(cd:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(python -m pytest tests/test_reschedule.py -q)",
+      "Bash(python -m pytest -q)",
+      "Bash(python -m simulator.run --days 1 --no-optimize --replay --cancel --tag pilotcancel)",
+      "Bash(python -m simulator.run --no-optimize --replay --cancel --tag cancel30b)",
+      "Bash(python -c ' *)",
+      "Bash(python -m f0 all --offline)",
+      "Bash(python -m simulator.run --no-optimize --replay --cancel --tag delay30)",
+      "Bash(python -m simulator.run --days 2 --no-optimize --replay --cancel --tag delaycheck)",
+      "Bash(python -m simulator.run --no-optimize --replay --cancel --tag delay30b)",
+      "Bash(python -m simulator.run --days 2 --seeds 1 --rhos 0.9 --replay --tag noticecheck)",
+      "Bash(python _run30.py)"
     ]
   }
 }
