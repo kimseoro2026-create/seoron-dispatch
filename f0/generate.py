@@ -148,6 +148,9 @@ def _requests(sim, beneficiaries, hospitals, rng) -> pd.DataFrame:
                 tw_end = min(shift_end - duration, pref + 60)
             discharge = rng.random() < sim["discharge_case_rate"]
             cancelled = rng.random() < sim["same_day_cancel_rate"]
+            # 지연은 취소와 동시에 일어나지 않는다. 취소된 요청은 시작하지 않으므로
+            # '늦게 시작한다'가 의미를 갖지 않는다.
+            delayed = (not cancelled) and rng.random() < sim.get("same_day_delay_rate", 0.0)
             lead_days = int(rng.integers(1, 8))
             requested_at = datetime.combine(day, datetime.min.time()) - timedelta(
                 days=lead_days, minutes=-int(rng.integers(9 * 60, 18 * 60)))
@@ -159,7 +162,14 @@ def _requests(sim, beneficiaries, hospitals, rng) -> pd.DataFrame:
                          "priority": 2 if discharge else 1,
                          "requested_at": requested_at.isoformat(timespec="minutes"),
                          "cancelled_same_day": bool(cancelled),
-                         "cancel_notice_min_before": int(rng.integers(30, 181)) if cancelled else None})
+                         "cancel_notice_min_before": int(rng.integers(30, 181)) if cancelled else None,
+                         # 당일 지연 — 통보 시각과 지연 폭. 계획 단계에서는 쓰지 않는다.
+                         "delayed_same_day": bool(delayed),
+                         "delay_minutes": (int(rng.integers(sim["delay_minutes_range"][0],
+                                                            sim["delay_minutes_range"][1] + 1))
+                                           if delayed else None),
+                         "delay_notice_min_before": (int(rng.integers(15, 61))
+                                                     if delayed else None)})
             k += 1
     return pd.DataFrame(rows)
 

@@ -155,6 +155,17 @@ def _request(r) -> dict:
             None if pd.isna(getattr(r, "cancel_notice_min_before", None))
             else int(r.cancel_notice_min_before)
         ),
+        # 지연 정보 — 취소와 같은 이유로 배정 단계에서는 쓰지 않고 이벤트 재생에서만 쓴다.
+        # 지연은 '시작이 늦어짐'이므로 서비스 길이는 그대로다.
+        "delayed_same_day": bool(getattr(r, "delayed_same_day", False)),
+        "delay_minutes": (
+            None if pd.isna(getattr(r, "delay_minutes", None))
+            else int(r.delay_minutes)
+        ),
+        "delay_notice_min_before": (
+            None if pd.isna(getattr(r, "delay_notice_min_before", None))
+            else int(r.delay_notice_min_before)
+        ),
     }
     if is_escort:
         item.update(

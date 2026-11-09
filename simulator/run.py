@@ -24,6 +24,13 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def main() -> None:
+    # Windows cp949 콘솔에서 한글·기호 출력이 깨지거나 크래시하지 않게 한다
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
     ap = argparse.ArgumentParser(description="배정 방식 비교 실험")
     ap.add_argument("--days",       type=int,   default=None,    help="날짜 수 (기본: 전체 30일)")
     ap.add_argument("--seeds",      type=str,   default="42,43,44", help="시드 목록 (쉼표 구분)")
@@ -31,6 +38,7 @@ def main() -> None:
     ap.add_argument("--time-limit", type=int,   default=10,      help="최적화 계산 제한(초)")
     ap.add_argument("--no-optimize",action="store_true",          help="최적화 방식 제외 (빠른 기준선 비교)")
     ap.add_argument("--replay",     action="store_true",          help="취소 재배정 포함 (request_order_replay, nearest_replay)")
+    ap.add_argument("--cancel",     action="store_true",          help="취소 반영(채우지 않음) 포함 (request_order_cancel, nearest_cancel)")
     ap.add_argument("--tag",        type=str,   default="run",   help="출력 파일 접두어")
     args = ap.parse_args()
 
@@ -41,6 +49,10 @@ def main() -> None:
     if args.replay:
         # 같은 날 초기 배정을 같게 하고, 취소 후 재배정만 다른 결과를 비교한다
         algos = algos + ["request_order_replay", "nearest_replay"]
+    if args.cancel:
+        # 취소를 반영하되 빈자리를 채우지 않는 행. 취소를 무시하는 기준선과
+        # 재배정 행 사이의 공정한 중간 다리다(둘 다와 같은 저울로 비교할 수 있다).
+        algos = algos + ["request_order_cancel", "nearest_cancel"]
 
     from planner.data import service_dates
     from simulator.experiment import run_experiment, save, summarize

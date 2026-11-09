@@ -179,8 +179,11 @@ def run_day(instance: dict, algorithm: str, seed: int = 42,
             time_limit_sec: int = 30) -> DayResult:
     """하루치를 한 방식으로 돌리고 지표를 계산한다. 결과는 검증기로 다시 확인한다.
 
-    algorithm 에 '_replay' 가 붙으면 취소 이벤트를 재생한다
-    (예: 'request_order_replay'). 초기 배정은 앞부분의 방식으로 한다.
+    방식 이름의 접미사가 취소 처리를 정한다.
+      'request_order'        취소를 무시한다(기준선). 취소된 요청도 배정으로 센다.
+      'request_order_cancel' 취소를 반영하되 빈자리는 채우지 않는다.
+      'request_order_replay' 취소를 반영하고 빈자리를 재배정한다.
+    취소가 있는 날의 공정한 비교는 `_cancel` 행끼리, 또는 `_replay` 행끼리 해야 한다.
     """
     from planner.baseline import nearest, request_order
     from planner.optimize import optimize
@@ -188,9 +191,11 @@ def run_day(instance: dict, algorithm: str, seed: int = 42,
     from verifier import verify
 
     cancel_stats: dict = {}
-    if algorithm.endswith("_replay"):
-        base_algo = algorithm[: -len("_replay")]
-        rp = replay(instance, base_algo, refill_strategy=base_algo)
+    if algorithm.endswith("_replay") or algorithm.endswith("_cancel"):
+        is_replay = algorithm.endswith("_replay")
+        suffix = "_replay" if is_replay else "_cancel"
+        base_algo = algorithm[: -len(suffix)]
+        rp = replay(instance, base_algo, refill_strategy=base_algo, refill=is_replay)
         assignments = rp.assignments
         unassigned = rp.unassigned
         status, secs = "ok", 0.0
@@ -250,6 +255,11 @@ def run_day(instance: dict, algorithm: str, seed: int = 42,
             "left_empty": cancel_stats.get("left_empty", 0),
             "wasted_travel_min": cancel_stats.get("wasted_travel_min", 0),
             "initial_assigned": cancel_stats.get("initial_assigned", 0),
+            "retimed": cancel_stats.get("retimed", 0),
+            "displaced": cancel_stats.get("displaced", 0),
+            "delays": cancel_stats.get("delays", 0),
+            "delay_kept": cancel_stats.get("delay_kept", 0),
+            "delay_lost": cancel_stats.get("delay_lost", 0),
         }
     return result
 
@@ -333,6 +343,9 @@ def summarize(df: pd.DataFrame) -> pd.DataFrame:
         "낭비이동_평균": ("wasted_travel_min", 1),
         "시각변경_평균": ("retimed", 2),
         "밀려남_평균": ("displaced", 2),
+        "지연_평균": ("delays", 2),
+        "지연지킴_평균": ("delay_kept", 2),
+        "지연상실_평균": ("delay_lost", 2),
     }
     if "cancellations" in df.columns:
         num = df.copy()

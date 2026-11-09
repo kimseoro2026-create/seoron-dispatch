@@ -32,6 +32,8 @@ simulation:
   appointment_hours: [9, 16]
   morning_weight: 0.6           # 오전(9~12시) 예약 비율
   same_day_cancel_rate: 0.10
+  same_day_delay_rate: 0.12     # 당일 지연(시작이 늦어짐) 비율
+  delay_minutes_range: [15, 90] # 지연 폭(분)
   discharge_case_rate: 0.20     # 퇴원 후 14일 이내 사례 비율
   mobility_mix: {independent: 0.50, walker: 0.35, wheelchair: 0.15}
   joint_consent_rate: 0.50      # 자립 보행 어르신 중 공동 동행 동의 비율

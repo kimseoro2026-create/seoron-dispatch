@@ -27,6 +27,24 @@ PRD 12장이 요구하는 두 가지를 구조로 지킨다.
   - 재배정은 탐욕적이다. 들어갈 수 있는 첫 자리를 찾으면 넣는다. 최적 재배정이 아니다.
   - retime 은 남은 일정의 도착 시각을 바꾼다. 실제 운영에서는 대상자 변경 통보가 필요하다.
     몇 건이 바뀌었는지 기록한다.
+
+refill=False — '취소만 반영하고 채우지는 않는' 모드
+  취소를 무시하는 기준선(신청순·근거리)과 재배정 행을 나란히 놓으면 비교가 공정하지 않다.
+  취소를 무시하는 쪽은 **취소된 요청도 배정된 것으로 세기** 때문이다. 실제로는 서비스를
+  받지 못한 사람이 지표에 들어간다.
+  refill=False 는 취소 이벤트를 똑같이 처리하되 빈자리를 채우지 않는다. 그러면
+  "취소 반영 후 남은 배정"만 세므로 재배정 행과 같은 저울에 올릴 수 있다.
+
+지연(delay) 이벤트
+  대상자가 늦어져 서비스 시작이 뒤로 밀리는 경우다. 취소와 같은 이벤트 줄에 통보 시각 순으로
+  섞여 들어간다. 지연은 '시작이 늦어짐'이므로 **서비스 길이와 병원 예약 시각은 그대로** 두고
+  시간창(earliest/latest)만 뒤로 민다.
+  - 밀린 창에도 맞으면 그 인력의 남은 일정을 _retime 으로 다시 맞춘다. 새 시작 시각을 기록한다.
+  - 맞출 수 없으면(병원 예약이 고정인 동행, 근무시간 초과, 휴게 겹침) 0분으로 때우지 않고
+    밀려난 것으로 기록하고 사유를 DELAYED_LATE 로 남긴다.
+  - 검증은 **지연이 반영된 시간창**으로 한다. 원래 창으로 검증하면 정상적으로 늦춰진 배정이
+    '시간창 위반'으로 잘못 잡힌다. 검증기 자체는 손대지 않는다(독립성 유지).
+  refill=False 에서도 지연은 반영한다. 지연은 '빈자리 채우기'가 아니라 '일정 변경'이기 때문이다.
 """
 from __future__ import annotations
 
@@ -42,6 +60,7 @@ NOT_ASSIGNED = "not_assigned"    # 처음부터 배정이 없었으므로 비울
 # 미배정 사유
 CANCELLED = "CANCELLED"
 DISPLACED = "DISPLACED"          # 다른 취소의 여파로 남은 일정에서 밀려났다
+DELAYED_LATE = "DELAYED_LATE"    # 지연으로 미뤄졌는데 늦춘 시각에도 맞출 수 없다
 UNASSIGNED = "UNASSIGNED"
 
 
@@ -51,6 +70,45 @@ class Cancellation:
     request_id: str
     notice_min: int              # 통보 시각(서비스일 자정 기준 분)
     service_start_min: int       # 원래 서비스 시작 예정 시각
+
+
+@dataclass
+class Delay:
+    """지연 통보 한 건. 대상자가 늦어져 서비스 시작이 뒤로 밀린다."""
+    request_id: str
+    notice_min: int              # 통보 시각(서비스일 자정 기준 분)
+    service_start_min: int       # 원래 서비스 시작 예정 시각
+    delay_minutes: int           # 얼마나 늦어지는가
+
+
+@dataclass
+class DelayOutcome:
+    request_id: str
+    notice_min: int
+    delay_minutes: int
+    had_assignment: bool
+    worker_id: str | None
+    kept: bool                   # 늦춘 시각에도 일정을 지켰는가
+    new_start_min: int | None    # 지켰다면 새 시작 시각
+    already_departed: bool
+    retimed: list[str] = field(default_factory=list)
+    displaced: list[str] = field(default_factory=list)
+    refilled_by: str | None = None   # 밀려난 경우 빈자리를 채운 요청
+
+    def as_dict(self) -> dict:
+        return {
+            "요청": self.request_id,
+            "통보(분)": self.notice_min,
+            "지연(분)": self.delay_minutes,
+            "배정 있었나": self.had_assignment,
+            "인력": self.worker_id or "-",
+            "지켰나": self.kept,
+            "새 시작(분)": self.new_start_min if self.new_start_min is not None else "-",
+            "이미 출발": self.already_departed,
+            "시각 변경": ", ".join(self.retimed) or "-",
+            "밀려남": ", ".join(self.displaced) or "-",
+            "채운 요청": self.refilled_by or "-",
+        }
 
 
 @dataclass
@@ -91,6 +149,7 @@ class ReplayResult:
     assignments: list[dict] = field(default_factory=list)
     unassigned: list[dict] = field(default_factory=list)
     cancellations: list[CancellationOutcome] = field(default_factory=list)
+    delays: list[DelayOutcome] = field(default_factory=list)
     violations: list[dict] = field(default_factory=list)
     refill_strategy: str = ""
 
@@ -110,8 +169,13 @@ class ReplayResult:
             "refilled": sum(1 for c in self.cancellations if c.outcome == REFILLED),
             "left_empty": sum(1 for c in self.cancellations if c.outcome == LEFT_EMPTY),
             "wasted_travel_min": sum(c.wasted_travel_min for c in self.cancellations),
-            "retimed": sum(len(c.retimed) for c in self.cancellations),
-            "displaced": sum(len(c.displaced) for c in self.cancellations),
+            "retimed": (sum(len(c.retimed) for c in self.cancellations)
+                        + sum(len(d.retimed) for d in self.delays)),
+            "displaced": (sum(len(c.displaced) for c in self.cancellations)
+                          + sum(len(d.displaced) for d in self.delays)),
+            "delays": len(self.delays),
+            "delay_kept": sum(1 for d in self.delays if d.kept),
+            "delay_lost": sum(1 for d in self.delays if d.had_assignment and not d.kept),
             "violations": len(self.violations),
         }
 
@@ -150,6 +214,65 @@ def collect_cancellations(instance: dict, assignments: list[dict]) -> list[Cance
                                 service_start_min=start))
     out.sort(key=lambda c: (c.notice_min, c.request_id))
     return out
+
+
+def collect_delays(instance: dict, assignments: list[dict]) -> list[Delay]:
+    """지연 통보 목록. 통보 시각 = 원래 서비스 시작 − 통보 여유."""
+    by_id = {r["request_id"]: r for r in instance["requests"]}
+    start_of = {a["request_id"]: int(a["arrive_min"]) for a in assignments}
+
+    out: list[Delay] = []
+    for rid, req in by_id.items():
+        if not req.get("delayed_same_day"):
+            continue
+        minutes = req.get("delay_minutes")
+        notice_before = req.get("delay_notice_min_before")
+        if minutes is None or notice_before is None:
+            continue
+        start = start_of.get(rid, int(req["earliest_start_min"]))
+        out.append(Delay(request_id=rid,
+                         notice_min=start - int(notice_before),
+                         service_start_min=start,
+                         delay_minutes=int(minutes)))
+    out.sort(key=lambda d: (d.notice_min, d.request_id))
+    return out
+
+
+# ── 지연 반영 ─────────────────────────────────────────────────────────────
+
+def _eff_requests(by_id: dict, shift: dict[str, int]) -> dict:
+    """지연이 반영된 요청 사전. 시간창을 뒤로 민 사본을 만든다.
+
+    지연은 '시작이 늦어진다'이므로 서비스 길이와 예약 시각은 그대로 두고
+    시간창(earliest/latest)만 민다. 병원 예약이 고정인 동행은 이 때문에
+    맞출 수 없게 될 수 있고, 그때는 정직하게 밀려난 것으로 기록한다.
+    """
+    if not shift:
+        return by_id
+    out = dict(by_id)
+    for rid, minutes in shift.items():
+        if not minutes:
+            continue
+        req = dict(out[rid])
+        req["earliest_start_min"] = int(req["earliest_start_min"]) + int(minutes)
+        req["latest_start_min"] = int(req["latest_start_min"]) + int(minutes)
+        out[rid] = req
+    return out
+
+
+def _shifted_instance(instance: dict, shift: dict[str, int]) -> dict:
+    """검증기도 같은 시간창을 보도록 지연을 반영한 instance 사본."""
+    if not shift:
+        return instance
+    reqs = []
+    for r in instance["requests"]:
+        minutes = int(shift.get(r["request_id"], 0))
+        if minutes:
+            r = {**r,
+                 "earliest_start_min": int(r["earliest_start_min"]) + minutes,
+                 "latest_start_min": int(r["latest_start_min"]) + minutes}
+        reqs.append(r)
+    return {**instance, "requests": reqs}
 
 
 # ── 일정 재확인 ───────────────────────────────────────────────────────────
@@ -289,9 +412,16 @@ def _candidate_order(candidates: list[dict], strategy: str) -> list[dict]:
 # ── 재생 ─────────────────────────────────────────────────────────────────
 
 def replay(instance: dict, algorithm: str = "request_order",
-           refill_strategy: str = "request_order") -> ReplayResult:
-    """하루를 재생한다. 초기 배정 → 취소 통보 순 처리 → 재배정."""
+           refill_strategy: str = "request_order", refill: bool = True) -> ReplayResult:
+    """하루를 재생한다. 초기 배정 → 취소 통보 순 처리 → (refill 이면) 재배정.
+
+    refill=False 면 취소만 반영하고 빈자리를 채우지 않는다. 취소를 무시하는 기준선과
+    같은 저울로 비교하기 위한 모드다(모듈 독스트링 참조).
+    """
     from verifier import verify
+
+    if refill and refill_strategy not in ("request_order", "nearest"):
+        raise ValueError(f"알 수 없는 재배정 전략: {refill_strategy}")
 
     travel = _travel_map(instance["travel"])
     by_id = {r["request_id"]: r for r in instance["requests"]}
@@ -311,12 +441,101 @@ def replay(instance: dict, algorithm: str = "request_order",
     # 밀려난 요청은 이후 후보에서 제외한다(이미 다른 여파로 빠졌다)
     displaced_ids: set[str] = set()
     cancelled_so_far: set[str] = set()
+    late_ids: set[str] = set()
+    # 요청별 누적 지연(분). 시간창을 이만큼 뒤로 민다.
+    shift: dict[str, int] = {}
 
-    for ev in collect_cancellations(instance, assignments):
-        cancelled_so_far.add(ev.request_id)
+    def refill_slot(worker_id: str, exclude: set[str]) -> str | None:
+        """해당 인력의 빈자리를 다른 요청으로 채운다. 채웠으면 그 요청 ID."""
+        assigned_ids = {a["request_id"] for a in assignments}
+        eff = _eff_requests(by_id, shift)
+        candidates = [
+            req for rid, req in eff.items()
+            if rid not in assigned_ids
+            and rid not in cancelled_so_far
+            and rid not in displaced_ids
+            and rid not in late_ids
+            and rid not in exclude
+        ]
+        for cand in _candidate_order(candidates, refill_strategy):
+            need = set(cand.get("required_skills") or [])
+            if not need.issubset(set(workers[worker_id].get("skills") or [])):
+                continue
+            trial = _attempt_insert(workers[worker_id],
+                                    _jobs_of(worker_id, assignments),
+                                    cand, travel, eff)
+            if trial is None:
+                continue
+            kept_jobs, _more, _none = trial
+            assignments[:] = ([x for x in assignments
+                               if x["worker_id"] != worker_id] + kept_jobs)
+            return cand["request_id"]
+        return None
+
+    # 취소와 지연을 통보 시각 순으로 한 줄로 세운다. 같은 시각이면 취소를 먼저 본다.
+    events: list[tuple[int, int, str, object]] = (
+        [(c.notice_min, 0, c.request_id, c) for c in collect_cancellations(instance, assignments)]
+        + [(d.notice_min, 1, d.request_id, d) for d in collect_delays(instance, assignments)]
+    )
+    events.sort(key=lambda e: (e[0], e[1], e[2]))
+
+    for _notice, kind, _rid, ev in events:
+        if kind == 1:
+            # ── 지연: 시간창을 밀고, 그 인력의 남은 일정을 다시 맞춘다 ──
+            d = ev
+            idx = next((i for i, a in enumerate(assignments)
+                        if a["request_id"] == d.request_id), None)
+            had = idx is not None
+            worker_id = assignments[idx]["worker_id"] if had else None
+            already_departed = False
+            r_retimed: list[str] = []
+            r_displaced: list[str] = []
+            kept_ok = False
+            new_start: int | None = None
+
+            shift[d.request_id] = int(shift.get(d.request_id, 0)) + int(d.delay_minutes)
+
+            if had:
+                a = assignments[idx]
+                jobs = _jobs_of(worker_id, assignments)
+                pos = next(i for i, j in enumerate(jobs) if j["request_id"] == d.request_id)
+                prev_node = (workers[worker_id]["base_node"] if pos == 0
+                             else by_id[jobs[pos - 1]["request_id"]]["home_node"])
+                leg = travel.get((prev_node, by_id[d.request_id]["home_node"]))
+                depart = (int(a["arrive_min"]) - int(round(leg))
+                          if leg is not None else int(a["arrive_min"]))
+                already_departed = d.notice_min >= depart
+
+                eff = _eff_requests(by_id, shift)
+                kept_jobs, r_retimed, r_displaced = _retime(
+                    workers[worker_id], jobs, travel, eff)
+                assignments[:] = ([x for x in assignments
+                                   if x["worker_id"] != worker_id] + kept_jobs)
+                displaced_ids.update(r_displaced)
+                mine = next((k for k in kept_jobs if k["request_id"] == d.request_id), None)
+                kept_ok = mine is not None
+                new_start = int(mine["arrive_min"]) if mine else None
+                if not kept_ok:
+                    late_ids.add(d.request_id)
+
+            dout = DelayOutcome(
+                request_id=d.request_id, notice_min=d.notice_min,
+                delay_minutes=d.delay_minutes, had_assignment=had,
+                worker_id=worker_id, kept=kept_ok, new_start_min=new_start,
+                already_departed=already_departed,
+                retimed=r_retimed, displaced=r_displaced,
+            )
+            if had and worker_id and refill and not kept_ok:
+                dout.refilled_by = refill_slot(worker_id, {d.request_id})
+            result.delays.append(dout)
+            continue
+
+        # ── 취소 ──
+        ev_c = ev
+        cancelled_so_far.add(ev_c.request_id)
 
         idx = next((i for i, a in enumerate(assignments)
-                    if a["request_id"] == ev.request_id), None)
+                    if a["request_id"] == ev_c.request_id), None)
         had = idx is not None
         worker_id = assignments[idx]["worker_id"] if had else None
 
@@ -327,64 +546,47 @@ def replay(instance: dict, algorithm: str = "request_order",
 
         if had:
             a = assignments[idx]
-            req = by_id[ev.request_id]
+            req = by_id[ev_c.request_id]
             jobs = _jobs_of(worker_id, assignments)
-            pos = next(i for i, j in enumerate(jobs) if j["request_id"] == ev.request_id)
+            pos = next(i for i, j in enumerate(jobs) if j["request_id"] == ev_c.request_id)
             prev_node = (workers[worker_id]["base_node"] if pos == 0
                          else by_id[jobs[pos - 1]["request_id"]]["home_node"])
             leg = travel.get((prev_node, req["home_node"]))
             depart = (int(a["arrive_min"]) - int(round(leg))
                       if leg is not None else int(a["arrive_min"]))
-            already_departed = ev.notice_min >= depart
+            already_departed = ev_c.notice_min >= depart
             if already_departed:
                 wasted = int(round(leg)) if leg is not None else 0
 
-            assignments = [x for x in assignments if x["request_id"] != ev.request_id]
+            assignments = [x for x in assignments if x["request_id"] != ev_c.request_id]
 
             # 남은 일정을 다시 확인한다 — 앞뒤 경로가 바뀌었을 수 있다
+            eff = _eff_requests(by_id, shift)
             kept, retimed, displaced = _retime(workers[worker_id],
                                                _jobs_of(worker_id, assignments),
-                                               travel, by_id)
+                                               travel, eff)
             assignments = [x for x in assignments if x["worker_id"] != worker_id] + kept
             displaced_ids.update(displaced)
 
         outcome = CancellationOutcome(
-            request_id=ev.request_id, notice_min=ev.notice_min,
-            service_start_min=ev.service_start_min,
+            request_id=ev_c.request_id, notice_min=ev_c.notice_min,
+            service_start_min=ev_c.service_start_min,
             had_assignment=had, worker_id=worker_id,
             already_departed=already_departed, wasted_travel_min=wasted,
             outcome=NOT_ASSIGNED if not had else LEFT_EMPTY,
             retimed=retimed, displaced=displaced,
         )
 
-        if had and worker_id:
-            assigned_ids = {a["request_id"] for a in assignments}
-            candidates = [
-                req for rid, req in by_id.items()
-                if rid not in assigned_ids
-                and rid not in cancelled_so_far
-                and rid not in displaced_ids
-            ]
-            for cand in _candidate_order(candidates, refill_strategy):
-                need = set(cand.get("required_skills") or [])
-                if not need.issubset(set(workers[worker_id].get("skills") or [])):
-                    continue
-                trial = _attempt_insert(workers[worker_id],
-                                        _jobs_of(worker_id, assignments),
-                                        cand, travel, by_id)
-                if trial is None:
-                    continue
-                kept, more_retimed, _none = trial
-                assignments = [x for x in assignments
-                               if x["worker_id"] != worker_id] + kept
+        if had and worker_id and refill:
+            filled = refill_slot(worker_id, set())
+            if filled:
                 outcome.outcome = REFILLED
-                outcome.refilled_by = cand["request_id"]
-                outcome.retimed.extend(r for r in more_retimed if r not in outcome.retimed)
-                break
+                outcome.refilled_by = filled
 
         result.cancellations.append(outcome)
 
-    # 최종 정리 — 밀려난 일정이 취소 뒤에 남아 있으면 안 된다
+    # 지연이 반영된 시간창으로 검증한다. 지연을 반영하지 않은 원래 창으로 보면
+    # 정상적으로 늦춰진 배정이 '시간창 위반'으로 잘못 잡힌다.
     assigned_ids = {a["request_id"] for a in assignments}
     result.assignments = sorted(
         ({"request_id": a["request_id"], "worker_id": a["worker_id"],
@@ -394,12 +596,13 @@ def replay(instance: dict, algorithm: str = "request_order",
     result.unassigned = [
         {"request_id": rid,
          "reason": (CANCELLED if rid in cancelled_so_far
+                    else DELAYED_LATE if rid in late_ids
                     else DISPLACED if rid in displaced_ids
                     else UNASSIGNED),
          "certainty": "verified"}
         for rid in by_id if rid not in assigned_ids
     ]
 
-    rep = verify(instance, result.assignments)
+    rep = verify(_shifted_instance(instance, shift), result.assignments)
     result.violations = [v.as_dict() for v in rep.violations]
     return result
