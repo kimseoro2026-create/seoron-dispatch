@@ -177,7 +177,10 @@ def _requests(sim, beneficiaries, hospitals, rng, seed: int = 0) -> pd.DataFrame
                          "priority": 2 if discharge else 1,
                          "requested_at": requested_at.isoformat(timespec="minutes"),
                          "cancelled_same_day": bool(cancelled),
-                         "cancel_notice_min_before": int(rng.integers(30, 181)) if cancelled else None,
+                         "cancel_notice_min_before": (
+                             int(rng.integers(sim["cancel_notice_min_range"][0],
+                                              sim["cancel_notice_min_range"][1] + 1))
+                             if cancelled else None),
                          # 당일 지연 — 통보 시각과 지연 폭. 계획 단계에서는 쓰지 않는다.
                          "delayed_same_day": bool(delayed),
                          "delay_minutes": (int(erng.integers(sim["delay_minutes_range"][0],

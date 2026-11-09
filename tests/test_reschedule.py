@@ -370,3 +370,180 @@ def test_delay_does_not_mutate_input():
     replay(inst, "request_order")
     assert inst == before
 
+
+# ── 다른 인력으로 넘기기 ───────────────────────────────────────────────────
+
+def _two_worker_delay_instance(w01_shift_end: int = 960, delay_minutes: int = 240):
+    """W01 에만 몰려 있던 지연 요청을 W02 가 받을 수 있는지 보는 인스턴스.
+
+    W01 은 960 에 근무를 마치므로 240분 밀린 R02(940~1000)를 지킬 수 없다.
+    W02 는 1080 까지 일하므로 지킬 수 있다.
+    """
+    return {
+        "service_date": "2026-11-02",
+        "workers": [
+            {"worker_id": "W01", "skills": ["household_support"], "base_node": "BASE_W01",
+             "shift_start_min": 540, "shift_end_min": w01_shift_end,
+             "break_start_min": 900, "break_minutes": 60, "max_work_minutes": 480},
+            {"worker_id": "W02", "skills": ["household_support"], "base_node": "BASE_W02",
+             "shift_start_min": 540, "shift_end_min": 1080,
+             "break_start_min": 1020, "break_minutes": 60, "max_work_minutes": 480},
+        ],
+        "requests": [
+            {"request_id": "R01", "beneficiary_id": "B01",
+             "service_type": "household_support", "service_date": "2026-11-02",
+             "home_node": "HOME_B01", "earliest_start_min": 600, "latest_start_min": 660,
+             "service_minutes": 60, "required_skills": ["household_support"],
+             "priority": 1, "requested_at": "2026-10-30T10:00"},
+            {"request_id": "R02", "beneficiary_id": "B02",
+             "service_type": "household_support", "service_date": "2026-11-02",
+             "home_node": "HOME_B02", "earliest_start_min": 700, "latest_start_min": 760,
+             "service_minutes": 60, "required_skills": ["household_support"],
+             "priority": 1, "requested_at": "2026-10-30T11:00",
+             "delayed_same_day": True, "delay_minutes": delay_minutes,
+             "delay_notice_min_before": 60},
+        ],
+        "travel": [
+            {"from_node": "BASE_W01", "to_node": "HOME_B01", "minutes": 10},
+            {"from_node": "BASE_W01", "to_node": "HOME_B02", "minutes": 15},
+            {"from_node": "BASE_W02", "to_node": "HOME_B01", "minutes": 20},
+            {"from_node": "BASE_W02", "to_node": "HOME_B02", "minutes": 15},
+            {"from_node": "HOME_B01", "to_node": "HOME_B02", "minutes": 8},
+            {"from_node": "HOME_B02", "to_node": "HOME_B01", "minutes": 8},
+        ],
+    }
+
+
+def test_delay_moves_to_another_worker_when_original_cannot_keep_it():
+    """원래 인력이 밀린 시각을 못 지키면 다른 인력이 받아 지킨다."""
+    inst = _two_worker_delay_instance(w01_shift_end=960)
+    res = replay(inst, "request_order")
+
+    d = next(x for x in res.delays if x.request_id == "R02")
+    assert d.kept is True, "다른 인력이 받을 수 있는데도 지연상실로 남았다"
+    assert d.moved_to_worker == "W02"
+    assert d.new_start_min is not None and d.new_start_min >= 940
+
+    moved = next(a for a in res.assignments if a["request_id"] == "R02")
+    assert moved["worker_id"] == "W02"
+
+
+def test_delay_move_passes_verifier():
+    """인력을 옮긴 일정도 하드 제약을 지켜야 한다."""
+    res = replay(_two_worker_delay_instance(w01_shift_end=960), "request_order")
+    assert res.ok, res.violations
+
+
+def test_delay_stays_when_original_worker_can_keep_it():
+    """원래 인력이 지킬 수 있으면 굳이 옮기지 않는다."""
+    inst = _two_worker_delay_instance(w01_shift_end=1080)
+    res = replay(inst, "request_order")
+
+    d = next(x for x in res.delays if x.request_id == "R02")
+    assert d.kept is True
+    assert d.moved_to_worker is None
+    assert d.worker_id == "W01"
+    assert next(a for a in res.assignments if a["request_id"] == "R02")["worker_id"] == "W01"
+
+
+def test_delay_lost_when_no_other_worker_can_take_it():
+    """어느 인력도 못 받으면 지연상실로 남긴다 — 0분으로 대체하지 않는다."""
+    inst = _two_worker_delay_instance(w01_shift_end=900, delay_minutes=300)
+    for w in inst["workers"]:
+        w["shift_end_min"] = 900
+    res = replay(inst, "request_order")
+
+    d = next(x for x in res.delays if x.request_id == "R02")
+    assert d.kept is False
+    assert d.moved_to_worker is None
+    un = {u["request_id"]: u for u in res.unassigned}
+    assert un["R02"]["reason"] == DELAYED_LATE
+    assert res.ok, res.violations
+
+
+def test_delay_move_does_not_displace_other_workers_schedule():
+    """다른 인력으로 옮겨 그 인력의 기존 일정이 밀려나면 옮기지 않는다."""
+    inst = _two_worker_delay_instance(w01_shift_end=960)
+    # W02 에 이미 940 에 시작하는 다른 요청을 넣어, R02 를 옮기면 밀리게 만든다.
+    # service_minutes=60 → 940+60=1000 < break@1020 (위반 없음)
+    inst["requests"].append({
+        "request_id": "R09", "beneficiary_id": "B09",
+        "service_type": "household_support", "service_date": "2026-11-02",
+        "home_node": "HOME_B09", "earliest_start_min": 935, "latest_start_min": 945,
+        "service_minutes": 60, "required_skills": ["household_support"],
+        "priority": 1, "requested_at": "2026-10-29T09:00"})
+    inst["travel"] += [
+        {"from_node": "BASE_W02", "to_node": "HOME_B09", "minutes": 10},
+        {"from_node": "HOME_B02", "to_node": "HOME_B09", "minutes": 4},
+        {"from_node": "HOME_B09", "to_node": "HOME_B02", "minutes": 4},
+        {"from_node": "HOME_B01", "to_node": "HOME_B09", "minutes": 9},
+    ]
+    res = replay(inst, "request_order")
+
+    d = next(x for x in res.delays if x.request_id == "R02")
+    # 옮겨서 R09 를 밀어내는 것은 허용하지 않는다
+    r09 = next((a for a in res.assignments if a["request_id"] == "R09"), None)
+    if d.moved_to_worker is not None:
+        assert r09 is not None, "옮기면서 R09 를 밀어냈다"
+    assert res.ok, res.violations
+
+
+def test_refill_goes_to_any_eligible_worker():
+    """빈자리 채우기는 해방된 인력뿐 아니라 다른 인력도 시도한다.
+
+    W02 는 hospital_escort 전용이라 취소 뒤 빈자리에 household_support 요청을 넣을 수 없다.
+    W01 은 household_support 자격이 있고 취소 통보 후 R03 을 받을 수 있다.
+    """
+    inst = {
+        "service_date": "2026-11-02",
+        "workers": [
+            {"worker_id": "W01", "skills": ["household_support"], "base_node": "BASE_W01",
+             "shift_start_min": 540, "shift_end_min": 1080,
+             "break_start_min": 1020, "break_minutes": 60, "max_work_minutes": 480},
+            {"worker_id": "W02", "skills": ["hospital_escort"], "base_node": "BASE_W02",
+             "shift_start_min": 540, "shift_end_min": 1080,
+             "break_start_min": 1020, "break_minutes": 60, "max_work_minutes": 480},
+        ],
+        "requests": [
+            # W01 에 배정되어 600-660 차지
+            {"request_id": "R01", "beneficiary_id": "B01",
+             "service_type": "household_support", "service_date": "2026-11-02",
+             "home_node": "HOME_B01", "earliest_start_min": 600, "latest_start_min": 660,
+             "service_minutes": 60, "required_skills": ["household_support"],
+             "priority": 1, "requested_at": "2026-10-30T10:00"},
+            # W02 에 배정되지만 취소됨
+            {"request_id": "R02", "beneficiary_id": "B02",
+             "service_type": "hospital_escort", "service_date": "2026-11-02",
+             "home_node": "HOME_B02",
+             "hospital_node": "HOSP_H01", "appointment_min": 800,
+             "arrival_buffer_min": 10, "hospital_stay_min": 60,
+             "earliest_start_min": 700, "latest_start_min": 760,
+             "service_minutes": 60, "required_skills": ["hospital_escort"],
+             "priority": 1, "requested_at": "2026-10-30T11:00",
+             "cancelled_same_day": True, "cancel_notice_min_before": 120},
+            # household_support 미배정 대기 중 — W01 이 R01 끝난 뒤 받을 수 있다
+            {"request_id": "R03", "beneficiary_id": "B03",
+             "service_type": "household_support", "service_date": "2026-11-02",
+             "home_node": "HOME_B03", "earliest_start_min": 700, "latest_start_min": 900,
+             "service_minutes": 60, "required_skills": ["household_support"],
+             "priority": 1, "requested_at": "2026-10-30T12:00"},
+        ],
+        "travel": [
+            {"from_node": "BASE_W01", "to_node": "HOME_B01", "minutes": 10},
+            {"from_node": "BASE_W01", "to_node": "HOME_B03", "minutes": 12},
+            {"from_node": "BASE_W02", "to_node": "HOME_B02", "minutes": 15},
+            {"from_node": "HOME_B01", "to_node": "HOME_B03", "minutes": 7},
+            {"from_node": "HOME_B03", "to_node": "HOME_B01", "minutes": 7},
+            {"from_node": "HOME_B02", "to_node": "HOME_B03", "minutes": 9},
+            # hospital_escort 이동 노드
+            {"from_node": "HOME_B02", "to_node": "HOSP_H01", "minutes": 20},
+            {"from_node": "HOSP_H01", "to_node": "HOME_B02", "minutes": 20},
+        ],
+    }
+    res = replay(inst, "request_order")
+    assert res.ok, res.violations
+    assigned = {a["request_id"]: a["worker_id"] for a in res.assignments}
+    # R02 취소 후 W01(자격 있음)이 R03 을 받아야 한다. W02 는 자격이 없어 못 받는다.
+    assert "R03" in assigned, "다른 인력의 빈자리로도 채우지 못했다"
+    assert assigned["R03"] == "W01", f"household_support 자격 있는 W01 이 받아야 하는데 {assigned['R03']} 가 받았다"
+

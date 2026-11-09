@@ -32,6 +32,7 @@ simulation:
   appointment_hours: [9, 16]
   morning_weight: 0.6           # 오전(9~12시) 예약 비율
   same_day_cancel_rate: 0.10
+  cancel_notice_min_range: [5, 90]  # 취소 통보 여유 시간(분). 이동시간보다 짧으면 낭비이동 발생
   same_day_delay_rate: 0.12     # 당일 지연(시작이 늦어짐) 비율
   delay_minutes_range: [15, 90] # 지연 폭(분)
   discharge_case_rate: 0.20     # 퇴원 후 14일 이내 사례 비율

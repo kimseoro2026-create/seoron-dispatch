@@ -57,6 +57,13 @@ REFILLED = "refilled"            # 빈 슬롯을 다른 요청으로 채웠다
 LEFT_EMPTY = "left_empty"        # 채우지 못했다(후보 없음·시간 안 맞음)
 NOT_ASSIGNED = "not_assigned"    # 처음부터 배정이 없었으므로 비울 슬롯도 없었다
 
+# ── 내부 도구 ──────────────────────────────────────────────────────────────
+
+def _avg(values: list[int]) -> float:
+    """빈 리스트면 0.0, 아니면 평균."""
+    return round(sum(values) / len(values), 1) if values else 0.0
+
+
 # 미배정 사유
 CANCELLED = "CANCELLED"
 DISPLACED = "DISPLACED"          # 다른 취소의 여파로 남은 일정에서 밀려났다
@@ -86,6 +93,7 @@ class DelayOutcome:
     request_id: str
     notice_min: int
     delay_minutes: int
+    service_start_min: int       # 원래 서비스 시작 예정 시각 (지연 전)
     had_assignment: bool
     worker_id: str | None
     kept: bool                   # 늦춘 시각에도 일정을 지켰는가
@@ -94,6 +102,7 @@ class DelayOutcome:
     retimed: list[str] = field(default_factory=list)
     displaced: list[str] = field(default_factory=list)
     refilled_by: str | None = None   # 밀려난 경우 빈자리를 채운 요청
+    moved_to_worker: str | None = None  # 늦춘 뒤 다른 인력으로 옮겨 지켰으면 그 인력
 
     def as_dict(self) -> dict:
         return {
@@ -108,6 +117,7 @@ class DelayOutcome:
             "시각 변경": ", ".join(self.retimed) or "-",
             "밀려남": ", ".join(self.displaced) or "-",
             "채운 요청": self.refilled_by or "-",
+            "이동 인력": self.moved_to_worker or "-",
         }
 
 
@@ -179,8 +189,21 @@ class ReplayResult:
             "delays": len(self.delays),
             "delay_kept": sum(1 for d in self.delays if d.kept),
             "delay_lost": sum(1 for d in self.delays if d.had_assignment and not d.kept),
+            # 지연 폭(분) — '몇 건'이 아니라 '얼마나 늦게 시작했나'.
+            # 지켜진 지연만 센다. 시작이 앞당겨진 경우는 0으로 둔다(늦지 않았으므로).
+            "delay_late_avg": _avg(self._late_minutes()),
+            "delay_late_max": max(self._late_minutes(), default=0),
             "violations": len(self.violations),
         }
+
+    def _late_minutes(self) -> list[int]:
+        """지연이 지켜진 요청마다 실제로 몇 분 늦게 시작했는지."""
+        out: list[int] = []
+        for d in self.delays:
+            if not d.had_assignment or not d.kept or d.new_start_min is None:
+                continue
+            out.append(max(0, int(d.new_start_min) - int(d.service_start_min)))
+        return out
 
 
 # ── 초기 배정 ─────────────────────────────────────────────────────────────
@@ -449,7 +472,8 @@ def replay(instance: dict, algorithm: str = "request_order",
     shift: dict[str, int] = {}
 
     def refill_slot(worker_id: str, exclude: set[str]) -> str | None:
-        """해당 인력의 빈자리를 다른 요청으로 채운다. 채웠으면 그 요청 ID."""
+        """미배정 후보를 빈자리에 채운다. 해방된 인력을 먼저, 안 되면 다른 인력을 시도한다.
+        채웠으면 그 요청 ID를 반환한다."""
         assigned_ids = {a["request_id"] for a in assignments}
         eff = _eff_requests(by_id, shift)
         candidates = [
@@ -460,19 +484,24 @@ def replay(instance: dict, algorithm: str = "request_order",
             and rid not in late_ids
             and rid not in exclude
         ]
+        # 해방된 인력 먼저, 나머지는 ID 오름차순으로 시도 (결정론적)
+        other_wids = sorted(wid for wid in workers if wid != worker_id)
+        attempt_order = [worker_id] + other_wids
+
         for cand in _candidate_order(candidates, refill_strategy):
             need = set(cand.get("required_skills") or [])
-            if not need.issubset(set(workers[worker_id].get("skills") or [])):
-                continue
-            trial = _attempt_insert(workers[worker_id],
-                                    _jobs_of(worker_id, assignments),
-                                    cand, travel, eff)
-            if trial is None:
-                continue
-            kept_jobs, _more, _none = trial
-            assignments[:] = ([x for x in assignments
-                               if x["worker_id"] != worker_id] + kept_jobs)
-            return cand["request_id"]
+            for wid in attempt_order:
+                if not need.issubset(set(workers[wid].get("skills") or [])):
+                    continue
+                trial = _attempt_insert(workers[wid],
+                                        _jobs_of(wid, assignments),
+                                        cand, travel, eff)
+                if trial is None:
+                    continue
+                kept_jobs, _more, _none = trial
+                assignments[:] = ([x for x in assignments
+                                   if x["worker_id"] != wid] + kept_jobs)
+                return cand["request_id"]
         return None
 
     # 취소와 지연을 통보 시각 순으로 한 줄로 세운다. 같은 시각이면 취소를 먼저 본다.
@@ -521,12 +550,37 @@ def replay(instance: dict, algorithm: str = "request_order",
                 if not kept_ok:
                     late_ids.add(d.request_id)
 
+            # 원래 인력에서 지연 후 일정을 맞추지 못하면 다른 인력에게 넘길 수 있는지 시도한다
+            moved_wid: str | None = None
+            if had and not kept_ok and refill:
+                eff_move = _eff_requests(by_id, shift)
+                need = set(by_id[d.request_id].get("required_skills") or [])
+                for alt_wid in sorted(w for w in workers if w != worker_id):
+                    if not need.issubset(set(workers[alt_wid].get("skills") or [])):
+                        continue
+                    trial = _attempt_insert(workers[alt_wid],
+                                            _jobs_of(alt_wid, assignments),
+                                            eff_move[d.request_id], travel, eff_move)
+                    if trial is None:
+                        continue
+                    kept_alt, _r2, _d2 = trial
+                    assignments[:] = ([x for x in assignments if x["worker_id"] != alt_wid]
+                                       + kept_alt)
+                    moved_mine = next(k for k in kept_alt if k["request_id"] == d.request_id)
+                    new_start = int(moved_mine["arrive_min"])
+                    kept_ok = True
+                    late_ids.discard(d.request_id)
+                    moved_wid = alt_wid
+                    break
+
             dout = DelayOutcome(
                 request_id=d.request_id, notice_min=d.notice_min,
-                delay_minutes=d.delay_minutes, had_assignment=had,
+                delay_minutes=d.delay_minutes, service_start_min=int(d.service_start_min),
+                had_assignment=had,
                 worker_id=worker_id, kept=kept_ok, new_start_min=new_start,
                 already_departed=already_departed,
                 retimed=r_retimed, displaced=r_displaced,
+                moved_to_worker=moved_wid,
             )
             if had and worker_id and refill and not kept_ok:
                 dout.refilled_by = refill_slot(worker_id, {d.request_id})

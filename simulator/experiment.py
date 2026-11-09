@@ -170,7 +170,8 @@ class DayResult:
         # 재생 실행이면 취소 관련 열을 덧붙인다. 다른 방식은 비워 둔다.
         for key in ("cancellations", "cancelled_with_assignment", "refilled",
                     "left_empty", "wasted_travel_min", "retimed", "displaced",
-                    "initial_assigned", "delays", "delay_kept", "delay_lost"):
+                    "initial_assigned", "delays", "delay_kept", "delay_lost",
+                    "delay_late_avg", "delay_late_max"):
             row[key] = self.extra.get(key, "")
         return row
 
@@ -265,6 +266,8 @@ def run_day(instance: dict, algorithm: str, seed: int = 42,
             "delays": cancel_stats.get("delays", 0),
             "delay_kept": cancel_stats.get("delay_kept", 0),
             "delay_lost": cancel_stats.get("delay_lost", 0),
+            "delay_late_avg": cancel_stats.get("delay_late_avg", 0.0),
+            "delay_late_max": cancel_stats.get("delay_late_max", 0),
         }
     return result
 
@@ -351,6 +354,8 @@ def summarize(df: pd.DataFrame) -> pd.DataFrame:
         "지연_평균": ("delays", 2),
         "지연지킴_평균": ("delay_kept", 2),
         "지연상실_평균": ("delay_lost", 2),
+        "지연폭_평균": ("delay_late_avg", 1),
+        "지연폭_최대": ("delay_late_max", 0),
     }
     if "cancellations" in df.columns:
         num = df.copy()
