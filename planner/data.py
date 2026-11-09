@@ -37,30 +37,55 @@ class DayInstance:
         return {"workers": self.workers, "requests": self.requests, "travel": self.travel}
 
 
-def load_travel(data_dir: str | Path) -> dict[tuple[str, str], float]:
+def load_travel(data_dir: str | Path, node_ids: set[str] | None = None) -> dict[tuple[str, str], float]:
     """travel_matrix.csv → {(from, to): 분}.
 
+    node_ids 를 주면 그 노드들 사이만 남긴다(하루치 화면에 필요한 구간만 쓰기 위함).
     파일이 없으면 nodes.csv 좌표로 추정 행렬을 만든다.
     (61MB 행렬을 저장소에 넣지 않기 위한 대체 경로. 추정값이므로 화면에 출처를 표시한다.)
     """
     path = Path(data_dir) / "travel_matrix.csv"
     if not path.exists():
-        return estimate_travel(data_dir)
-    df = pd.read_csv(path)
+        return estimate_travel(data_dir, node_ids)
+    df = pd.read_csv(path, usecols=["from_node", "to_node", "minutes"])
+    if node_ids is not None:
+        df = df[df["from_node"].isin(node_ids) & df["to_node"].isin(node_ids)]
     return {(r.from_node, r.to_node): float(r.minutes) for r in df.itertuples()}
 
 
-def estimate_travel(data_dir: str | Path) -> dict[tuple[str, str], float]:
-    """nodes.csv 만으로 직선거리 기반 추정 행렬을 만든다(source=estimate 와 같은 식)."""
-    from f0.geo import estimated_drive_minutes
+def estimate_travel(data_dir: str | Path,
+                    node_ids: set[str] | None = None) -> dict[tuple[str, str], float]:
+    """nodes.csv 만으로 직선거리 기반 추정 행렬을 만든다(source=estimate 와 같은 식).
+
+    numpy 로 한꺼번에 계산한다. 노드 721개면 519,120구간인데,
+    파이썬 이중 반복문으로 돌리면 서버에서 수십 초가 걸려 화면이 멈춘다.
+    node_ids 를 주면 그 노드들만 계산한다(하루치면 70개 안팎 → 100배 이상 빠르다).
+    """
+    import numpy as np
+    from f0.geo import HAVERSINE_R_KM, DRIVE_DETOUR, DRIVE_KMH, DRIVE_FIXED
 
     nodes = pd.read_csv(Path(data_dir) / "nodes.csv")
-    pts = list(zip(nodes["node_id"], nodes["lat"], nodes["lon"]))
+    if node_ids is not None:
+        nodes = nodes[nodes["node_id"].isin(node_ids)]
+    ids = nodes["node_id"].to_numpy()
+    lat = np.radians(nodes["lat"].to_numpy(dtype=float))
+    lon = np.radians(nodes["lon"].to_numpy(dtype=float))
+
+    # 위도·경도 차이를 브로드캐스트로 한 번에 (n×n)
+    dlat = lat[:, None] - lat[None, :]
+    dlon = lon[:, None] - lon[None, :]
+    a = np.sin(dlat / 2) ** 2 + np.cos(lat)[:, None] * np.cos(lat)[None, :] * np.sin(dlon / 2) ** 2
+    km = 2 * HAVERSINE_R_KM * np.arcsin(np.sqrt(np.clip(a, 0, 1)))
+
+    minutes = np.round(km * DRIVE_DETOUR / DRIVE_KMH * 60 + DRIVE_FIXED, 1)
+    np.fill_diagonal(minutes, 0.0)   # 자기 자신은 0
+
     out: dict[tuple[str, str], float] = {}
-    for i, (a, alat, alon) in enumerate(pts):
-        for j, (b, blat, blon) in enumerate(pts):
+    for i, src in enumerate(ids):
+        row = minutes[i]
+        for j, dst in enumerate(ids):
             if i != j:
-                out[(a, b)] = estimated_drive_minutes(alat, alon, blat, blon)
+                out[(src, dst)] = float(row[j])
     return out
 
 
@@ -68,7 +93,9 @@ def load_day(data_dir: str | Path, service_date: str,
              travel: dict[tuple[str, str], float] | None = None) -> DayInstance:
     """하루치 instance 를 만든다.
 
-    필수값이 없는 요청은 여기서 지우지 않는다. 검증기가 MISSING_REQUIRED 로 잡아야 한다.
+    travel 을 주지 않으면 그날 필요한 노드만으로 추정 행렬을 만든다.
+    전체 721개 노드를 쓰면 519,120구간이지만, 하루치면 70개 안팎(4,900구간)이라
+    화면이 훨씬 빠르게 뜬다.
     """
     d = Path(data_dir)
     req = pd.read_csv(d / "requests.csv", dtype={"request_id": str, "beneficiary_id": str})
@@ -76,7 +103,12 @@ def load_day(data_dir: str | Path, service_date: str,
     workers = _workers(d)
     requests = [_request(r) for r in req.itertuples()]
     if travel is None:
-        travel = load_travel(d)
+        node_ids = (
+            {w["base_node"] for w in workers}
+            | {r["home_node"] for r in requests}
+            | {r["hospital_node"] for r in requests if r.get("hospital_node")}
+        )
+        travel = load_travel(d, node_ids)
     return DayInstance(service_date=service_date, workers=workers, requests=requests, travel=travel)
 
 

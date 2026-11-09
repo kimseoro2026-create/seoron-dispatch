@@ -9,16 +9,23 @@ import numpy as np
 from shapely.geometry import Point, box, shape
 from shapely.geometry.base import BaseGeometry
 
+# 대략값 계산 상수. numpy 벡터화(planner/data.py)와 값이 어긋나지 않도록 한곳에 둔다.
+HAVERSINE_R_KM = 6371.0088
+DRIVE_DETOUR = 1.35      # 직선거리 → 도로거리 우회계수
+DRIVE_KMH = 25.0         # 도심 평균 속도
+DRIVE_FIXED = 3.0        # 출발·정차 고정시간(분)
+
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    r = 6371.0088
+    r = HAVERSINE_R_KM
     p1, p2 = math.radians(lat1), math.radians(lat2)
     dp, dl = p2 - p1, math.radians(lon2 - lon1)
     a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
     return 2 * r * math.asin(math.sqrt(a))
 
 
-def estimated_drive_minutes(lat1, lon1, lat2, lon2, detour=1.35, kmh=25.0, fixed=3.0) -> float:
+def estimated_drive_minutes(lat1, lon1, lat2, lon2, detour=DRIVE_DETOUR,
+                            kmh=DRIVE_KMH, fixed=DRIVE_FIXED) -> float:
     """OSRM이 없을 때 쓰는 대략값: 직선거리 × 우회계수 ÷ 도심 평균속도 + 고정시간."""
     km = haversine_km(lat1, lon1, lat2, lon2)
     return round(km * detour / kmh * 60 + (fixed if km > 0 else 0.0), 1)

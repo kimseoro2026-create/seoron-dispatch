@@ -61,7 +61,9 @@ def _run(date: str, algo: str, stamp: str):
     from planner.optimize import optimize
     from verifier import verify
 
-    inst = load_day(ROOT / "data" / "processed", date, travel=_load_travel(stamp))
+    # travel=None 으로 두면 load_day 가 그날 필요한 노드만으로 행렬을 만든다.
+    # 전체 519,120구간 대신 70개 노드(~4,900구간)만 계산하므로 훨씬 빠르다.
+    inst = load_day(ROOT / "data" / "processed", date, travel=None)
     instance = inst.as_instance()
 
     if algo == "신청순":
@@ -75,7 +77,7 @@ def _run(date: str, algo: str, stamp: str):
         assignments = r.assignments
         unassigned  = [u.as_dict() for u in r.unassigned]
     else:
-        r = optimize(instance, time_limit_sec=30)
+        r = optimize(instance, time_limit_sec=8)
         assignments = r.assignments
         unassigned  = r.unassigned
 
@@ -269,7 +271,12 @@ if tab_names:
     for tab, a in zip(tabs, tab_names):
         with tab:
             d = results[a]
-            # 타임라인
+            # 타임라인 — 배정이 있는 인력만, 최대 8명 (화면 속도)
+            assigned_wids = {x["worker_id"] for x in d["assignments"]}
+            workers_map = {w["worker_id"]: w for w in d["inst"].workers}
+            show_wids = [wid for wid in workers_map if wid in assigned_wids][:8]
+            rest = len(assigned_wids) - len(show_wids)
+
             st.markdown("**인력별 타임라인**")
             legend = "　".join(
                 f'<span style="display:inline-block;width:14px;height:14px;background:{c};'
@@ -278,11 +285,12 @@ if tab_names:
             )
             st.markdown(f'<div style="font-size:0.78rem;margin-bottom:10px;">{legend}</div>',
                         unsafe_allow_html=True)
-            workers_map = {w["worker_id"]: w for w in d["inst"].workers}
             html_rows = ""
-            for wid, w in workers_map.items():
-                html_rows += _timeline_html(wid, w, d["timelines"])
+            for wid in show_wids:
+                html_rows += _timeline_html(wid, workers_map[wid], d["timelines"])
             st.markdown(html_rows, unsafe_allow_html=True)
+            if rest > 0:
+                st.caption(f"… 외 {rest}명 생략 (배정 있는 인력 상위 8명만 표시)")
 
             # 미배정 목록
             if d["unassigned"]:
@@ -302,6 +310,131 @@ if tab_names:
                 st.error("**하드 제약 위반 — 이 배정안은 사용할 수 없습니다.**")
                 vdf = pd.DataFrame([v.as_dict() for v in d["rep"].violations])
                 st.dataframe(vdf, use_container_width=True, hide_index=True)
+
+
+# ── 담당자 승인 ───────────────────────────────────────────────────────────
+st.divider()
+st.subheader("담당자 승인")
+
+st.caption(
+    "AI는 배정 후보와 이유만 제시합니다. 확정은 담당자가 합니다. "
+    "수락하지 않은 건은 배정이 아닙니다."
+)
+
+if not results:
+    st.info("위에서 방식을 하나 이상 선택하세요.")
+else:
+    from planner.approval import ACCEPT, PENDING, REJECT, ApprovalGate, Decision
+
+    # 승인 상태는 세션에 보관한다(새로고침에도 확정 내역이 유지되도록)
+    if "gate" not in st.session_state:
+        st.session_state.gate = ApprovalGate()
+    gate: ApprovalGate = st.session_state.gate
+
+    approve_algo = st.selectbox("승인할 배정안", list(results.keys()), key="approve_algo")
+    d_sel = results[approve_algo]
+    proposal = d_sel["assignments"]
+
+    if not proposal:
+        st.warning("이 방식은 배정된 요청이 없습니다. 승인할 내용이 없습니다.")
+    else:
+        if d_sel["rep"].violations:
+            st.error(
+                "이 배정안은 하드 제약 위반이 있어 승인할 수 없습니다. "
+                "위반이 없는 배정안을 선택하세요."
+            )
+        else:
+            req_by_id = {r["request_id"]: r for r in d_sel["inst"].requests}
+            rows = []
+            for a in proposal:
+                req = req_by_id[a["request_id"]]
+                rows.append({
+                    "요청": a["request_id"],
+                    "대상자": req["beneficiary_id"],
+                    "인력": a["worker_id"],
+                    "도착(분)": a["arrive_min"],
+                    "서비스": "병원동행" if req["service_type"] == "hospital_escort" else "가사지원",
+                    "결정": "보류",
+                    "거부 사유": "",
+                })
+
+            edited = st.data_editor(
+                pd.DataFrame(rows),
+                use_container_width=True,
+                hide_index=True,
+                disabled=["요청", "대상자", "인력", "도착(분)", "서비스"],
+                column_config={
+                    "결정": st.column_config.SelectboxColumn(
+                        "결정", options=["수락", "거부", "보류"], required=True, width="small"),
+                    "거부 사유": st.column_config.TextColumn(
+                        "거부 사유", help="거부를 선택했다면 사유를 적어 주세요(필수)"),
+                },
+                key=f"editor_{date}_{approve_algo}",
+            )
+
+            cols = st.columns([1, 1, 3])
+            apply_clicked = cols[0].button("승인 적용", type="primary")
+            reset_clicked = cols[1].button("확정 초기화")
+
+            if reset_clicked:
+                gate.reset()
+                st.session_state.pop(f"editor_{date}_{approve_algo}", None)
+                st.success("확정 내역을 초기화했습니다.")
+                st.rerun()
+
+            if apply_clicked:
+                label_to_action = {"수락": ACCEPT, "거부": REJECT, "보류": PENDING}
+                decisions, errors = [], []
+                for _, row in edited.iterrows():
+                    action = label_to_action.get(row["결정"], PENDING)
+                    reason = (row.get("거부 사유") or "").strip()
+                    if action == REJECT and not reason:
+                        errors.append(f"{row['요청']}: 거부 사유를 입력하세요.")
+                        continue
+                    if action != PENDING:
+                        decisions.append(Decision(row["요청"], action, reason))
+
+                if errors:
+                    for e in errors:
+                        st.error(e)
+                elif not decisions:
+                    st.info("결정한 항목이 없습니다. '수락' 또는 '거부'를 선택하세요.")
+                else:
+                    try:
+                        res = gate.approve(
+                            d_sel["inst"].as_instance(),
+                            proposal,
+                            decisions,
+                            schedule_version=gate.schedule_version,
+                            service_date=date,
+                        )
+                    except Exception as e:
+                        st.error(f"승인 처리 중 오류: {e}")
+                    else:
+                        if res.ok:
+                            st.success(res.message)
+                        else:
+                            st.error(res.message)
+                        if res.violations:
+                            st.dataframe(pd.DataFrame(res.violations),
+                                         use_container_width=True, hide_index=True)
+
+        # 확정 내역
+        confirmed = gate.confirmed
+        if confirmed:
+            st.markdown(f"**확정된 배정 {len(confirmed)}건** (schedule version {gate.schedule_version})")
+            cdf = pd.DataFrame(confirmed)
+            cdf = cdf.rename(columns={"request_id": "요청", "worker_id": "인력",
+                                      "arrive_min": "도착(분)", "service_date": "날짜",
+                                      "locked": "잠금"})
+            st.dataframe(cdf, use_container_width=True, hide_index=True)
+
+            if st.button("확정 내역 CSV 내려받기"):
+                csv = cdf.to_csv(index=False).encode("utf-8-sig")
+                st.download_button("CSV 저장", csv,
+                                   file_name=f"confirmed-{date}.csv", mime="text/csv")
+        else:
+            st.info("아직 확정된 배정이 없습니다. 위에서 '수락'을 선택하고 승인 적용을 누르세요.")
 
 
 # ── 30일 실험 결과 ────────────────────────────────────────────────────────
