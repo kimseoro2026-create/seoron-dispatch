@@ -483,3 +483,87 @@ else:
         st.warning(f"⚠️ 위반 합계 {viol_total}건. 해당 방식 결과는 배정안으로 사용할 수 없습니다.")
     else:
         st.success("모든 방식에서 위반 0건 — 하드 제약을 지켰습니다.")
+
+
+# ── 취소·지연 대응 (30일 재생 실험) ───────────────────────────────────────
+st.divider()
+st.subheader("취소·지연이 생겼을 때 (30일 재생 실험)")
+
+REPLAY_KR = {"request_order_replay": "신청순 + 재배정", "nearest_replay": "근거리 + 재배정"}
+
+
+def _latest_replay_file() -> Path | None:
+    files = sorted((ROOT / "data" / "experiments").glob("30day-*.csv"),
+                   key=lambda p: p.stat().st_mtime, reverse=True)
+    return files[0] if files else None
+
+
+@st.cache_data(show_spinner=False)
+def _load_replay(path_str: str, _mtime: float) -> pd.DataFrame:  # _mtime 은 캐시 키
+    return pd.read_csv(path_str)
+
+
+rp = _latest_replay_file()
+raw = _load_replay(str(rp), rp.stat().st_mtime) if rp else None
+raw = raw[raw["algorithm"].isin(REPLAY_KR)] if raw is not None else None
+
+if raw is None or raw.empty:
+    st.info("아직 취소·지연 재생 실험 결과가 없습니다. python _run30.py 를 실행하세요.")
+else:
+    from simulator.experiment import summarize
+
+    rs = summarize(raw).copy()
+    num = raw.copy()
+    for c in ("delay_late_max", "delay_moved"):
+        if c in num.columns:
+            num[c] = pd.to_numeric(num[c], errors="coerce")
+    gmax = num.groupby(["target_rho", "algorithm"])
+
+    rs["방식"] = rs["algorithm"].map(REPLAY_KR)
+    rs["ρ(부하율)"] = rs["target_rho"]
+    rs["적기 배정률"] = (rs["적기배정률_평균"] * 100).round(1).astype(str) + "% ± " + \
+                       (rs["적기배정률_표준편차"] * 100).round(1).astype(str) + "%p"
+    cols_map = {
+        "배정있던취소_평균": "취소(배정 있던 건)",
+        "재배정성공_평균": "빈자리 다시 채움",
+        "낭비이동_평균": "헛걸음 이동(분)",
+        "지연_평균": "지연 통보",
+        "지연지킴_평균": "지연 후에도 지킴",
+        "지연상실_평균": "지연으로 놓침",
+        "다른인력이동_평균": "다른 인력이 맡음",
+        "지연폭_평균": "평균 늦어진 시간(분)",
+    }
+    shown = ["ρ(부하율)", "방식", "적기 배정률"]
+    for src, label in cols_map.items():
+        if src in rs.columns:
+            rs[label] = rs[src]
+            shown.append(label)
+    if "delay_late_max" in num.columns:
+        mx = gmax["delay_late_max"].max().rename("가장 늦어진 시간(분)").reset_index()
+        rs = rs.merge(mx, on=["target_rho", "algorithm"], how="left")
+        shown.append("가장 늦어진 시간(분)")
+    rs["위반"] = rs["위반_합계"].astype(int)
+    shown.append("위반")
+
+    st.dataframe(rs[shown].set_index(["ρ(부하율)", "방식"]), use_container_width=True)
+    n_obs = int(rs["관측수"].iloc[0]) if "관측수" in rs.columns else len(raw)
+    st.caption(
+        f"하루 평균값입니다(가장 늦어진 시간만 전체 기간 최댓값). 관측 {n_obs}일·방식, "
+        f"출처 파일: {rp.name}"
+    )
+    if "다른인력이동_평균" not in rs.columns:
+        st.caption("이 실험 파일에는 '다른 인력이 맡음' 열이 없습니다(이전 버전 실험).")
+
+    with st.expander("해석 안내"):
+        st.markdown("""
+- **재생 실험**: 아침에 짠 배정을 하루 동안 실제처럼 돌리면서, 취소·지연 통보가 **온 시각에만** 반영합니다. 미래의 취소를 미리 알지 않습니다.
+- **빈자리 다시 채움**: 취소로 빈 시간에 다른 미배정 요청을 넣은 건수입니다.
+- **헛걸음 이동**: 인력이 이미 출발한 뒤 취소 통보가 와서 쓸모없이 움직인 시간입니다.
+- **지연 후에도 지킴**: 시작이 늦어진 요청을 (원래 인력이든 다른 인력이든) 그날 안에 지킨 건수입니다. '다른 인력이 맡음'이 여기에 포함됩니다.
+- **지연으로 놓침**: 늦어진 뒤 누구도 맡을 수 없게 된 건수입니다.
+- **늦어진 시간**: 지킨 지연 건만 셉니다. 원래 시작 시각보다 얼마나 늦게 시작했는지입니다.
+- **주의**: 위 '30일 실험 결과' 표는 취소·지연을 반영하지 않아, 취소된 요청도 배정된 것으로 셉니다. 두 표의 적기 배정률을 직접 비교하면 안 되고, 이 표 안에서 방식끼리 비교해야 합니다.
+        """)
+
+    if int(rs["위반"].sum()) > 0:
+        st.warning("⚠️ 재생 실험에서 위반이 있습니다. 해당 방식 결과는 배정안으로 사용할 수 없습니다.")
