@@ -9,6 +9,7 @@
 """
 from __future__ import annotations
 
+import hashlib
 import math
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -114,7 +115,19 @@ def _appointment_minute(sim, rng) -> int:
     return int(hour * 60 + rng.integers(0, 6) * 10)
 
 
-def _requests(sim, beneficiaries, hospitals, rng) -> pd.DataFrame:
+def _event_rng(seed: int, request_id: str) -> np.random.Generator:
+    """요청 하나에 딸린 독립 난수원.
+
+    당일 이벤트(취소·지연)는 본 흐름(rng)에서 뽑지 않는다. draw 를 하나라도 끼워 넣으면
+    그 뒤의 모든 추출이 한 칸씩 밀려 인력·요청·병원 배정이 전부 달라진다. 그러면
+    '지연이 있는 데이터'와 '없는 데이터'가 지연 말고도 다른 점투성이가 되어 비교가 안 된다.
+    대신 seed 와 request_id 로 결정되는 별도 난수원을 쓴다 — 같은 seed 면 늘 같은 값이다.
+    """
+    digest = hashlib.blake2b(f"{seed}:{request_id}".encode("utf-8"), digest_size=8).digest()
+    return np.random.default_rng(int.from_bytes(digest, "big"))
+
+
+def _requests(sim, beneficiaries, hospitals, rng, seed: int = 0) -> pd.DataFrame:
     shift_start, shift_end = _hm(sim["shift"]["start"]), _hm(sim["shift"]["end"])
     rows, k = [], 1
     for day in _service_days(sim):
@@ -148,9 +161,11 @@ def _requests(sim, beneficiaries, hospitals, rng) -> pd.DataFrame:
                 tw_end = min(shift_end - duration, pref + 60)
             discharge = rng.random() < sim["discharge_case_rate"]
             cancelled = rng.random() < sim["same_day_cancel_rate"]
+            # 당일 이벤트(지연)는 본 흐름 밖의 난수원에서 뽑는다 — 위 _event_rng 주석 참고.
+            erng = _event_rng(seed, base["request_id"])
             # 지연은 취소와 동시에 일어나지 않는다. 취소된 요청은 시작하지 않으므로
             # '늦게 시작한다'가 의미를 갖지 않는다.
-            delayed = (not cancelled) and rng.random() < sim.get("same_day_delay_rate", 0.0)
+            delayed = (not cancelled) and erng.random() < sim.get("same_day_delay_rate", 0.0)
             lead_days = int(rng.integers(1, 8))
             requested_at = datetime.combine(day, datetime.min.time()) - timedelta(
                 days=lead_days, minutes=-int(rng.integers(9 * 60, 18 * 60)))
@@ -165,10 +180,10 @@ def _requests(sim, beneficiaries, hospitals, rng) -> pd.DataFrame:
                          "cancel_notice_min_before": int(rng.integers(30, 181)) if cancelled else None,
                          # 당일 지연 — 통보 시각과 지연 폭. 계획 단계에서는 쓰지 않는다.
                          "delayed_same_day": bool(delayed),
-                         "delay_minutes": (int(rng.integers(sim["delay_minutes_range"][0],
-                                                            sim["delay_minutes_range"][1] + 1))
+                         "delay_minutes": (int(erng.integers(sim["delay_minutes_range"][0],
+                                                             sim["delay_minutes_range"][1] + 1))
                                            if delayed else None),
-                         "delay_notice_min_before": (int(rng.integers(15, 61))
+                         "delay_notice_min_before": (int(erng.integers(15, 61))
                                                      if delayed else None)})
             k += 1
     return pd.DataFrame(rows)
@@ -182,6 +197,6 @@ def generate_world(sim: dict, hospitals: pd.DataFrame, population: pd.DataFrame,
     beneficiaries = _beneficiaries(sim, boundaries, population, rng)
     workers = _workers(sim, boundaries, rng)
     beneficiaries["primary_worker_id"] = _assign_primary_worker(beneficiaries, workers)
-    requests = _requests(sim, beneficiaries, hospitals.reset_index(drop=True), rng)
+    requests = _requests(sim, beneficiaries, hospitals.reset_index(drop=True), rng, seed=seed)
     return World(beneficiaries=beneficiaries, workers=workers,
                  hospitals=hospitals.reset_index(drop=True), requests=requests)

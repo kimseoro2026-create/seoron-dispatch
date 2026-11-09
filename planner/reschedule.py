@@ -152,6 +152,9 @@ class ReplayResult:
     delays: list[DelayOutcome] = field(default_factory=list)
     violations: list[dict] = field(default_factory=list)
     refill_strategy: str = ""
+    # 지연이 반영된 검증 instance. run_day 가 outer verify 에 쓴다.
+    # None 이면 지연 없이 종료된 것이므로 원본 instance 를 쓴다.
+    verified_instance: dict | None = None
 
     @property
     def ok(self) -> bool:
@@ -603,6 +606,9 @@ def replay(instance: dict, algorithm: str = "request_order",
         for rid in by_id if rid not in assigned_ids
     ]
 
-    rep = verify(_shifted_instance(instance, shift), result.assignments)
+    shifted = _shifted_instance(instance, shift)
+    rep = verify(shifted, result.assignments)
     result.violations = [v.as_dict() for v in rep.violations]
+    # run_day 가 바깥에서 다시 verify 할 때도 같은 시간창을 보도록 남긴다.
+    result.verified_instance = shifted
     return result

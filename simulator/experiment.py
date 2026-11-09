@@ -170,7 +170,7 @@ class DayResult:
         # 재생 실행이면 취소 관련 열을 덧붙인다. 다른 방식은 비워 둔다.
         for key in ("cancellations", "cancelled_with_assignment", "refilled",
                     "left_empty", "wasted_travel_min", "retimed", "displaced",
-                    "initial_assigned"):
+                    "initial_assigned", "delays", "delay_kept", "delay_lost"):
             row[key] = self.extra.get(key, "")
         return row
 
@@ -191,6 +191,7 @@ def run_day(instance: dict, algorithm: str, seed: int = 42,
     from verifier import verify
 
     cancel_stats: dict = {}
+    verify_instance = instance
     if algorithm.endswith("_replay") or algorithm.endswith("_cancel"):
         is_replay = algorithm.endswith("_replay")
         suffix = "_replay" if is_replay else "_cancel"
@@ -202,6 +203,10 @@ def run_day(instance: dict, algorithm: str, seed: int = 42,
         cancel_stats = rp.summary()
         if rp.violations:
             status = "violations"
+        # 지연이 있으면 시간창이 밀린 instance 로 검증해야 한다. 원래 창으로 다시
+        # 검증하면 정상적으로 늦춰진 배정이 시간창 위반으로 잘못 잡힌다.
+        if rp.verified_instance is not None:
+            verify_instance = rp.verified_instance
     elif algorithm == "request_order":
         r = request_order(instance)
         assignments, unassigned = r.assignments, r.unassigned
@@ -217,7 +222,7 @@ def run_day(instance: dict, algorithm: str, seed: int = 42,
     else:
         raise ValueError(f"알 수 없는 방식: {algorithm}")
 
-    rep = verify(instance, assignments)
+    rep = verify(verify_instance, assignments)
 
     req_by_id = {x["request_id"]: x for x in instance["requests"]}
     served = {req_by_id[a["request_id"]]["beneficiary_id"] for a in assignments}
