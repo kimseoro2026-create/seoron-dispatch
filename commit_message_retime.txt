@@ -1,0 +1,27 @@
+fix: 취소 후 남은 일정 재조정 (위반 3건 → 0건)
+
+일정 하나가 빠지면 앞뒤 경로가 바뀐다(A→B→C 가 A→C 로). A→C 가 B→C 보다
+길면 다음 일정의 출발이 앞당겨져 휴게와 겹친다. 기존 배정을 옮기지 않던 탓에
+재배정 결과에 하드 제약 위반이 3건 생겼다.
+
+planner/reschedule.py:
+- _retime() 추가 — 인력의 남은 일정을 처음부터 따라가며
+  ① 원래 도착이 가능하면 유지 ② 아니면 가장 이른 가능 시각으로 재조정
+  ③ 그래도 안 되면 DISPLACED 로 기록
+- 새 요청을 끼워 넣을 때도 적용. 다른 일정이 밀려나면 아예 넣지 않는다
+- _fits_at() — 검증기와 같은 규칙으로 정확한 도착 시각 수행 가능 여부 판정
+- CancellationOutcome 에 retimed / displaced 기록
+- planner/data.py 가 취소 정보(cancelled_same_day, cancel_notice_min_before)를
+  instance 에 넘기도록 수정 (그전에는 재생이 취소를 못 봐서 기준선과 결과가 같았다)
+
+실행 결과 (5일 · 기준선 2종): 위반 0건
+  신청순: 취소분을 거의 다 메움 (11-04, 11-05 는 최초 = 최종)
+  근거리: 더 많이 배정하지만 일정이 빽빽해 메울 재료가 없음
+  → 초기 배정 수가 많다고 취소 대응력이 좋은 것은 아니다
+
+tools/check_replay.py, check_replay.bat: 재배정 상세 확인
+simulator: --replay 옵션, *_replay 방식, 취소 관련 열 추가
+
+tests: 99 passed
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

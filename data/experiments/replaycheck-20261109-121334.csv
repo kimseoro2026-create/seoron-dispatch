@@ -1,0 +1,5 @@
+﻿algorithm,service_date,seed,target_rho,actual_rho,requests,assigned,on_time_rate,unique_beneficiaries,total_beneficiaries,travel_minutes,utilization,solve_seconds,violations,status,cancellations,cancelled_with_assignment,refilled,left_empty,wasted_travel_min,initial_assigned
+request_order,2026-11-02,42,0.9,0.761,50,27,0.54,27,48,158,0.3602,0.0,0,ok,,,,,,
+nearest,2026-11-02,42,0.9,0.761,50,33,0.66,32,48,153,0.4661,0.0,0,ok,,,,,,
+request_order_replay,2026-11-02,42,0.9,0.761,50,27,0.54,27,48,158,0.3602,0.0,0,ok,0,0,0,0,0,27
+nearest_replay,2026-11-02,42,0.9,0.761,50,33,0.66,32,48,153,0.4661,0.0,0,ok,0,0,0,0,0,33

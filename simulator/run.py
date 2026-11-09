@@ -30,6 +30,7 @@ def main() -> None:
     ap.add_argument("--rhos",       type=str,   default="0.6,0.9,1.1", help="부하율 목록 (쉼표 구분)")
     ap.add_argument("--time-limit", type=int,   default=10,      help="최적화 계산 제한(초)")
     ap.add_argument("--no-optimize",action="store_true",          help="최적화 방식 제외 (빠른 기준선 비교)")
+    ap.add_argument("--replay",     action="store_true",          help="취소 재배정 포함 (request_order_replay, nearest_replay)")
     ap.add_argument("--tag",        type=str,   default="run",   help="출력 파일 접두어")
     args = ap.parse_args()
 
@@ -37,6 +38,9 @@ def main() -> None:
     rhos   = [float(r) for r in args.rhos.split(",")]
     algos  = ["request_order", "nearest"] if args.no_optimize else \
              ["request_order", "nearest", "optimize"]
+    if args.replay:
+        # 같은 날 초기 배정을 같게 하고, 취소 후 재배정만 다른 결과를 비교한다
+        algos = algos + ["request_order_replay", "nearest_replay"]
 
     from planner.data import service_dates
     from simulator.experiment import run_experiment, save, summarize

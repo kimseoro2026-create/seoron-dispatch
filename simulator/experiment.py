@@ -138,6 +138,8 @@ class DayResult:
     violations: int
     status: str
     reasons: dict = field(default_factory=dict)
+    # 재생(replay) 실행에서만 채워지는 취소 관련 수치
+    extra: dict = field(default_factory=dict)
 
     @property
     def on_time_rate(self) -> float:
@@ -148,7 +150,7 @@ class DayResult:
         return self.work_minutes / self.available_minutes if self.available_minutes else 0.0
 
     def as_row(self) -> dict:
-        return {
+        row = {
             "algorithm": self.algorithm,
             "service_date": self.service_date,
             "seed": self.seed,
@@ -165,16 +167,37 @@ class DayResult:
             "violations": self.violations,
             "status": self.status,
         }
+        # 재생 실행이면 취소 관련 열을 덧붙인다. 다른 방식은 비워 둔다.
+        for key in ("cancellations", "cancelled_with_assignment", "refilled",
+                    "left_empty", "wasted_travel_min", "retimed", "displaced",
+                    "initial_assigned"):
+            row[key] = self.extra.get(key, "")
+        return row
 
 
 def run_day(instance: dict, algorithm: str, seed: int = 42,
             time_limit_sec: int = 30) -> DayResult:
-    """하루치를 한 방식으로 돌리고 지표를 계산한다. 결과는 검증기로 다시 확인한다."""
+    """하루치를 한 방식으로 돌리고 지표를 계산한다. 결과는 검증기로 다시 확인한다.
+
+    algorithm 에 '_replay' 가 붙으면 취소 이벤트를 재생한다
+    (예: 'request_order_replay'). 초기 배정은 앞부분의 방식으로 한다.
+    """
     from planner.baseline import nearest, request_order
     from planner.optimize import optimize
+    from planner.reschedule import replay
     from verifier import verify
 
-    if algorithm == "request_order":
+    cancel_stats: dict = {}
+    if algorithm.endswith("_replay"):
+        base_algo = algorithm[: -len("_replay")]
+        rp = replay(instance, base_algo, refill_strategy=base_algo)
+        assignments = rp.assignments
+        unassigned = rp.unassigned
+        status, secs = "ok", 0.0
+        cancel_stats = rp.summary()
+        if rp.violations:
+            status = "violations"
+    elif algorithm == "request_order":
         r = request_order(instance)
         assignments, unassigned = r.assignments, r.unassigned
         status, secs = "ok", 0.0
@@ -200,7 +223,7 @@ def run_day(instance: dict, algorithm: str, seed: int = 42,
         key = u["reason"] if isinstance(u, dict) else u.reason
         reasons[key] = reasons.get(key, 0) + 1
 
-    return DayResult(
+    result = DayResult(
         algorithm=algorithm,
         service_date=str(instance.get("service_date", "")),
         seed=seed,
@@ -218,6 +241,17 @@ def run_day(instance: dict, algorithm: str, seed: int = 42,
         status=status,
         reasons=reasons,
     )
+    # 재생 실행이면 취소 관련 수치를 함께 남긴다
+    if cancel_stats:
+        result.extra = {
+            "cancellations": cancel_stats.get("cancellations", 0),
+            "cancelled_with_assignment": cancel_stats.get("cancelled_with_assignment", 0),
+            "refilled": cancel_stats.get("refilled", 0),
+            "left_empty": cancel_stats.get("left_empty", 0),
+            "wasted_travel_min": cancel_stats.get("wasted_travel_min", 0),
+            "initial_assigned": cancel_stats.get("initial_assigned", 0),
+        }
+    return result
 
 
 # ── 실험 실행 ─────────────────────────────────────────────────────────────
@@ -230,6 +264,9 @@ def run_experiment(data_dir: str | Path,
                    time_limit_sec: int = 10,
                    progress: Callable[[str], None] | None = None) -> pd.DataFrame:
     """여러 날 × 여러 방식 × 여러 부하율 × 여러 시드를 돌려 한 표로 돌려준다.
+
+    algorithms 에 'request_order_replay' 처럼 '_replay' 를 붙이면 취소 재배정을 포함한다.
+    해당 날짜에 취소가 하나도 없으면 재생 결과는 기준선과 같다(그것도 기록한다).
 
     계산 시간이 크게 늘 수 있으므로 날짜·시드 수를 먼저 줄여 확인할 것.
     """
@@ -283,6 +320,38 @@ def summarize(df: pd.DataFrame) -> pd.DataFrame:
         "위반_합계": g["violations"].sum(),
         "관측수": g.size(),
     }).reset_index()
+
+    # 재생(replay) 실행이 있으면 취소 관련 지표를 덧붙인다.
+    # 비재생 행은 빈 문자열이므로 숫자로 바꿔 계산한다.
+    # 열이 아예 없을 수도 있다(예전에 저장한 CSV). 있는 열만 계산한다 —
+    # 없는 열을 요구하면 이미 저장된 원본으로는 요약을 복구할 수 없다.
+    extra_spec = {
+        "취소_평균": ("cancellations", 2),
+        "배정있던취소_평균": ("cancelled_with_assignment", 2),
+        "재배정성공_평균": ("refilled", 2),
+        "빈슬롯_평균": ("left_empty", 2),
+        "낭비이동_평균": ("wasted_travel_min", 1),
+        "시각변경_평균": ("retimed", 2),
+        "밀려남_평균": ("displaced", 2),
+    }
+    if "cancellations" in df.columns:
+        num = df.copy()
+        for col, _digits in extra_spec.values():
+            if col in num.columns:
+                num[col] = pd.to_numeric(num[col], errors="coerce")
+        gr = num.groupby(["target_rho", "algorithm"])
+        cols = {}
+        for out_name, (src_col, digits) in extra_spec.items():
+            if src_col in num.columns:
+                cols[out_name] = gr[src_col].mean().round(digits)
+
+        missing = [src for src, _d in extra_spec.values() if src not in num.columns]
+        if missing:
+            print(f"  참고: 원본 CSV 에 없는 열이라 건너뜁니다 — {', '.join(missing)}")
+
+        if cols:
+            out = out.merge(pd.DataFrame(cols).reset_index(),
+                            on=["target_rho", "algorithm"], how="left")
     return out
 
 

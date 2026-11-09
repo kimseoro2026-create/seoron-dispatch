@@ -1,0 +1,21 @@
+perf: scope travel matrix to day nodes, vectorize estimate, limit timeline
+
+Three app speed improvements:
+
+1. planner/data.py: load_day now builds travel for day-specific nodes only
+   (~70 nodes -> ~4,900 pairs vs 519,120 full matrix). 100x fewer pairs.
+   estimate_travel accepts optional node_ids set.
+   load_travel filters CSV rows to node_ids when given.
+
+2. planner/data.py + f0/geo.py: vectorize estimate_travel with numpy
+   broadcasting. Pure-Python loop over 519k pairs -> single matrix op.
+   Extract HAVERSINE_R_KM, DRIVE_DETOUR, DRIVE_KMH, DRIVE_FIXED as shared
+   constants so both scalar and vector paths agree.
+
+3. app/main.py: show only workers with assignments (up to 8) in timeline.
+   Optimizer time limit 30s -> 8s. travel source shows estimate not unknown
+   when travel_matrix.csv is absent.
+
+Tests: 75 passed (3 new repair tests included).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

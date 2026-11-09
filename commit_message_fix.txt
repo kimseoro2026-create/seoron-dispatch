@@ -1,0 +1,10 @@
+fix: Streamlit Cloud module resolution and duplicate ROOT
+
+- Add sys.path insert in app/main.py so planner/, verifier/, f0/
+  are found when the app runs from /mount/src/seoron-dispatch/app/
+- Remove duplicate ROOT definition
+- Add estimate_travel fallback in planner/data.py when
+  travel_matrix.csv is absent (61MB file excluded from repo)
+- Update .gitignore to include synthetic data files
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

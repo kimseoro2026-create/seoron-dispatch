@@ -148,6 +148,13 @@ def _request(r) -> dict:
         "priority_reason": _priority_reason(r),
         "requested_at": str(r.requested_at),
         "required_skills": [service_type],
+        # 취소 정보 — 재배정(reschedule)이 '언제 통보되는지'를 알아야 한다.
+        # 배정 단계에서는 쓰지 않는다(미래 정보 금지). 이벤트 재생에서만 쓴다.
+        "cancelled_same_day": bool(getattr(r, "cancelled_same_day", False)),
+        "cancel_notice_min_before": (
+            None if pd.isna(getattr(r, "cancel_notice_min_before", None))
+            else int(r.cancel_notice_min_before)
+        ),
     }
     if is_escort:
         item.update(
