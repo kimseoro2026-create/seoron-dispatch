@@ -1,6 +1,6 @@
 # 3분 시연 영상 대본 — 서로ON 돌봄배정 AI (M1)
 
-- 화면: Streamlit 심사용 링크(또는 `streamlit run app/main.py`), 가로 1600px 이상 권장
+- 화면: https://seoron-dispatch-blgk8n6odqv5cdgflu3asd.streamlit.app (또는 `streamlit run app/main.py`), 가로 1600px 이상 권장
 - 30일 실험 숫자는 `docs/submission/numbers.md`에서 옮긴 값이다. 하루 화면의 숫자는 **화면에 나온 값을 그대로 읽는다**(대본에 미리 적지 않는다).
 - 말하는 속도: 1분에 약 300자 기준
 

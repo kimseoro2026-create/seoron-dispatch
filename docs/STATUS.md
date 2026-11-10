@@ -893,3 +893,6 @@ CLAUDE.md 9절 기준 남은 것:
   - 리눅스 설치 파일 확인: Python 3.12·3.13 은 모두 있음, **3.11 은 numpy 2.5.4 없음** → 배포 시 3.12 선택
   - `use_container_width=True` → `width="stretch"` (Streamlit 이 제거 예고한 인자)
 - 다음: share.streamlit.io 앱 목록에서 주소 확인 → Manage app 로그의 오류 확인. Python 버전이 3.11 이면 앱을 지우고 3.12 로 재배포.
+- **해결(11/11)**: 배포는 이미 있었다 — https://seoron-dispatch-blgk8n6odqv5cdgflu3asd.streamlit.app
+  (이전 계정 세션 기록에 있던 주소). 열어 보니 정상 동작, 사이드바 출처가 'OSRM 도로 / 심평원 병원 400곳'으로 최신 push 반영 확인.
+  사용자가 '안 된다'고 본 것은 로컬 `http://localhost:8501`(서버가 꺼져 있었음)이었다. 1쪽 요약·시연 대본에 링크 기입.

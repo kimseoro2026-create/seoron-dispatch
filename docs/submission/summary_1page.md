@@ -1,7 +1,7 @@
 # 서로ON 돌봄배정 AI — M1 중간 과제 요약 (2026-11-16)
 
 > 모든 숫자는 `docs/submission/numbers.md`(실험 CSV에서 자동 계산)에서 옮겼다. 데이터는 전부 가상이다.
-> 심사용 링크: **(배포 후 기입)** · 저장소: github.com/kimseoro2026-create/seoron-dispatch
+> 심사용 링크: **https://seoron-dispatch-blgk8n6odqv5cdgflu3asd.streamlit.app** · 저장소: github.com/kimseoro2026-create/seoron-dispatch
 
 ## 1. 만든 것
 
