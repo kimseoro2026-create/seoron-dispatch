@@ -1,9 +1,12 @@
-numpy>=1.26
-pandas>=2.1
-shapely>=2.0
-pyyaml>=6.0
-requests>=2.31
-python-dotenv>=1.0
-pytest>=8.0
-ortools>=9.8
-streamlit>=1.30
+# 로컬 검증 버전으로 고정한다(2026-11-11, pytest 128 passed).
+# 배포(Streamlit Community Cloud)는 Python 3.12 또는 3.13 을 고른다.
+# numpy 2.5.x 는 Python 3.11 리눅스 설치 파일이 없다.
+numpy==2.5.4
+pandas==3.1.1
+shapely==2.2.0
+pyyaml==6.0.3
+requests==2.34.2
+python-dotenv==1.2.4
+pytest==9.2.0
+ortools==9.15.6755
+streamlit==1.67.0

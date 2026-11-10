@@ -212,7 +212,7 @@ if results:
             "위반": violations,
         })
     df_cmp = pd.DataFrame(rows).set_index("방식")
-    st.dataframe(df_cmp, use_container_width=True)
+    st.dataframe(df_cmp, width="stretch")
     st.caption("고유 인원 = 배정받은 사람 수 / 요청이 있는 전체 사람 수 (같은 사람 2건 = 1명)")
 
     if any(r["rep"].violations for r in results.values()):
@@ -326,7 +326,7 @@ if tab_names:
                     udf["certainty"] = udf["certainty"].map(cert_label).fillna(udf["certainty"])
                 rename = {"request_id": "요청", "reason": "사유", "certainty": "확실성", "detail": "상세"}
                 udf = udf.rename(columns={k: v for k, v in rename.items() if k in udf.columns})
-                st.dataframe(udf, use_container_width=True, hide_index=True)
+                st.dataframe(udf, width="stretch", hide_index=True)
             else:
                 st.success("미배정 요청이 없습니다.")
 
@@ -334,7 +334,7 @@ if tab_names:
             if d["rep"].violations:
                 st.error("**하드 제약 위반 — 이 배정안은 사용할 수 없습니다.**")
                 vdf = pd.DataFrame([v.as_dict() for v in d["rep"].violations])
-                st.dataframe(vdf, use_container_width=True, hide_index=True)
+                st.dataframe(vdf, width="stretch", hide_index=True)
 
 
 # ── 담당자 승인 ───────────────────────────────────────────────────────────
@@ -385,7 +385,7 @@ else:
 
             edited = st.data_editor(
                 pd.DataFrame(rows),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
                 disabled=["요청", "대상자", "인력", "도착(분)", "서비스"],
                 column_config={
@@ -442,7 +442,7 @@ else:
                             st.error(res.message)
                         if res.violations:
                             st.dataframe(pd.DataFrame(res.violations),
-                                         use_container_width=True, hide_index=True)
+                                         width="stretch", hide_index=True)
 
         # 확정 내역
         confirmed = gate.confirmed
@@ -452,7 +452,7 @@ else:
             cdf = cdf.rename(columns={"request_id": "요청", "worker_id": "인력",
                                       "arrive_min": "도착(분)", "service_date": "날짜",
                                       "locked": "잠금"})
-            st.dataframe(cdf, use_container_width=True, hide_index=True)
+            st.dataframe(cdf, width="stretch", hide_index=True)
 
             if st.button("확정 내역 CSV 내려받기"):
                 csv = cdf.to_csv(index=False).encode("utf-8-sig")
@@ -492,7 +492,7 @@ else:
     summ["위반"] = summ["위반_합계"].astype(int)
 
     show = summ[["ρ(부하율)", "방식", "적기 배정률", "고유인원", "총이동(분)", "활용률", "위반"]]
-    st.dataframe(show.set_index(["ρ(부하율)", "방식"]), use_container_width=True)
+    st.dataframe(show.set_index(["ρ(부하율)", "방식"]), width="stretch")
 
     with st.expander("해석 안내"):
         st.markdown("""
@@ -570,7 +570,7 @@ else:
     rs["위반"] = rs["위반_합계"].astype(int)
     shown.append("위반")
 
-    st.dataframe(rs[shown].set_index(["ρ(부하율)", "방식"]), use_container_width=True)
+    st.dataframe(rs[shown].set_index(["ρ(부하율)", "방식"]), width="stretch")
     n_obs = int(rs["관측수"].iloc[0]) if "관측수" in rs.columns else len(raw)
     st.caption(
         f"하루 평균값입니다(가장 늦어진 시간만 전체 기간 최댓값). 관측 {n_obs}일·방식, "

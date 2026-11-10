@@ -719,7 +719,7 @@ f0가 지연 데이터를 아예 만들지 않았으므로 생성부터 손봤�
 - 이동시간 행렬 압축본 `data/processed/travel_matrix.csv.gz`(3.7MB)를 커밋한다. 원본 CSV 가 없으면
   `planner.data.matrix_path()`가 압축본을 쓴다 → Streamlit Cloud 에서도 출처가 OSRM 으로 나온다. `f0 matrix`가 압축본도 함께 쓴다.
 - 화면 사이드바에 병원·고령인구 출처 표시 추가(데이터에서 MOCK/가상동 여부로 판정).
-- **심사용 링크 없음.** 사용자가 share.streamlit.io 에서 직접 배포해야 한다(main file `app/main.py`, Python 3.11 권장).
+- **심사용 링크 없음.** 사용자가 share.streamlit.io 에서 직접 배포해야 한다(main file `app/main.py`, Python 3.12 또는 3.13 — 3.11 은 numpy 2.5.4 설치 불가).
 
 ### 제출 패키지 (`docs/submission/`)
 - `summary_1page.md` — 1쪽 요약(만든 것 / 결과 / 한계 / 다음 단계). 링크 칸은 '배포 후 기입'.
@@ -883,3 +883,13 @@ CLAUDE.md 9절 기준 남은 것:
 
 이 4개는 `.gitignore` 대상이 아니므로 커밋에 포함했다. 재실험이 끝나면 정리할 것.
 
+
+## 배포 점검 — 2026-11-11
+
+- 사용자: 기존 배포 메인 페이지가 동작하지 않음(주소 모름 → 배포 서버 로그 미확인, **원인 미확정**).
+- 새 clone(`a8fdfcf`)으로 로컬 실행 → 정상. 로컬에서는 재현되지 않는다.
+- 배포 환경 차이를 줄이려고 한 것:
+  - `requirements.txt`를 로컬 검증 버전으로 고정(streamlit 1.67.0, ortools 9.15.6755, pandas 3.1.1, numpy 2.5.4 …)
+  - 리눅스 설치 파일 확인: Python 3.12·3.13 은 모두 있음, **3.11 은 numpy 2.5.4 없음** → 배포 시 3.12 선택
+  - `use_container_width=True` → `width="stretch"` (Streamlit 이 제거 예고한 인자)
+- 다음: share.streamlit.io 앱 목록에서 주소 확인 → Manage app 로그의 오류 확인. Python 버전이 3.11 이면 앱을 지우고 3.12 로 재배포.
