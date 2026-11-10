@@ -107,6 +107,9 @@ def cmd_matrix(_args) -> None:
     long, source = build_matrix(nodes, os.environ.get("OSRM_URL"), factor)
     nodes.to_csv(OUT / "nodes.csv", index=False, encoding="utf-8-sig")
     long.to_csv(OUT / "travel_matrix.csv", index=False, encoding="utf-8-sig")
+    # 배포용 압축본 — 원본은 git 제외, 압축본만 커밋한다(planner.data.matrix_path)
+    long.to_csv(OUT / "travel_matrix.csv.gz", index=False, encoding="utf-8-sig",
+                compression={"method": "gzip", "compresslevel": 9, "mtime": 0})
     note = "OSRM 도로 소요시간" if source == "osrm" else "직선거리 기반 대략값(OSRM 미연결)"
     print(f"노드 {len(nodes)}개, 행렬 {len(long):,}칸 저장 - 출처: {note}")
 

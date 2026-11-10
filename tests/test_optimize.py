@@ -136,3 +136,27 @@ def test_verifier_is_independent_of_planner():
     body = "\n".join(l for l in src.splitlines() if not l.strip().startswith("#"))
     assert "import planner" not in body
     assert "from planner" not in body
+
+
+# ── 상태 코드 해석 (OR-Tools RoutingSearchStatus) ─────────────────────────
+def test_status_success_is_feasible_not_optimal():
+    """SUCCESS(1)는 해를 찾았다는 뜻일 뿐 최적 증명이 아니다."""
+    from planner.optimize import STATUS_FEASIBLE, map_status
+    assert map_status(1) == STATUS_FEASIBLE
+    assert map_status(2) == STATUS_FEASIBLE
+
+
+def test_status_optimal_infeasible_timeout():
+    from planner.optimize import (STATUS_INFEASIBLE, STATUS_OPTIMAL,
+                                  STATUS_TIMEOUT, map_status)
+    assert map_status(7) == STATUS_OPTIMAL
+    assert map_status(6) == STATUS_INFEASIBLE
+    assert map_status(3) == STATUS_INFEASIBLE
+    assert map_status(4) == STATUS_TIMEOUT
+
+
+def test_status_unknown_is_error():
+    from planner.optimize import STATUS_ERROR, map_status
+    assert map_status(0) == STATUS_ERROR
+    assert map_status(5) == STATUS_ERROR
+    assert map_status(99) == STATUS_ERROR

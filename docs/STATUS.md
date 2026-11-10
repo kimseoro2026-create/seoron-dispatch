@@ -694,6 +694,45 @@ f0가 지연 데이터를 아예 만들지 않았으므로 생성부터 손봤�
 > 이 절은 작업 세션을 이어받는 사람이 **여기부터** 읽으면 되도록 쓴 것이다.
 > 위쪽 절들은 날짜순 작업 기록이므로, 지금 상태를 알려면 이 절만 보면 된다.
 
+## 0. 최신 (2026-11-10 오전) — 이 아래 1~4절보다 우선한다
+
+### 실제 병원 데이터 복구
+- 11/9 커밋 `360fb4c`에서 `data/raw/hospitals.csv`가 **모의 병원 40곳(MOCK-H…)으로 덮어써져 있었다**
+  (지연 이벤트 재생성 때 `f0 all --offline` 경로가 mock 을 다시 쓴 것으로 보임).
+  그래서 11/9~11/10 새벽 실험(`delay30b`, `cancel30b`, `30day-20261109-231245`, `30day-20261110-022546`)은 **모의 병원 기준**이다.
+- `git checkout 926d0b1 -- data/raw/hospitals.csv`로 실제 400곳 복구 → `f0 generate` → `f0 matrix`(OSRM, 519,120칸).
+- **재발 방지 주의**: `python -m f0 all --offline` / `python -m f0 mock`은 `data/raw/`를 모의값으로 덮어쓴다. 실제 데이터 권역에서는 `generate`·`matrix`만 쓸 것.
+- 고령인구(`population.csv`)는 처음부터 모의값(`가상동`)이다. 인구 API는 여전히 상세 화면 대기.
+
+### 실제 병원 기준 재실험 (제출 수치의 출처)
+- `full-20261110-095535.csv` — 3방식 × ρ 0.6/0.9/1.1 × 30일 × 시드 42/43/44 = 810행, 위반 0
+- `30day-20261110-095539.csv` — 재생 2방식 + 기준선 2방식, ρ=0.9, 360행, 위반 0
+- 수치표: `python -m tools.submission_numbers` → `docs/submission/numbers.md` (자동 생성, 손대지 말 것)
+- 결과 요지: ρ=0.9에서 근거리가 신청순 대비 고유 인원 +4.0명/일(+14.3%), 이동 -20.9%. 최적화는 근거리와 비슷하거나 약간 나쁨(이긴 날 38 / 진 날 98 / 같음 134).
+
+### 최적화 상태 표기 버그 수정
+- `planner/optimize.py`가 OR-Tools `ROUTING_SUCCESS(1)`를 `optimal`로 적고 있었다. 1은 '제한시간 안에 해를 찾음'일 뿐이다.
+  `map_status()`로 분리: 1·2 → feasible, 7 → optimal, 3·6 → infeasible, 4 → timeout, 그 외(0·5) → error. 테스트 3개 추가.
+- `full-20261110-095535.csv`의 `status=optimal`은 수정 **전** 코드로 돌린 것이라 실제 의미는 feasible 이다(수치표에 주석으로 표시).
+
+### 배포 준비
+- 이동시간 행렬 압축본 `data/processed/travel_matrix.csv.gz`(3.7MB)를 커밋한다. 원본 CSV 가 없으면
+  `planner.data.matrix_path()`가 압축본을 쓴다 → Streamlit Cloud 에서도 출처가 OSRM 으로 나온다. `f0 matrix`가 압축본도 함께 쓴다.
+- 화면 사이드바에 병원·고령인구 출처 표시 추가(데이터에서 MOCK/가상동 여부로 판정).
+- **심사용 링크 없음.** 사용자가 share.streamlit.io 에서 직접 배포해야 한다(main file `app/main.py`, Python 3.11 권장).
+
+### 제출 패키지 (`docs/submission/`)
+- `summary_1page.md` — 1쪽 요약(만든 것 / 결과 / 한계 / 다음 단계). 링크 칸은 '배포 후 기입'.
+- `demo_script_3min.md` — 3분 시연 대본 + 촬영 전 확인 목록.
+- `numbers.md` — 위 두 문서 숫자의 출처.
+
+### 남은 일 (M1, 11/16)
+1. 사용자 배포 → 링크를 요약에 기입, 배포 화면에서 출처가 'OSRM 도로'로 나오는지 확인
+2. 시연 영상 촬영(사용자)
+3. 루트 스크래치 파일 정리(`commit_message_*.txt`, `push_*.bat`, `0`, `_diag.py` 등)
+
+- `python -m pytest -q` → 128 passed (11/10)
+
 ## 1. 지금 저장소가 어떤 상태인가
 
 - 브랜치 `main`. 마지막 커밋은 이 문서를 포함한 커밋이다.

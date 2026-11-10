@@ -28,6 +28,27 @@ STATUS_OPTIMAL = "optimal"
 STATUS_FEASIBLE = "feasible"
 STATUS_INFEASIBLE = "infeasible"
 STATUS_TIMEOUT = "timeout"
+
+
+def map_status(raw: int) -> str:
+    """OR-Tools RoutingSearchStatus 정수값 → 엔진 상태.
+
+    버전마다 상수 위치가 달라 정수로 비교한다(9.15 기준 enum 값으로 확인).
+    0 NOT_SOLVED / 1 SUCCESS / 2 PARTIAL_SUCCESS_LOCAL_OPTIMUM_NOT_REACHED / 3 FAIL /
+    4 FAIL_TIMEOUT / 5 INVALID / 6 INFEASIBLE / 7 OPTIMAL
+
+    SUCCESS(1)는 '제한시간 안에 해를 찾았다'는 뜻이지 최적 증명이 아니다 → feasible.
+    INVALID(5)는 모델을 잘못 만든 것이므로 infeasible 이 아니라 error 로 둔다.
+    """
+    if raw == 7:
+        return STATUS_OPTIMAL
+    if raw in (1, 2):
+        return STATUS_FEASIBLE
+    if raw == 4:
+        return STATUS_TIMEOUT
+    if raw in (3, 6):
+        return STATUS_INFEASIBLE
+    return STATUS_ERROR
 STATUS_ERROR = "error"
 
 SOLVER_UNRESOLVED = "SOLVER_UNRESOLVED"
@@ -244,19 +265,7 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
     assignment = routing.SolveWithParameters(params)
     elapsed = round(time.time() - t0, 2)
 
-    # OR-Tools 상태 상수는 버전마다 위치와 이름이 달라서 정수값으로 비교한다.
-    # 0 NOT_SOLVED / 1 SUCCESS / 2 PARTIAL_SUCCESS / 3 FAIL / 4 FAIL_TIMEOUT / 5 INVALID
-    raw_status = int(routing.status())
-    if raw_status == 1:
-        status = STATUS_OPTIMAL
-    elif raw_status == 2:
-        status = STATUS_FEASIBLE
-    elif raw_status == 4:
-        status = STATUS_TIMEOUT
-    elif raw_status in (3, 5):
-        status = STATUS_INFEASIBLE
-    else:
-        status = STATUS_ERROR
+    status = map_status(int(routing.status()))
 
     result = OptimizeResult(status=status, solve_seconds=elapsed)
 

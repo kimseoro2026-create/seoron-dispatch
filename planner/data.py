@@ -37,6 +37,19 @@ class DayInstance:
         return {"workers": self.workers, "requests": self.requests, "travel": self.travel}
 
 
+def matrix_path(data_dir: str | Path) -> Path | None:
+    """이동시간 행렬 파일 위치. 원본 CSV 를 먼저, 없으면 압축본(.csv.gz)을 쓴다.
+
+    원본(약 61MB)은 저장소에 넣지 않고, 압축본(약 4MB)만 넣어 심사용 배포에서도
+    OSRM 행렬을 쓰게 한다. 둘 다 없으면 None — 호출자가 추정 행렬로 대체한다.
+    """
+    d = Path(data_dir)
+    for name in ("travel_matrix.csv", "travel_matrix.csv.gz"):
+        if (d / name).exists():
+            return d / name
+    return None
+
+
 def load_travel(data_dir: str | Path, node_ids: set[str] | None = None) -> dict[tuple[str, str], float]:
     """travel_matrix.csv → {(from, to): 분}.
 
@@ -44,8 +57,8 @@ def load_travel(data_dir: str | Path, node_ids: set[str] | None = None) -> dict[
     파일이 없으면 nodes.csv 좌표로 추정 행렬을 만든다.
     (61MB 행렬을 저장소에 넣지 않기 위한 대체 경로. 추정값이므로 화면에 출처를 표시한다.)
     """
-    path = Path(data_dir) / "travel_matrix.csv"
-    if not path.exists():
+    path = matrix_path(data_dir)
+    if path is None:
         return estimate_travel(data_dir, node_ids)
     df = pd.read_csv(path, usecols=["from_node", "to_node", "minutes"])
     if node_ids is not None:

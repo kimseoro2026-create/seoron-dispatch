@@ -42,11 +42,10 @@ st.title("돌봄배정 하루 비교")
 
 # ── 데이터 로딩 ───────────────────────────────────────────────────────────
 def _data_stamp() -> str:
-    """travel_matrix.csv 수정시각을 캐시 키로 쓴다. 파일이 바뀌면 캐시가 무효화된다."""
-    try:
-        return str((ROOT / "data" / "processed" / "travel_matrix.csv").stat().st_mtime)
-    except FileNotFoundError:
-        return "missing"
+    """이동시간 행렬 파일(원본 또는 .gz) 수정시각을 캐시 키로 쓴다. 파일이 바뀌면 캐시가 무효화된다."""
+    from planner.data import matrix_path
+    p = matrix_path(ROOT / "data" / "processed")
+    return f"{p.name}:{p.stat().st_mtime}" if p else "missing"
 
 
 @st.cache_data(show_spinner="데이터 불러오는 중…")
@@ -108,14 +107,38 @@ def _matrix_source(stamp: str):  # stamp 는 캐시 키 역할
     파일이 없는데 unknown 이라고 적으면, 실제로는 추정값을 쓰면서 출처를 숨기는 셈이 된다
     (CLAUDE.md 절대원칙 3: 대략값은 estimate 로 표시한다).
     """
-    path = ROOT / "data" / "processed" / "travel_matrix.csv"
-    if not path.exists():
+    from planner.data import matrix_path
+    path = matrix_path(ROOT / "data" / "processed")
+    if path is None:
         return "estimate"
     try:
         df = pd.read_csv(path, nrows=1)
         return df["source"].iloc[0] if "source" in df.columns else "estimate"
     except Exception:
         return "estimate"
+
+
+@st.cache_data(show_spinner=False)
+def _raw_sources() -> dict[str, str]:
+    """병원·인구 원천이 실제 API 수집인지 모의(mock)인지 데이터 자체로 판정한다.
+
+    모의 생성기(f0/mock.py)는 병원 ID 를 'MOCK-', 행정동 이름을 '가상동' 으로 만든다.
+    판정할 수 없으면 '확인 불가' 로 둔다(실제라고 가정하지 않는다).
+    """
+    out: dict[str, str] = {}
+    try:
+        h = pd.read_csv(ROOT / "data" / "processed" / "hospitals.csv")
+        is_mock = h["hospital_id"].astype(str).str.startswith("MOCK").any()
+        out["병원"] = f"모의 데이터 {len(h)}곳" if is_mock else f"심평원 병원기본목록 API {len(h)}곳"
+    except Exception:
+        out["병원"] = "확인 불가"
+    try:
+        p = pd.read_csv(ROOT / "data" / "raw" / "population.csv")
+        is_mock = p["dong"].astype(str).str.startswith("가상동").any()
+        out["고령인구"] = "모의 데이터" if is_mock else "행안부 행정동별 인구 API"
+    except Exception:
+        out["고령인구"] = "확인 불가"
+    return out
 
 
 # ── 사이드바 ──────────────────────────────────────────────────────────────
@@ -137,6 +160,8 @@ with st.sidebar:
     src = _matrix_source(stamp)
     src_label = {"osrm": "OSRM 도로", "estimate": "직선거리 대략값", "kakao": "카카오 길찾기"}.get(src, src)
     st.caption(f"이동시간 출처: **{src_label}**")
+    for _label, _text in _raw_sources().items():
+        st.caption(f"{_label} 출처: **{_text}**")
     st.caption(_source())
 
 

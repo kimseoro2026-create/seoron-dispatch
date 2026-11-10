@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-11-09T22:28:47",
+  "generated_at": "2026-11-10T08:56:26",
   "seed": 42,
   "assumption_note": "simulation 파라미터는 초기 가정값입니다(config/region.yaml).",
   "beneficiaries": 300,
   "workers": 20,
-  "hospitals": 40,
+  "hospitals": 400,
   "service_days": 30,
   "requests": 1810,
   "requests_per_day_avg": 60.3,
