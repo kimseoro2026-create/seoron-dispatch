@@ -905,3 +905,37 @@ CLAUDE.md 9절 기준 남은 것:
   run_simulator_pilot, fetch_hospitals, rebuild_region, rebuild_matrix.
 - `_run30.py` → `tools/run_replay30.py` (`python -m tools.run_replay30`). 위 인수인계 절의 `_run30.py`·`_diag.py` 언급은 이 경로로 읽을 것.
 - README 를 프로젝트 전체 안내로 다시 씀(심사용 링크, 실행·실험 명령, `f0 --offline` 덮어쓰기 경고).
+
+## 요청 카드 자동 정리 (M2, W02·W03) — 2026-11-11 mock 단계 완료
+
+한 일:
+- `intake/` 새 패키지: 원문 → 추출기 → JSON Schema 검사 → 근거·형식 검사 → 담당자 확인.
+  - `schema.py` 필드 12개(배정 필수: 대상자·서비스 종류·서비스일·시작 가능/늦어도 시각 + 가사 필요시간 / 동행 병원·예약·체류).
+  - `validate.py` 결정적 사후 검사: 근거가 원문에 없으면 값 버림, 형식 오류 버림, 연도 없는 날짜는 확인 필요,
+    이동 표현은 원문 그대로만(‘자립보행’ 판정 차단), 시각 순서, 서비스 종류와 안 맞는 항목. 값을 고치지 않고 버리거나 표시만 한다.
+  - `synth.py` 합성 원문 + 정답 40건(`fixtures/request_cards/cases.json`). 정답은 requests.csv 값에서 계산(LLM 미사용).
+    유형 7개: 표준·연도 없음·시간 누락·원문 속 지시문·퇴원 예정/실제·말 표현·양식 없는 메모.
+  - `rules.py` 규칙 추출기 = 키 없을 때의 모의 추출기이자 비교 기준선. 화면에 항상 ‘규칙 추출(모의)’.
+  - `extract.py` 프롬프트 `card-v1`. LLM 실패 시 규칙으로 몰래 바꾸지 않고 `llm_error`.
+  - `evaluate.py` 정확도·틀린 값·누락·지어낸 값·확인 필요 재현율·**위험한 ready 카드**·이동능력 판정 시도.
+- `adapters/llm.py`: Anthropic Messages 형식, `Authorization: Bearer`(Claude Code 설정의 AUTH_TOKEN과 같은 방식).
+  같은 (모델·프롬프트 버전·입력)은 `data/llm_cache/`에 저장해 재사용(시연 시 키 없이 ‘저장된 결과’로 표시).
+  호출 기록 `data/llm_logs/calls.jsonl`(git 제외)에 모델·시간·토큰·입력 해시만. 키·원문은 기록하지 않는다.
+- 화면: `app/main.py`를 진입점(페이지 메뉴)으로 바꾸고 기존 화면은 `app/day_compare.py`로 옮김.
+  새 페이지 `app/request_cards.py` — 원문(근거 노란색) | 카드 표(수정값·확인함), 확인 완료/보류/취소, 처리자·사유,
+  배정 필수 항목이 비거나 확인 안 되면 확인 완료 차단. 아래에 평가 결과 표(cards-summary-*.json에서 읽음).
+- `.env`에 LLM_BASE_URL·LLM_API_KEY·LLM_MODEL 추가(사용자). 연결 확인: claude-fable-5·claude-sonnet·claude-haiku 모두 HTTP 200.
+- 테스트 50개 추가 → 178 passed. `requirements.txt`에 jsonschema 추가.
+
+결과(규칙 추출, 모의 — `cards-summary-rules-20261111-155101.json`):
+- 값 정확도 91.8%, 틀린 값 4, 누락 20, 지어낸 값 0, 확인 필요 재현율 100%, 위험한 ready 카드 0.
+- **양식 없는 메모 14.3%**. 규칙은 양식을 보고 만들었으므로 양식 사례의 100%는 일반화 성능이 아니다.
+
+남은 일:
+1. 실시간 LLM 평가: `python -m intake.evaluate --method llm` (40건, 저장 결과 재사용). 사용자가 실험실 요금제(정액제 포함 여부) 확인 후 실행.
+   모델 비교: `--model claude-haiku`. 결과 저장분(`data/llm_cache/`)은 커밋해 배포 화면에서 ‘저장된 결과’로 시연.
+2. 양식 없는 메모가 4건뿐이라 표본이 작다. 실제 기관 메모 형식을 받으면 정답 세트 보강.
+3. 확인 완료 카드 → 배정 엔진 입력(Request) 변환과 하루 배정에 합류(W02→W05 연결)는 아직 없음.
+
+막힌 점:
+- 실험실 포인트 소진, 정액제 사용 중이라는 사용자 설명. 게이트웨이 호출은 성공하지만 과금 방식은 미확인.
