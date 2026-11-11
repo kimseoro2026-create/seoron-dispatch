@@ -476,7 +476,7 @@ def _load_experiment_summary() -> pd.DataFrame | None:
 
 summ = _load_experiment_summary()
 if summ is None:
-    st.info("아직 실험 결과가 없습니다. run_simulator_full.bat 을 실행하세요.")
+    st.info("아직 실험 결과가 없습니다. scripts/run_simulator_full.bat 을 실행하세요.")
 else:
     st.caption("부하율(ρ)별 3방식 비교 — 30일 × 3시드(각 90관측), 위반 건수가 있는 방식은 사용 불가")
 
@@ -533,7 +533,7 @@ raw = _load_replay(str(rp), rp.stat().st_mtime) if rp else None
 raw = raw[raw["algorithm"].isin(REPLAY_KR)] if raw is not None else None
 
 if raw is None or raw.empty:
-    st.info("아직 취소·지연 재생 실험 결과가 없습니다. python _run30.py 를 실행하세요.")
+    st.info("아직 취소·지연 재생 실험 결과가 없습니다. python -m tools.run_replay30 을 실행하세요.")
 else:
     from simulator.experiment import summarize
 

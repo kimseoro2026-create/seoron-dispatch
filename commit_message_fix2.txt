@@ -1,8 +1,0 @@
-fix: show estimate as travel source when matrix file is absent
-
-The deployed app has no travel_matrix.csv (61MB, excluded), so it falls
-back to a straight-line estimate matrix. The sidebar showed "unknown"
-instead of "estimate", which would hide the fact that travel times are
-approximate. CLAUDE.md rule 3 requires estimates to be labelled.
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

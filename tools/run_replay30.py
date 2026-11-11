@@ -1,4 +1,9 @@
-"""30일 재실험 — delay_moved 실제 발동 건수 확인."""
+"""30일 취소·지연 재생 실험 (rho=0.9, 시드 42/7/13, 기준선 2 + 재배정 2방식).
+
+    python -m tools.run_replay30
+
+결과: data/experiments/30day-<시각>.csv (화면의 "취소·지연이 생겼을 때" 표가 읽는다)
+"""
 from datetime import datetime
 from pathlib import Path
 from simulator.experiment import run_experiment, summarize

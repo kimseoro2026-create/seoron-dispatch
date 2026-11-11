@@ -896,3 +896,12 @@ CLAUDE.md 9절 기준 남은 것:
 - **해결(11/11)**: 배포는 이미 있었다 — https://seoron-dispatch-blgk8n6odqv5cdgflu3asd.streamlit.app
   (이전 계정 세션 기록에 있던 주소). 열어 보니 정상 동작, 사이드바 출처가 'OSRM 도로 / 심평원 병원 400곳'으로 최신 push 반영 확인.
   사용자가 '안 된다'고 본 것은 로컬 `http://localhost:8501`(서버가 꺼져 있었음)이었다. 1쪽 요약·시연 대본에 링크 기입.
+
+## 저장소 정리 — 2026-11-11
+
+- 루트 일회용 파일 삭제(git 기록에는 남음): `commit_message*.txt` 8개, `push_*.bat` 7개, `git_*.bat`·`check_branch.bat`,
+  일회성 진단·실험 배치(`run_all`, `run_cancel30`, `rebuild_cancel30`, `verify_repair`, `test_replay`, `check_*`, `diagnose_*`), `0`, `_diag.py`.
+- 계속 쓰는 배치 7개는 `scripts/`로 이동(`cd /d "%~dp0.."`로 루트 기준 실행): run_app, run_tests, run_simulator_full,
+  run_simulator_pilot, fetch_hospitals, rebuild_region, rebuild_matrix.
+- `_run30.py` → `tools/run_replay30.py` (`python -m tools.run_replay30`). 위 인수인계 절의 `_run30.py`·`_diag.py` 언급은 이 경로로 읽을 것.
+- README 를 프로젝트 전체 안내로 다시 씀(심사용 링크, 실행·실험 명령, `f0 --offline` 덮어쓰기 경고).
