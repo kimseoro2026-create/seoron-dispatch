@@ -21,7 +21,8 @@ ALGO = {"request_order": "신청순", "nearest": "근거리", "optimize": "최�
 
 
 def _latest(pattern: str) -> Path:
-    files = sorted(EXP.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True)
+    # 파일 이름의 시각으로 고른다(수정 시각은 저장소를 새로 받으면 모두 같아진다)
+    files = sorted(EXP.glob(pattern), key=lambda p: p.name, reverse=True)
     if not files:
         raise SystemExit(f"실험 파일이 없습니다: {pattern}")
     return files[0]

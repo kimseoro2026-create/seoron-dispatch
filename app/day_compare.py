@@ -464,19 +464,27 @@ else:
 st.divider()
 st.subheader("30일 실험 결과")
 
-@st.cache_data(show_spinner=False)
-def _load_experiment_summary() -> pd.DataFrame | None:
-    exp_dir = ROOT / "data" / "experiments"
-    files = sorted(exp_dir.glob("summary-full-*.csv"), key=lambda p: p.stat().st_mtime, reverse=True)
-    if not files:
-        return None
-    return pd.read_csv(files[0])
+def _latest_by_name(pattern: str) -> Path | None:
+    """파일 이름의 시각(…-YYYYMMDD-HHMMSS.csv)으로 가장 최근 실험 파일을 고른다.
 
-summ = _load_experiment_summary()
+    파일 수정 시각(mtime)으로 고르면 안 된다. 배포 서버는 저장소를 내려받을 때 모든 파일의
+    수정 시각이 같아져, 예전 실험 파일이 '최신'으로 뽑힌다(2026-11-11 배포에서 확인).
+    """
+    files = sorted((ROOT / "data" / "experiments").glob(pattern), key=lambda p: p.name)
+    return files[-1] if files else None
+
+
+@st.cache_data(show_spinner=False)
+def _load_experiment_summary(path_str: str) -> pd.DataFrame:  # path_str 이 캐시 키
+    return pd.read_csv(path_str)
+
+_summ_file = _latest_by_name("summary-full-*.csv")
+summ = _load_experiment_summary(str(_summ_file)) if _summ_file else None
 if summ is None:
     st.info("아직 실험 결과가 없습니다. scripts/run_simulator_full.bat 을 실행하세요.")
 else:
-    st.caption("부하율(ρ)별 3방식 비교 — 30일 × 3시드(각 90관측), 위반 건수가 있는 방식은 사용 불가")
+    st.caption("부하율(ρ)별 3방식 비교 — 30일 × 3시드(각 90관측), 위반 건수가 있는 방식은 사용 불가 · "
+               f"출처 파일: {_summ_file.name}")
 
     algo_kr = {"nearest": "근거리", "request_order": "신청순", "optimize": "최적화(OR-Tools)"}
     summ = summ.copy()
@@ -516,9 +524,7 @@ REPLAY_KR = {"request_order_replay": "신청순 + 재배정", "nearest_replay": 
 
 
 def _latest_replay_file() -> Path | None:
-    files = sorted((ROOT / "data" / "experiments").glob("30day-*.csv"),
-                   key=lambda p: p.stat().st_mtime, reverse=True)
-    return files[0] if files else None
+    return _latest_by_name("30day-*.csv")
 
 
 @st.cache_data(show_spinner=False)
