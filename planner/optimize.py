@@ -3,16 +3,26 @@
 모델 구조
   - 인력 = 차량(vehicle). 각자 자기 기지(depot)에서 출발해 자기 기지로 돌아온다.
   - 요청 = 선택적 방문 노드. 미배정을 허용하되 우선순위별 페널티를 준다(PRD 6.2).
-  - 노드 배치: 앞쪽 W개는 인력별 기지, 다음 W개는 인력별 휴게 노드, 나머지는 요청.
-  - 시간 차원(분): 도착 시각 = 서비스 시작. 이동 + 서비스시간을 arc 비용에 넣는다.
+  - 노드 배치: 앞쪽 W개는 인력별 기지, 나머지는 요청. 휴게는 노드가 아니라 고정 시각 구간이다.
+  - 시간 차원(분): 도착 시각 = 서비스 시작. 이동 + 서비스시간을 통행에 넣는다.
   - 근무 차원(분): 휴게시간을 빼고 이동 + 서비스만 누적해 초과근무를 막는다.
 
 모델 근사(정직하게 남긴다)
-  - 휴게는 '제자리 정지'로 모델링한다(휴게 노드의 양방향 이동시간 0).
-    실제로는 휴게 장소까지의 이동이 있을 수 있으나, 검증기는 휴게와 점유가 겹치지 않는지만 본다.
+  - 휴게는 '제자리 정지'다(휴게 장소까지의 이동은 따로 없다). 검증기는 휴게가 이동·점유와
+    겹치지 않는지 본다.
   - 병원동행은 픽업~귀가를 점유시간이 고정된 단일 노드로 본다(CLAUDE.md 5절).
     점유시간이 도착 시각과 무관하게 일정하므로 시간 차원에 그대로 넣을 수 있다.
   - 미배정 사유는 솔버가 원인을 증명하지 못한다. PRD 6.5 에 따라 SOLVER_UNRESOLVED 로 남긴다.
+  - '고유 인원'(같은 사람 2건 = 1명)은 목적에 직접 넣지 않았다. 배정 건수 벌점이 이를 근사한다.
+
+v2(2026-11-11) 변경 — v1 이 근거리 기준선을 이기지 못한 원인을 고쳤다:
+  - 휴게를 '장소 없는 노드'가 아니라 OR-Tools 휴게 구간(break interval)으로 둔다.
+    v1 은 휴게 뒤 첫 요청의 도착을 '그 집까지 올 수 있는 최대 이동'만큼 일괄로 늦춰,
+    실제로는 가능한 오후 배정을 버렸다(후처리 덧붙이기로 일부만 되찾았다).
+  - 근거리 기준선의 배정을 첫 해로 넣는다(warm_start). 탐색은 이 해에서 출발해 목적값이
+    줄어드는 방향으로만 움직이므로, 목적(우선순위 가중 배정 ≫ 이동) 기준으로 근거리보다 나빠지지 않는다.
+  - 비용은 이동시간만 센다. v1 은 서비스시간까지 비용에 넣어 긴 요청을 덜 고르는 치우침이 있었다.
+  - 우선순위별 미배정 벌점을 10배 간격으로 둔다. v1 은 2:3 비율이라 일반 2건 > 우선 1건이었다.
 """
 from __future__ import annotations
 
@@ -28,6 +38,12 @@ STATUS_OPTIMAL = "optimal"
 STATUS_FEASIBLE = "feasible"
 STATUS_INFEASIBLE = "infeasible"
 STATUS_TIMEOUT = "timeout"
+STATUS_ERROR = "error"
+
+SOLVER_UNRESOLVED = "SOLVER_UNRESOLVED"
+
+PRIORITY_PENALTY_BASE = 100_000   # 일반(1) 요청을 버리는 벌점. 하루 이동시간 합(수백 분)보다 훨씬 크다.
+PRIORITY_PENALTY_STEP = 10        # 우선순위가 한 단계 높으면 벌점 10배(높은 우선순위 ≫ 일반, CLAUDE.md 6절)
 
 
 def map_status(raw: int) -> str:
@@ -49,9 +65,11 @@ def map_status(raw: int) -> str:
     if raw in (3, 6):
         return STATUS_INFEASIBLE
     return STATUS_ERROR
-STATUS_ERROR = "error"
 
-SOLVER_UNRESOLVED = "SOLVER_UNRESOLVED"
+
+def drop_penalty(priority: int) -> int:
+    """요청을 버릴 때의 벌점. 우선순위 2 는 일반 요청 10건을 버리는 것과 같다."""
+    return PRIORITY_PENALTY_BASE * PRIORITY_PENALTY_STEP ** max(int(priority) - 1, 0)
 
 
 @dataclass
@@ -62,6 +80,7 @@ class OptimizeResult:
     unassigned: list[dict] = field(default_factory=list)
     solve_seconds: float = 0.0
     objective: float = 0.0
+    warm_started: bool = False
 
     def assigned_count(self) -> int:
         return len(self.assignments)
@@ -95,7 +114,7 @@ def _escort_latest(req: dict, travel: dict) -> int:
 
 
 def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
-             seed: int = 42, repair: bool = True) -> OptimizeResult:
+             seed: int = 42, repair: bool = True, warm_start: bool = True) -> OptimizeResult:
     travel_in = instance["travel"]
     travel = ({(a, b): float(m) for (a, b), m in travel_in.items()}
               if isinstance(travel_in, dict)
@@ -111,28 +130,8 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
                                           for r in requests])
 
     depot = lambda k: k                    # noqa: E731
-    brk = lambda k: W + k                  # noqa: E731
-    rnode = lambda i: 2 * W + i            # noqa: E731
-    n_nodes = 2 * W + R
-
-    # 휴게 노드 뒤 요청으로 가는 구간의 이동시간.
-    # 휴게에는 장소가 없어 '어디서 출발했는지'를 모델이 알 수 없다. 검증기는
-    # 출발(도착 − 실제이동)이 휴게 종료 이후인지 본다. 따라서 도착이 '휴게종료 + 그 요청까지의
-    # 최대 이동' 이상이어야 한다.
-    #
-    # 전역 최댓값을 쓰면 안 된다. 그러면 모든 오후 요청의 도착이 같은 값으로 고정되어,
-    # 시간창이 조금이라도 짧은 요청이 통째로 탈락한다(실측: 30초를 줘도 개선이 없었다).
-    # 요청마다 '그 집까지 올 수 있는 최대 이동'만 더한다.
-    work_nodes = {w["base_node"] for w in workers} | {r["home_node"] for r in requests}
-
-    def _max_inbound(node: str) -> int:
-        # 올림(ceil)을 써야 한다. 내림하면 실제 이동 > pad 가 되어
-        # 모델이 허용한 도착 시각에서 실제 이동을 빼면 출발이 휴게 시작 전으로 들어간다.
-        import math
-        vals = [m for (a, b), m in travel.items() if b == node and a in work_nodes]
-        return math.ceil(max(vals)) if vals else 0
-
-    pad = {i: _max_inbound(req["home_node"]) for i, req in enumerate(requests)}
+    rnode = lambda i: W + i                # noqa: E731
+    n_nodes = W + R
 
     # 요청별 점유 길이와 유효 시간창 (경로가 없으면 모델에서 제외)
     spans, windows, skip = {}, {}, set()
@@ -153,55 +152,32 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
         n_nodes, W, [depot(k) for k in range(W)], [depot(k) for k in range(W)])
     routing = pywrapcp.RoutingModel(manager)
 
-    def _location(idx: int) -> str | None:
-        if idx < W:
-            return workers[idx]["base_node"]
-        if idx < 2 * W:
-            return None                     # 휴게 노드는 장소가 없다(제자리)
-        return requests[idx - 2 * W]["home_node"]
+    def _location(node: int) -> str:
+        return workers[node]["base_node"] if node < W else requests[node - W]["home_node"]
 
-    def _service(idx: int) -> int:
-        if W <= idx < 2 * W:
-            return int(workers[idx - W]["break_minutes"])
-        if idx >= 2 * W:
-            i = idx - 2 * W
-            return spans.get(i, 0)
-        return 0
+    def _service(node: int) -> int:
+        return spans.get(node - W, 0) if node >= W else 0
 
     def _travel(a: int, b: int) -> int:
-        if a == b:
-            return 0
-        if b < W:
-            return 0
-        la, lb = _location(a), _location(b)
-        # 휴게 노드에서 요청 j로 가는 구간: 그 집까지의 최대 이동만 더한다.
-        # 전역 최댓값을 쓰면 시간창이 좁은 오후 요청이 통째로 탈락한다.
-        if la is None:
-            return pad.get(b - 2 * W, 0) if b >= 2 * W else 0
-        if lb is None:
-            return 0
-        m = travel.get((la, lb))
+        if a == b or b < W:
+            return 0        # 기지로 돌아오는 이동은 근무에 넣지 않는다(기준선·검증기와 같은 기준)
+        m = travel.get((_location(a), _location(b)))
         return BIG_M if m is None else int(round(m))
 
-    # ── 시간 차원: cumul = 서비스 시작 시각 ────────────────────────────────
+    # ── 시간 차원: cumul = 서비스 시작(도착) 시각 ─────────────────────────
     # transit 콜백은 '노드 번호'가 아니라 OR-Tools 내부 routing index 를 받는다.
     # 여기서 노드 번호로 되돌려 계산한다(섞으면 조용히 엉뚱한 이동시간이 나온다).
-    #
-    # 자격과 휴게 소유권은 '차량별 통행'으로 강제한다.
-    # VehicleVar(...).SetValues() 로 막으면 변수 정의역이 잘려 '수행 안 함' 상태가 사라지고,
-    # AddDisjunction 으로 버릴 수 있어야 할 요청이 필수 노드가 되어 모델이 infeasible 이 된다.
-    # (진단 결과: VehicleVar 만 제거해도 SUCCESS 로 바뀌었다)
+    # 자격은 '차량별 통행'으로 강제한다. VehicleVar 로 정의역을 자르면 '수행 안 함'이 사라져
+    # 버릴 수 있어야 할 요청이 필수 노드가 되고 모델이 infeasible 이 된다.
     need_ok = [[set(req.get("required_skills") or []).issubset(set(w.get("skills") or []))
                 for w in workers] for req in requests]
 
     def _time_transit(k: int):
         def cb(frm: int, to: int) -> int:
             a, b = manager.IndexToNode(frm), manager.IndexToNode(to)
-            if W <= b < 2 * W and (b - W) != k:
-                return BIG_M            # 남의 휴게 노드에는 갈 수 없다
-            if b >= 2 * W and not need_ok[b - 2 * W][k]:
+            if b >= W and not need_ok[b - W][k]:
                 return BIG_M            # 자격이 없는 요청에는 갈 수 없다
-            return _travel(a, b) + _service(a)
+            return _service(a) + _travel(a, b)
         return cb
 
     time_ids = [routing.RegisterTransitCallback(_time_transit(k)) for k in range(W)]
@@ -212,48 +188,69 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
         lo, hi = int(w["shift_start_min"]), int(w["shift_end_min"])
         time_dim.CumulVar(routing.Start(k)).SetRange(lo, hi)
         time_dim.CumulVar(routing.End(k)).SetRange(lo, hi)
-        b_lo = int(w["break_start_min"])
-        # 휴게는 [b_lo, b_lo + break_minutes] 를 정확히 차지한다.
-        # cumul 을 움직일 수 있게 두면 휴게가 밀려나 검증기 기준(휴게 구간 고정)과 어긋난다.
-        time_dim.CumulVar(manager.NodeToIndex(brk(k))).SetRange(b_lo, b_lo)
 
     for i, (lo, hi) in windows.items():
         time_dim.CumulVar(manager.NodeToIndex(rnode(i))).SetRange(lo, hi)
 
-    # ── 근무 차원: 휴게를 빼고 이동 + 서비스만 누적 ────────────────────────
+    # ── 휴게: 고정 시각 구간. 서비스·이동과 겹치지 않는다 ─────────────────
+    # (1) OR-Tools 휴게 구간: 휴게가 서비스(점유)와 겹치지 않게 하고, 휴게 시간만큼 대기를 늘린다.
+    #     Python 바인딩에는 '이동 전후' 지정 버전이 없어, 휴게가 이동 도중에 들어가는 것은 막지 못한다.
+    # (2) 그래서 구간마다 직접 제약을 더한다. 노드 i 에서 다음 노드로 가는 이동이 휴게와 겹치면 안 된다:
+    #       (가) 바로 출발해 휴게 시작 전에 도착: cumul(i) + transit(i) ≤ 휴게 시작
+    #       (나) 휴게가 끝난 뒤 출발:          cumul(i) + 점유(i) + 대기(i) ≥ 휴게 끝
+    #     (cumul(다음) = cumul(i) + transit(i) + 대기(i), transit = 점유 + 이동)
+    #     둘 중 하나는 성립해야 한다. 검증기 기준(이동·점유 모두 휴게와 겹치지 않음)과 같다.
+    solver = routing.solver()
+    size = routing.Size()
+    node_visit = [_service(manager.IndexToNode(ix)) if ix < size else 0 for ix in range(size)]
+    has_break = []
+    for k, w in enumerate(workers):
+        b_lo, b_len = int(w["break_start_min"]), int(w["break_minutes"])
+        has_break.append(b_len > 0)
+        if b_len <= 0:
+            continue
+        brk = solver.FixedDurationIntervalVar(b_lo, b_lo, b_len, False, f"break_{k}")
+        time_dim.SetBreakIntervalsOfVehicle([brk], k, node_visit)
+
+    if any(has_break):
+        far = -10 ** 6      # 수행하지 않는 노드(차량 −1)는 제약이 저절로 성립하도록 아주 이른 휴게로 둔다
+        b_starts = [far] + [int(w["break_start_min"]) if hb else far
+                            for w, hb in zip(workers, has_break)]
+        b_ends = [far] + [int(w["break_start_min"]) + int(w["break_minutes"]) if hb else far
+                          for w, hb in zip(workers, has_break)]
+        for ix in range(size):
+            if routing.IsEnd(ix):
+                continue
+            veh1 = routing.VehicleVar(ix) + 1
+            b_s = solver.Element(b_starts, veh1)
+            b_e = solver.Element(b_ends, veh1)
+            cum, tr, sl = time_dim.CumulVar(ix), time_dim.TransitVar(ix), time_dim.SlackVar(ix)
+            svc = node_visit[ix]
+            before = solver.IsLessOrEqualCstVar(cum + tr - b_s, 0)
+            after = solver.IsGreaterOrEqualCstVar(cum + sl + svc - b_e, 0)
+            solver.Add(before + after >= 1)
+
+    # ── 근무 차원: 휴게를 빼고 이동 + 서비스만 누적(초과근무 금지) ─────────
     def work_cb(frm: int, to: int) -> int:
-        a = manager.IndexToNode(frm)
-        svc = 0
-        if a >= 2 * W:
-            svc = spans.get(a - 2 * W, 0)
-        b = manager.IndexToNode(to)
-        return _travel(a, b) + svc
+        a, b = manager.IndexToNode(frm), manager.IndexToNode(to)
+        return _service(a) + _travel(a, b)
 
     work_idx = routing.RegisterTransitCallback(work_cb)
     caps = [int(w.get("max_work_minutes") or 0) or 24 * 60 for w in workers]
     routing.AddDimensionWithVehicleCapacity(work_idx, 0, caps, True, "Work")
 
-    # ── 비용: 이동시간 최소화 ──────────────────────────────────────────────
-    # 비용용 콜백은 차량을 구분하지 않는다. 자격 위반 arc 는 시간 차원에서 BIG_M 으로
-    # 이미 실행 불가능하므로 비용에서 따로 벌점을 줄 필요가 없다.
-    def _cost_cb(frm: int, to: int) -> int:
-        a, b = manager.IndexToNode(frm), manager.IndexToNode(to)
-        return _travel(a, b) + _service(a)
-
-    cost_idx = routing.RegisterTransitCallback(_cost_cb)
+    # ── 비용: 이동시간만 ──────────────────────────────────────────────────
+    cost_idx = routing.RegisterTransitCallback(
+        lambda frm, to: _travel(manager.IndexToNode(frm), manager.IndexToNode(to)))
     routing.SetArcCostEvaluatorOfAllVehicles(cost_idx)
 
-    # ── 미배정 허용 ────────────────────────────────────────────────────────
-    # 요청 노드는 반드시 버릴 수 있어야 한다(우선순위별 페널티).
-    # 차량 제한은 위의 차량별 통행 콜백이 맡는다. VehicleVar 로 정의역을 자르면
-    # '수행 안 함' 상태가 사라져 모델이 infeasible 이 된다(진단으로 확인).
+    # ── 미배정 허용(우선순위별 벌점) ───────────────────────────────────────
     for i, req in enumerate(requests):
-        penalty = 100_000 * (int(req.get("priority", 1)) + 1)
-        routing.AddDisjunction([manager.NodeToIndex(rnode(i))], penalty)
+        routing.AddDisjunction([manager.NodeToIndex(rnode(i))],
+                               drop_penalty(req.get("priority", 1)))
 
     params = pywrapcp.DefaultRoutingSearchParameters()
-    # 미배정을 허용하는 모델(AddDisjunction)에서는 PATH_CHEAPEST_ARC 가 첫 해를 못 찾는 경우가 많다.
-    # 요청을 '버리는' 선택지를 다루지 못하기 때문이다. 삽입 기반 전략을 쓴다.
+    # 미배정을 허용하는 모델에서는 PATH_CHEAPEST_ARC 가 첫 해를 못 찾는 경우가 많아 삽입 기반을 쓴다.
     params.first_solution_strategy = (
         routing_enums_pb2.FirstSolutionStrategy.PARALLEL_CHEAPEST_INSERTION)
     params.local_search_metaheuristic = (
@@ -261,13 +258,30 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
     params.time_limit.FromSeconds(int(time_limit_sec))
     params.log_search = False
 
+    # ── 첫 해: 근거리 기준선의 배정 순서 ───────────────────────────────────
     t0 = time.time()
-    assignment = routing.SolveWithParameters(params)
+    assignment = None
+    warm = False
+    # 휴게 제약을 직접 더한 모델에서는 삽입 기반 첫 해 전략이 해를 못 찾는 경우가 많다(실측: 표본 8일 모두 실패).
+    # 그래서 탐색은 항상 주어진 첫 해에서 출발한다: 근거리 배정, 그것이 없으면 '아무도 배정하지 않은 빈 일정'
+    # (빈 일정은 모든 제약을 지키므로 언제나 출발점이 된다).
+    routes = _warm_start_routes(instance, workers, requests, skip) if warm_start else None
+    warm = routes is not None
+    if routes is None:
+        routes = [[] for _ in workers]
+    routing.CloseModelWithParameters(params)
+    init = routing.ReadAssignmentFromRoutes(
+        [[manager.NodeToIndex(rnode(i)) for i in route] for route in routes], True)
+    if init is not None:
+        assignment = routing.SolveFromAssignmentWithParameters(init, params)
+    else:
+        warm = False
+    if assignment is None:
+        assignment = routing.SolveWithParameters(params)
     elapsed = round(time.time() - t0, 2)
 
     status = map_status(int(routing.status()))
-
-    result = OptimizeResult(status=status, solve_seconds=elapsed)
+    result = OptimizeResult(status=status, solve_seconds=elapsed, warm_started=warm)
 
     if assignment is None:
         # 해가 없다. timeout 을 '미배정 0건'으로 보이게 하지 않는다(CLAUDE.md 6절).
@@ -282,19 +296,17 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
         idx = routing.Start(k)
         while not routing.IsEnd(idx):
             node = manager.IndexToNode(idx)
-            if node >= 2 * W:
-                i = node - 2 * W
-                # 모델에서 제외한 요청은 제약 없이 배정될 수 있으므로 결과에서도 버린다.
-                # (시간창을 설정하지 않았으므로 그 배정은 시간창을 지킨다는 보장이 없다)
-                if i in skip:
-                    idx = assignment.Value(routing.NextVar(idx))
-                    continue
-                visited.add(i)
-                result.assignments.append({
-                    "request_id": requests[i]["request_id"],
-                    "worker_id": workers[k]["worker_id"],
-                    "arrive_min": int(assignment.Value(time_dim.CumulVar(idx))),
-                })
+            if node >= W:
+                i = node - W
+                # 모델에서 제외한 요청은 시간창을 걸지 않았으므로 결과에서도 버린다.
+                if i not in skip:
+                    visited.add(i)
+                    result.assignments.append({
+                        "request_id": requests[i]["request_id"],
+                        "worker_id": workers[k]["worker_id"],
+                        # 가장 이른 가능 도착(시간창·휴게를 지키는 하한)
+                        "arrive_min": int(assignment.Min(time_dim.CumulVar(idx))),
+                    })
             idx = assignment.Value(routing.NextVar(idx))
 
     for i, req in enumerate(requests):
@@ -306,9 +318,8 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
 
     result.assignments.sort(key=lambda a: a["request_id"])
 
-    # ── 후처리: 버려진 요청을 실제 이동시간으로 재시도 ──────────────────────
-    # 모델이 pad[j](상한) 기준으로 버린 요청이 실제 이동으로는 가능할 수 있다.
-    # 기존 배정은 건드리지 않고, 미배정 중 SOLVER_UNRESOLVED 만 대상으로 한다.
+    # ── 후처리(안전장치): 버려진 요청을 실제 이동시간으로 덧붙여 본다 ─────────
+    # v2 모델은 휴게를 정확히 다루므로 보통 아무것도 더하지 않는다. 검증기를 통과할 때만 채택.
     if repair:
         dropped = [u["request_id"] for u in result.unassigned
                    if u.get("reason") == SOLVER_UNRESOLVED]
@@ -327,21 +338,36 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
     return result
 
 
+def _warm_start_routes(instance: dict, workers: list[dict], requests: list[dict],
+                       skip: set[int]) -> list[list[int]] | None:
+    """근거리 기준선 배정 → 인력별 요청 순서(요청 번호 목록). 검증을 통과하지 못하면 None."""
+    from planner.baseline import nearest
+    from verifier import verify
+
+    base = nearest(instance)
+    if not base.assignments or not verify(instance, base.assignments).ok:
+        return None
+    pos = {r["request_id"]: i for i, r in enumerate(requests)}
+    wpos = {w["worker_id"]: k for k, w in enumerate(workers)}
+    routes: list[list[int]] = [[] for _ in workers]
+    for a in sorted(base.assignments, key=lambda x: x["arrive_min"]):
+        i = pos[a["request_id"]]
+        if i not in skip:
+            routes[wpos[a["worker_id"]]].append(i)
+    return routes
+
+
 def _repair(instance: dict, assignments: list[dict], dropped_ids: list[str],
             travel: dict, time_limit_sec: int = 0) -> list[dict]:
     """모델이 버린 요청을 **실제 이동시간**으로 다시 끼워 넣어 본다.
 
-    왜 필요한가:
-      휴게 노드에는 장소가 없어서, 휴게 뒤 요청의 도착을 '모델에서는' 840+pad 로 밀어 놓는다
-      (pad = 그 집까지 올 수 있는 최대 이동). 실제 이동이 pad 보다 짧은 경우 모델은
-      실제로는 가능한 배정을 버리게 된다. 이 후처리는 그 손실만 되돌린다.
+    v1 에서는 휴게 근사 때문에 버려진 배정을 되찾는 데 필요했다. v2 에서는 안전장치로만 남긴다.
 
     안전장치:
       - 기존 배정은 건드리지 않는다. 각 인력의 마지막 위치·가용 시각 뒤에 덧붙이기만 한다.
       - 그래도 검증기를 다시 통과한 경우에만 채택한다. 실패하면 원래 결과를 그대로 둔다.
 
     정직하게: 이 후처리를 켠 optimize 는 'OR-Tools 결과 + 조건부 덧붙이기'다.
-    비교표에는 그대로 적는다.
     """
     from planner.baseline import _State, _occupancy, _try_assign
 

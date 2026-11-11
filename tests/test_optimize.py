@@ -160,3 +160,57 @@ def test_status_unknown_is_error():
     assert map_status(0) == STATUS_ERROR
     assert map_status(5) == STATUS_ERROR
     assert map_status(99) == STATUS_ERROR
+
+
+# ── v2: 휴게·첫 해·우선순위 (2026-11-11) ───────────────────────────────────
+
+def _break_case():
+    """인력 1명, 휴게 12:00~13:00.
+
+    R1: 11:30 시작, 25분 → 11:55 끝. R2 집까지 20분.
+    바로 출발하면 12:15 도착 → 이동이 휴게와 겹친다. 휴게 뒤 13:00 출발 → 13:20 도착이 유일한 답.
+    (v1 처럼 휴게가 이동 도중에 들어가는 것을 허용하면 12:15+60 = 13:15 도착으로 잘못 계산된다)
+    """
+    w = {"worker_id": "W1", "skills": ["household_support"], "base_node": "B",
+         "shift_start_min": 540, "shift_end_min": 1080, "break_start_min": 720,
+         "break_minutes": 60, "max_work_minutes": 480}
+
+    def req(rid, home, lo, hi, svc):
+        return {"request_id": rid, "beneficiary_id": rid, "service_type": "household_support",
+                "service_date": "2026-11-02", "home_node": home, "earliest_start_min": lo,
+                "latest_start_min": hi, "service_minutes": svc, "priority": 1,
+                "requested_at": "2026-11-01T09:00", "required_skills": ["household_support"]}
+
+    travel = {("B", "H1"): 10, ("B", "H2"): 10, ("H1", "H2"): 20, ("H2", "H1"): 20,
+              ("H1", "B"): 10, ("H2", "B"): 10}
+    return {"workers": [w], "requests": [req("R1", "H1", 690, 690, 25), req("R2", "H2", 735, 820, 30)],
+            "travel": travel}
+
+
+def test_break_not_taken_during_travel():
+    inst = _break_case()
+    r = optimize(inst, time_limit_sec=TIME_LIMIT)
+    assert verify(inst, r.assignments).ok
+    got = {a["request_id"]: a["arrive_min"] for a in r.assignments}
+    assert got == {"R1": 690, "R2": 800}
+
+
+def test_break_case_without_warm_start():
+    inst = _break_case()
+    r = optimize(inst, time_limit_sec=TIME_LIMIT, warm_start=False, repair=False)
+    assert verify(inst, r.assignments).ok
+    assert all(not (a["request_id"] == "R2" and a["arrive_min"] < 800) for a in r.assignments)
+
+
+def test_warm_start_used_and_never_worse_than_nearest(inst):
+    from planner.baseline import nearest
+    r = optimize(inst, time_limit_sec=TIME_LIMIT, repair=False)
+    assert r.warm_started
+    assert r.assigned_count() >= nearest(inst).assigned_count()
+    assert verify(inst, r.assignments).ok
+
+
+def test_priority_penalty_dominates():
+    from planner.optimize import drop_penalty
+    assert drop_penalty(2) > 9 * drop_penalty(1)
+    assert drop_penalty(1) > 10 * 1440   # 하루 이동시간 전부보다 크다
