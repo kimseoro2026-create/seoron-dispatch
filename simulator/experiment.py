@@ -118,6 +118,31 @@ def select_requests(instance: dict, target_rho: float, seed: int) -> dict:
     return out
 
 
+def widen_windows(instance: dict, escort_width: int | None = None, household_extra: int = 0) -> dict:
+    """시간창 폭을 바꾼 새 instance (실험 변수). 원래 instance 는 바꾸지 않는다.
+
+    escort_width   병원동행 픽업창 폭(분). 늦어도 출발 시각(예약에 맞춘 상한)은 그대로 두고,
+                   이른 쪽만 '상한 − 폭'으로 옮긴다. 즉 더 일찍 모시고 가 병원에서 기다리는 것을 허용한다.
+                   None 이면 생성된 창 그대로(f0 기본 20분).
+    household_extra 가사지원 시간창을 앞뒤로 이만큼 넓힌다(분). 0 이면 그대로(f0 기본 ±60분).
+    두 경우 모두 인력 근무시간(가장 이른 시작 ~ 가장 늦은 종료) 밖으로는 넓히지 않는다.
+    요청 집합·부하율은 바뀌지 않으므로 같은 날·같은 시드끼리 짝지어 비교할 수 있다.
+    """
+    shift_lo = min(int(w["shift_start_min"]) for w in instance["workers"])
+    shift_hi = max(int(w["shift_end_min"]) for w in instance["workers"])
+    out_reqs = []
+    for q in instance["requests"]:
+        q = dict(q)
+        if q["service_type"] == "hospital_escort" and escort_width is not None:
+            q["earliest_start_min"] = max(shift_lo, int(q["latest_start_min"]) - int(escort_width))
+        elif q["service_type"] == "household_support" and household_extra:
+            q["earliest_start_min"] = max(shift_lo, int(q["earliest_start_min"]) - int(household_extra))
+            q["latest_start_min"] = min(shift_hi - int(q["service_minutes"]),
+                                        int(q["latest_start_min"]) + int(household_extra))
+        out_reqs.append(q)
+    return dict(instance, requests=out_reqs)
+
+
 # ── 하루 실행 ─────────────────────────────────────────────────────────────
 
 @dataclass
@@ -138,6 +163,9 @@ class DayResult:
     violations: int
     status: str
     reasons: dict = field(default_factory=dict)
+    # 서비스별 요청·배정 수(병원동행이 병목인지 보기 위함)
+    requests_escort: int = 0
+    assigned_escort: int = 0
     # 재생(replay) 실행에서만 채워지는 취소 관련 수치
     extra: dict = field(default_factory=dict)
 
@@ -166,6 +194,8 @@ class DayResult:
             "solve_seconds": round(self.solve_seconds, 2),
             "violations": self.violations,
             "status": self.status,
+            "requests_escort": self.requests_escort,
+            "assigned_escort": self.assigned_escort,
         }
         # 재생 실행이면 취소 관련 열을 덧붙인다. 다른 방식은 비워 둔다.
         for key in ("cancellations", "cancelled_with_assignment", "refilled",
@@ -251,6 +281,9 @@ def run_day(instance: dict, algorithm: str, seed: int = 42,
         violations=len(rep.violations),
         status=status,
         reasons=reasons,
+        requests_escort=sum(1 for x in instance["requests"] if x["service_type"] == "hospital_escort"),
+        assigned_escort=sum(1 for a in assignments
+                            if req_by_id[a["request_id"]]["service_type"] == "hospital_escort"),
     )
     # 재생 실행이면 취소 관련 수치를 함께 남긴다
     if cancel_stats:
@@ -281,13 +314,15 @@ def run_experiment(data_dir: str | Path,
                    seeds: Iterable[int] = DEFAULT_SEEDS,
                    dates: Iterable[str] | None = None,
                    time_limit_sec: int = 10,
-                   progress: Callable[[str], None] | None = None) -> pd.DataFrame:
+                   progress: Callable[[str], None] | None = None,
+                   transform: Callable[[dict], dict] | None = None) -> pd.DataFrame:
     """여러 날 × 여러 방식 × 여러 부하율 × 여러 시드를 돌려 한 표로 돌려준다.
 
     algorithms 에 'request_order_replay' 처럼 '_replay' 를 붙이면 취소 재배정을 포함한다.
     해당 날짜에 취소가 하나도 없으면 재생 결과는 기준선과 같다(그것도 기록한다).
 
     계산 시간이 크게 늘 수 있으므로 날짜·시드 수를 먼저 줄여 확인할 것.
+    transform 은 요청을 고른 '뒤'에 적용한다(예: widen_windows). 요청 집합과 부하율은 그대로다.
     """
     from planner.data import load_day, load_travel, service_dates
 
@@ -308,6 +343,8 @@ def run_experiment(data_dir: str | Path,
             for seed in seeds:
                 inst = select_requests(base, rho, seed)
                 inst = dict(inst, service_date=date)
+                if transform is not None:
+                    inst = transform(inst)
                 actual = load_factor(inst)
                 for algo in algorithms:
                     res = run_day(inst, algo, seed=seed, time_limit_sec=time_limit_sec)
