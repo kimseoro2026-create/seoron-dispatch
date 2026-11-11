@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v2",
+ "input_hash": "813556018ecf8efd50c638eff726fc6d83c9258842906fa4b5c008779689f237",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0298\", \"evidence_span\": \"대상자 B0298\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"hospital_escort\", \"evidence_span\": \"병원동행 요청\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-11-06\", \"evidence_span\": \"11월 6일\", \"needs_confirmation\": true}, \"earliest_start\": {\"value\": \"09:15\", \"evidence_span\": \"오전 9시 15분\", \"needs_confirmation\": false}, \"latest_start\": {\"value\": \"09:35\", \"evidence_span\": \"오전 9시 35분\", \"needs_confirmation\": false}, \"service_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_name\": {\"value\": \"왕이비인후과의원\", \"evidence_span\": \"왕이비인후과의원\", \"needs_confirmation\": false}, \"appointment_time\": {\"value\": \"10:10\", \"evidence_span\": \"오전 10시 10분\", \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": 120, \"evidence_span\": \"약 120분 머무를 예정\", \"needs_confirmation\": false}, \"mobility_note\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T16:12:37",
+ "input_tokens": 1395,
+ "output_tokens": 873
+}

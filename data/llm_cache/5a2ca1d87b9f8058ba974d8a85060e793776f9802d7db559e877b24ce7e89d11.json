@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v2",
+ "input_hash": "dc7678e2247d59fed5eda2c00a96b3a7204a5b50ba717aca561f92ab5c1d33f4",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0236\", \"evidence_span\": \"대상자 B0236\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"hospital_escort\", \"evidence_span\": \"병원동행 요청\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-11-19\", \"evidence_span\": \"2026년 11월 19일\", \"needs_confirmation\": false}, \"earliest_start\": {\"value\": \"11:04\", \"evidence_span\": \"오전 11시 4분\", \"needs_confirmation\": false}, \"latest_start\": {\"value\": \"11:24\", \"evidence_span\": \"오전 11시 24분\", \"needs_confirmation\": false}, \"service_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_name\": {\"value\": \"굿키즈소아청소년과의원\", \"evidence_span\": \"굿키즈소아청소년과의원\", \"needs_confirmation\": false}, \"appointment_time\": {\"value\": \"12:00\", \"evidence_span\": \"낮 12시\", \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": 120, \"evidence_span\": \"약 2시간 머무를 예정\", \"needs_confirmation\": false}, \"mobility_note\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T16:20:53",
+ "input_tokens": 1430,
+ "output_tokens": 848
+}

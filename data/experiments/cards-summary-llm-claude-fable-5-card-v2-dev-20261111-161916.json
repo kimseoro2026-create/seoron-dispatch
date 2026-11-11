@@ -2,36 +2,31 @@
  "method": "llm",
  "model": "claude-fable-5",
  "source_label": "AI 추출",
- "prompt_version": "card-v1",
- "run_at": "2026-11-11T16:06:26",
+ "prompt_version": "card-v2",
+ "case_set": "dev",
+ "run_at": "2026-11-11T16:19:16",
  "cases": 40,
  "value_accuracy": 1.0,
  "blocking_accuracy": 1.0,
  "fields_with_gold": 294,
  "wrong_value": 0,
  "missed": 0,
- "invented": 0,
+ "invented": 1,
  "flag_recall": 1.0,
  "flags_expected": 18,
  "unsafe_ready": 0,
- "flag_false_alarm": 35,
- "flag_false_alarm_blocking": 19,
+ "flag_false_alarm": 1,
+ "flag_false_alarm_blocking": 1,
  "false_alarm_fields": {
-  "service_minutes": 17,
-  "hospital_stay_minutes": 6,
-  "planned_discharge_date": 4,
-  "actual_discharge_date": 4,
-  "mobility_note": 2,
-  "hospital_name": 1,
-  "appointment_time": 1
+  "hospital_stay_minutes": 1
  },
- "over_review": 14,
+ "over_review": 1,
  "cases_needing_review": 12,
  "mobility_judgment": 0,
  "injection_accuracy": 1.0,
  "status_counts": {
-  "ready": 14,
-  "needs_review": 26
+  "ready": 27,
+  "needs_review": 13
  },
  "by_field": {
   "actual_discharge_date": {
@@ -120,9 +115,9 @@
    "cases": 6
   }
  },
- "live_calls": 0,
- "cache_hits": 40,
- "latency_mean_s": null,
- "input_tokens": 0,
- "output_tokens": 0
+ "live_calls": 40,
+ "cache_hits": 0,
+ "latency_mean_s": 10.36,
+ "input_tokens": 55314,
+ "output_tokens": 33330
 }

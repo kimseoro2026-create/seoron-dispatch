@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v2",
+ "input_hash": "eba068bc11c1943e1910962b8eb7ba06a7b1e485739232db0e4cefbbf50c75be",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0203\", \"evidence_span\": \"대상자 B0203\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"hospital_escort\", \"evidence_span\": \"병원동행 요청\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-11-26\", \"evidence_span\": \"11월 26일\", \"needs_confirmation\": true}, \"earliest_start\": {\"value\": \"10:34\", \"evidence_span\": \"오전 10시 34분~오전 10시 54분 사이 출발 희망\", \"needs_confirmation\": false}, \"latest_start\": {\"value\": \"10:54\", \"evidence_span\": \"오전 10시 34분~오전 10시 54분 사이 출발 희망\", \"needs_confirmation\": false}, \"service_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_name\": {\"value\": \"청담맑은피부과의원\", \"evidence_span\": \"청담맑은피부과의원\", \"needs_confirmation\": false}, \"appointment_time\": {\"value\": \"11:10\", \"evidence_span\": \"오전 11시 10분 청담맑은피부과의원 외래 예약\", \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": 200, \"evidence_span\": \"약 200분 머무를 예정\", \"needs_confirmation\": false}, \"mobility_note\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T16:20:36",
+ "input_tokens": 1389,
+ "output_tokens": 919
+}

@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v2",
+ "input_hash": "bd013f7fcf9a85b002e3639771906d3ab81cb304f19751766cbc03bd456c1bb3",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0005\", \"evidence_span\": \"대상자 B0005\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"hospital_escort\", \"evidence_span\": \"병원동행 요청\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-12-01\", \"evidence_span\": \"2026년 12월 1일\", \"needs_confirmation\": false}, \"earliest_start\": {\"value\": \"10:23\", \"evidence_span\": \"10:23~10:43 사이 출발 희망\", \"needs_confirmation\": false}, \"latest_start\": {\"value\": \"10:43\", \"evidence_span\": \"10:23~10:43 사이 출발 희망\", \"needs_confirmation\": false}, \"service_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_name\": {\"value\": \"한그루 소아청소년과 의원\", \"evidence_span\": \"한그루 소아청소년과 의원\", \"needs_confirmation\": false}, \"appointment_time\": {\"value\": \"11:00\", \"evidence_span\": \"11:00 한그루 소아청소년과 의원 외래 예약\", \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": 160, \"evidence_span\": \"약 2시간 40분 머무를 예정\", \"needs_confirmation\": false}, \"mobility_note\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T16:19:52",
+ "input_tokens": 1427,
+ "output_tokens": 839
+}

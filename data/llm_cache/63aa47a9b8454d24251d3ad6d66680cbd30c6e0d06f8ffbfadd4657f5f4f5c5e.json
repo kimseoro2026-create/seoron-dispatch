@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v2",
+ "input_hash": "e31eac6f9aeb58d65e6839681f1005e7cfd56270932e089f0a2f9b5c13add009",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0012\", \"evidence_span\": \"대상자 B0012\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"household_support\", \"evidence_span\": \"가사지원 요청\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-12-11\", \"evidence_span\": \"12월 11일\", \"needs_confirmation\": true}, \"earliest_start\": {\"value\": \"11:00\", \"evidence_span\": \"오전 11시부터\", \"needs_confirmation\": false}, \"latest_start\": {\"value\": \"13:00\", \"evidence_span\": \"오후 1시 사이에 방문 시작하면 됨\", \"needs_confirmation\": false}, \"service_minutes\": {\"value\": 120, \"evidence_span\": \"120분 정도\", \"needs_confirmation\": false}, \"hospital_name\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"appointment_time\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"mobility_note\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T16:22:49",
+ "input_tokens": 1341,
+ "output_tokens": 789
+}

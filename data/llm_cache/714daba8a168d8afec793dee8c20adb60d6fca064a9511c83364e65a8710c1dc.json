@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v2",
+ "input_hash": "ca0b285d48f8c9edddddff0edc69ba15bef184e4d7515ddc04c6a4e453f455d5",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0203\", \"evidence_span\": \"대상자 B0203\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"hospital_escort\", \"evidence_span\": \"병원동행 요청\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-12-02\", \"evidence_span\": \"2026년 12월 2일\", \"needs_confirmation\": false}, \"earliest_start\": {\"value\": \"14:44\", \"evidence_span\": \"오후 2시 44분~오후 3시 4분 사이 출발 희망\", \"needs_confirmation\": false}, \"latest_start\": {\"value\": \"15:04\", \"evidence_span\": \"오후 2시 44분~오후 3시 4분 사이 출발 희망\", \"needs_confirmation\": false}, \"service_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_name\": {\"value\": \"베스트아이들병원\", \"evidence_span\": \"베스트아이들병원 외래 예약\", \"needs_confirmation\": false}, \"appointment_time\": {\"value\": \"15:30\", \"evidence_span\": \"오후 3시 30분 베스트아이들병원 외래 예약\", \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": 240, \"evidence_span\": \"약 240분 머무를 예정\", \"needs_confirmation\": false}, \"mobility_note\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T16:14:28",
+ "input_tokens": 1434,
+ "output_tokens": 914
+}

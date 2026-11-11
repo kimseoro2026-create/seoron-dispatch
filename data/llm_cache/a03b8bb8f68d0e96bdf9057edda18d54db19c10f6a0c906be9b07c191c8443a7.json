@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v2",
+ "input_hash": "51f89d254208031f88050090583f43110b60acf5bc7ed4582997da384f626f24",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0136\", \"evidence_span\": \"대상자 B0136\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"hospital_escort\", \"evidence_span\": \"병원동행 요청\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-11-23\", \"evidence_span\": \"2026년 11월 23일\", \"needs_confirmation\": false}, \"earliest_start\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"latest_start\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"service_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_name\": {\"value\": \"샤인룩스의원\", \"evidence_span\": \"샤인룩스의원\", \"needs_confirmation\": false}, \"appointment_time\": {\"value\": \"09:30\", \"evidence_span\": \"9:30 샤인룩스의원 외래 예약\", \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": 180, \"evidence_span\": \"약 180분 머무를 예정\", \"needs_confirmation\": false}, \"mobility_note\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T16:20:44",
+ "input_tokens": 1353,
+ "output_tokens": 855
+}

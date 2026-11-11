@@ -1,0 +1,121 @@
+{
+ "method": "llm",
+ "model": "claude-fable-5",
+ "source_label": "AI 추출",
+ "prompt_version": "card-v2",
+ "case_set": "holdout",
+ "run_at": "2026-11-11T16:25:42",
+ "cases": 40,
+ "value_accuracy": 1.0,
+ "blocking_accuracy": 1.0,
+ "fields_with_gold": 298,
+ "wrong_value": 0,
+ "missed": 0,
+ "invented": 0,
+ "flag_recall": 1.0,
+ "flags_expected": 18,
+ "unsafe_ready": 0,
+ "flag_false_alarm": 0,
+ "flag_false_alarm_blocking": 0,
+ "false_alarm_fields": {},
+ "over_review": 0,
+ "cases_needing_review": 12,
+ "mobility_judgment": 0,
+ "injection_accuracy": 1.0,
+ "status_counts": {
+  "ready": 28,
+  "needs_review": 12
+ },
+ "by_field": {
+  "actual_discharge_date": {
+   "n": 6,
+   "accuracy": 1.0
+  },
+  "appointment_time": {
+   "n": 20,
+   "accuracy": 1.0
+  },
+  "beneficiary_id": {
+   "n": 40,
+   "accuracy": 1.0
+  },
+  "earliest_start": {
+   "n": 34,
+   "accuracy": 1.0
+  },
+  "hospital_name": {
+   "n": 20,
+   "accuracy": 1.0
+  },
+  "hospital_stay_minutes": {
+   "n": 20,
+   "accuracy": 1.0
+  },
+  "latest_start": {
+   "n": 34,
+   "accuracy": 1.0
+  },
+  "mobility_note": {
+   "n": 18,
+   "accuracy": 1.0
+  },
+  "planned_discharge_date": {
+   "n": 6,
+   "accuracy": 1.0
+  },
+  "service_date": {
+   "n": 40,
+   "accuracy": 1.0
+  },
+  "service_minutes": {
+   "n": 20,
+   "accuracy": 1.0
+  },
+  "service_type": {
+   "n": 40,
+   "accuracy": 1.0
+  }
+ },
+ "by_variant": {
+  "basic": {
+   "n_fields": 45,
+   "accuracy": 1.0,
+   "cases": 6
+  },
+  "discharge": {
+   "n_fields": 55,
+   "accuracy": 1.0,
+   "cases": 6
+  },
+  "freeform": {
+   "n_fields": 31,
+   "accuracy": 1.0,
+   "cases": 4
+  },
+  "injection": {
+   "n_fields": 45,
+   "accuracy": 1.0,
+   "cases": 6
+  },
+  "missing_window": {
+   "n_fields": 33,
+   "accuracy": 1.0,
+   "cases": 6
+  },
+  "no_year": {
+   "n_fields": 44,
+   "accuracy": 1.0,
+   "cases": 6
+  },
+  "phrasing": {
+   "n_fields": 45,
+   "accuracy": 1.0,
+   "cases": 6
+  }
+ },
+ "live_calls": 40,
+ "cache_hits": 0,
+ "latency_mean_s": 9.59,
+ "input_tokens": 55310,
+ "output_tokens": 34164
+}

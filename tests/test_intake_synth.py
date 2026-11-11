@@ -91,3 +91,11 @@ def test_phrase_helpers():
     assert kor_minutes(120, "talk") == "두 시간"
     assert kor_minutes(90, "talk") == "한 시간 반"
     assert kor_minutes(160, "hours") == "2시간 40분"
+
+
+def test_holdout_disjoint_from_dev(cases):
+    from intake.synth import build_holdout
+    hold = build_holdout("data/processed")
+    assert len(hold) == 40
+    assert not {c["request_id"] for c in hold} & {c["request_id"] for c in cases}
+    assert all(c["case_id"].startswith("T") for c in hold)

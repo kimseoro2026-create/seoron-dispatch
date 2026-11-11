@@ -16,6 +16,7 @@
   python -m intake.evaluate --method rules              # 규칙 추출(모의), 호출 0건
   python -m intake.evaluate --method llm                # .env 모델로 실제 호출(저장 결과는 재사용)
   python -m intake.evaluate --method llm --model claude-haiku --limit 5
+  python -m intake.evaluate --method llm --cases holdout --prompt card-v1
 """
 from __future__ import annotations
 
@@ -30,7 +31,9 @@ import pandas as pd
 
 from .extract import PROMPT_VERSION, ExtractResult, extract_card
 from .schema import BLOCKING_BY_SERVICE, FIELDS, FIELD_LABELS
-from .synth import DEFAULT_OUT
+from .synth import DEFAULT_OUT, HOLDOUT_OUT
+
+CASE_SETS = {"dev": DEFAULT_OUT, "holdout": HOLDOUT_OUT}
 
 OUT_DIR = Path("data/experiments")
 _TEXT_FIELDS = {n for n, (_, k) in FIELDS.items() if k == "text"}
@@ -131,12 +134,13 @@ def load_cases(path: str | Path = DEFAULT_OUT) -> list[dict]:
 
 
 def run(method: str, model: str | None = None, limit: int | None = None, allow_live: bool = True,
-        cases_path: str | Path = DEFAULT_OUT, out_dir: Path = OUT_DIR, save: bool = True) -> dict:
-    cases = load_cases(cases_path)[: limit or None]
+        case_set: str = "dev", prompt_version: str = PROMPT_VERSION, out_dir: Path = OUT_DIR,
+        save: bool = True) -> dict:
+    cases = load_cases(CASE_SETS[case_set])[: limit or None]
     results: dict[str, ExtractResult] = {}
     rows: list[dict] = []
     for i, c in enumerate(cases, 1):
-        res = extract_card(c["text"], method, model=model, allow_live=allow_live)
+        res = extract_card(c["text"], method, model=model, allow_live=allow_live, prompt_version=prompt_version)
         results[c["case_id"]] = res
         rows.extend(score_case(c, res))
         mark = res.error or res.status
@@ -146,14 +150,15 @@ def run(method: str, model: str | None = None, limit: int | None = None, allow_l
     summary = {
         "method": method, "model": used_model if method == "llm" else None,
         "source_label": "규칙 추출(모의)" if method == "rules" else "AI 추출",
-        "prompt_version": PROMPT_VERSION if method == "llm" else None,
+        "prompt_version": prompt_version if method == "llm" else None,
+        "case_set": case_set,
         "run_at": dt.datetime.now().isoformat(timespec="seconds"),
         **summarize(df, results),
     }
     if save:
         out_dir.mkdir(parents=True, exist_ok=True)
         stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
-        tag = method if method == "rules" else f"llm-{used_model or 'unknown'}"
+        tag = (method if method == "rules" else f"llm-{used_model or 'unknown'}-{prompt_version}") + f"-{case_set}"
         df.to_csv(out_dir / f"cards-{tag}-{stamp}.csv", index=False, encoding="utf-8-sig")
         (out_dir / f"cards-summary-{tag}-{stamp}.json").write_text(
             json.dumps(summary, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -163,7 +168,8 @@ def run(method: str, model: str | None = None, limit: int | None = None, allow_l
 
 def print_summary(s: dict) -> None:
     print()
-    print(f"방식: {s['source_label']}  모델: {s['model'] or '-'}  사례: {s['cases']}건")
+    print(f"방식: {s['source_label']}  모델: {s['model'] or '-'}  프롬프트: {s['prompt_version'] or '-'}  "
+          f"사례: {s['case_set']} {s['cases']}건")
     print(f"값 정확도 {s['value_accuracy']}  (배정 필수 {s['blocking_accuracy']})  "
           f"틀린 값 {s['wrong_value']} · 누락 {s['missed']} · 지어낸 값 {s['invented']}")
     print(f"확인 필요 표시 재현율 {s['flag_recall']} ({s['flags_expected']}개 중)  "
@@ -184,10 +190,13 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--method", choices=["rules", "llm"], default="rules")
     ap.add_argument("--model", default=None)
     ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument("--cases", choices=list(CASE_SETS), default="dev", help="dev: 기존 40건, holdout: 새 40건")
+    ap.add_argument("--prompt", default=PROMPT_VERSION, help="프롬프트 버전(card-v1, card-v2)")
     ap.add_argument("--no-live", action="store_true", help="저장 결과만 사용(호출 안 함)")
     ap.add_argument("--no-save", action="store_true")
     a = ap.parse_args(argv)
-    s = run(a.method, model=a.model, limit=a.limit, allow_live=not a.no_live, save=not a.no_save)
+    s = run(a.method, model=a.model, limit=a.limit, allow_live=not a.no_live, case_set=a.cases,
+            prompt_version=a.prompt, save=not a.no_save)
     print_summary(s)
     if s.get("saved_as"):
         print(f"저장: data/experiments/{s['saved_as']}")

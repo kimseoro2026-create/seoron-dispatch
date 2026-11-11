@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v2",
+ "input_hash": "1c6092d8a97cc09e751129684ae4402f5da6e07cfa1a2bc6d019f421fd537294",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0074\", \"evidence_span\": \"대상자 B0074 어르신\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"hospital_escort\", \"evidence_span\": \"병원동행 요청\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-12-10\", \"evidence_span\": \"2026.12.10 오전 11시 반\", \"needs_confirmation\": false}, \"earliest_start\": {\"value\": \"10:48\", \"evidence_span\": \"오전 10시 48분~오전 11시 8분 사이 출발 희망\", \"needs_confirmation\": false}, \"latest_start\": {\"value\": \"11:08\", \"evidence_span\": \"오전 10시 48분~오전 11시 8분 사이 출발 희망\", \"needs_confirmation\": false}, \"service_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_name\": {\"value\": \"평안한사랑병원\", \"evidence_span\": \"평안한사랑병원 외래 예약\", \"needs_confirmation\": false}, \"appointment_time\": {\"value\": \"11:30\", \"evidence_span\": \"오전 11시 반\", \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": 130, \"evidence_span\": \"약 2시간 10분 머무를 예정\", \"needs_confirmation\": false}, \"mobility_note\": {\"value\": \"실내에서도 보행기 사용\", \"evidence_span\": \"실내에서도 보행기 사용\", \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T16:14:44",
+ "input_tokens": 1409,
+ "output_tokens": 811
+}

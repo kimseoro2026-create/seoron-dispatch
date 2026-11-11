@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v2",
+ "input_hash": "0dd79a293b736fa0cff3f4badda61e72306df760c39089113d7d3890fbe4994d",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0036\", \"evidence_span\": \"대상자 B0036 어르신\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"hospital_escort\", \"evidence_span\": \"병원동행 요청\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-11-06\", \"evidence_span\": \"2026년 11월 6일 15:10 동탄서울의원 외래 예약\", \"needs_confirmation\": false}, \"earliest_start\": {\"value\": \"14:32\", \"evidence_span\": \"댁에서 14:32~14:52 사이 출발 희망\", \"needs_confirmation\": false}, \"latest_start\": {\"value\": \"14:52\", \"evidence_span\": \"댁에서 14:32~14:52 사이 출발 희망\", \"needs_confirmation\": false}, \"service_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_name\": {\"value\": \"동탄서울의원\", \"evidence_span\": \"동탄서울의원 외래 예약\", \"needs_confirmation\": false}, \"appointment_time\": {\"value\": \"15:10\", \"evidence_span\": \"2026년 11월 6일 15:10 동탄서울의원 외래 예약\", \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": 220, \"evidence_span\": \"병원에 약 3시간 40분 머무를 예정\", \"needs_confirmation\": false}, \"mobility_note\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": \"2026-10-26\", \"evidence_span\": \"2026년 10월 26일 퇴원 예정이었으나\", \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": \"2026-10-27\", \"evidence_span\": \"실제 퇴원은 2026년 10월 27일\", \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T16:21:02",
+ "input_tokens": 1421,
+ "output_tokens": 962
+}

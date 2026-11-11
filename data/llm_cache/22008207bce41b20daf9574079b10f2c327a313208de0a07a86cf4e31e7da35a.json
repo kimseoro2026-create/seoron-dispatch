@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v2",
+ "input_hash": "30c76db4c97575b1559da7d42677b7e7aa1ccce6c3016f17e962c7635d17edcb",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0033\", \"evidence_span\": \"대상자 B0033\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"hospital_escort\", \"evidence_span\": \"병원동행 요청\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-11-20\", \"evidence_span\": \"2026년 11월 20일\", \"needs_confirmation\": false}, \"earliest_start\": {\"value\": \"09:51\", \"evidence_span\": \"9:51~10:11 사이 출발 희망\", \"needs_confirmation\": false}, \"latest_start\": {\"value\": \"10:11\", \"evidence_span\": \"9:51~10:11 사이 출발 희망\", \"needs_confirmation\": false}, \"service_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_name\": {\"value\": \"아주사랑마취통증의학과의원\", \"evidence_span\": \"아주사랑마취통증의학과의원\", \"needs_confirmation\": false}, \"appointment_time\": {\"value\": \"10:30\", \"evidence_span\": \"10:30 아주사랑마취통증의학과의원 외래 예약\", \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": 140, \"evidence_span\": \"병원에 약 140분 머무를 예정\", \"needs_confirmation\": false}, \"mobility_note\": {\"value\": \"휠체어 이용\", \"evidence_span\": \"이동: 휠체어 이용\", \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T16:12:29",
+ "input_tokens": 1402,
+ "output_tokens": 887
+}

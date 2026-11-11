@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v2",
+ "input_hash": "cd217bbfca3bae42cffccf7db693e64ae04639dd365401e50ea2192baaa2c62b",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0270\", \"evidence_span\": \"대상자 B0270 어르신\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"hospital_escort\", \"evidence_span\": \"병원동행 요청\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-11-23\", \"evidence_span\": \"11월 23일 12:40 동탄송도항외과의원 외래 예약\", \"needs_confirmation\": true}, \"earliest_start\": {\"value\": \"12:04\", \"evidence_span\": \"댁에서 12:04~12:24 사이 출발 희망\", \"needs_confirmation\": false}, \"latest_start\": {\"value\": \"12:24\", \"evidence_span\": \"댁에서 12:04~12:24 사이 출발 희망\", \"needs_confirmation\": false}, \"service_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_name\": {\"value\": \"동탄송도항외과의원\", \"evidence_span\": \"동탄송도항외과의원 외래 예약\", \"needs_confirmation\": false}, \"appointment_time\": {\"value\": \"12:40\", \"evidence_span\": \"11월 23일 12:40 동탄송도항외과의원 외래 예약\", \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": 230, \"evidence_span\": \"병원에 약 3시간 50분 머무를 예정\", \"needs_confirmation\": false}, \"mobility_note\": {\"value\": \"실내에서도 보행기 사용\", \"evidence_span\": \"실내에서도 보행기 사용\", \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T16:14:11",
+ "input_tokens": 1402,
+ "output_tokens": 898
+}

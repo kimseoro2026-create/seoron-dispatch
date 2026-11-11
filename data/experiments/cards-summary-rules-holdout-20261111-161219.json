@@ -3,11 +3,12 @@
  "model": null,
  "source_label": "규칙 추출(모의)",
  "prompt_version": null,
- "run_at": "2026-11-11T16:06:24",
+ "case_set": "holdout",
+ "run_at": "2026-11-11T16:12:19",
  "cases": 40,
- "value_accuracy": 0.918,
+ "value_accuracy": 0.919,
  "blocking_accuracy": 0.91,
- "fields_with_gold": 294,
+ "fields_with_gold": 298,
  "wrong_value": 4,
  "missed": 20,
  "invented": 0,
@@ -55,7 +56,7 @@
    "accuracy": 0.882
   },
   "mobility_note": {
-   "n": 14,
+   "n": 18,
    "accuracy": 1.0
   },
   "planned_discharge_date": {
@@ -82,27 +83,27 @@
    "cases": 6
   },
   "discharge": {
-   "n_fields": 56,
+   "n_fields": 55,
    "accuracy": 1.0,
    "cases": 6
   },
   "freeform": {
-   "n_fields": 28,
-   "accuracy": 0.143,
+   "n_fields": 31,
+   "accuracy": 0.226,
    "cases": 4
   },
   "injection": {
-   "n_fields": 43,
+   "n_fields": 45,
    "accuracy": 1.0,
    "cases": 6
   },
   "missing_window": {
-   "n_fields": 32,
+   "n_fields": 33,
    "accuracy": 1.0,
    "cases": 6
   },
   "no_year": {
-   "n_fields": 45,
+   "n_fields": 44,
    "accuracy": 1.0,
    "cases": 6
   },

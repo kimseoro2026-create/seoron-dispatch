@@ -15,7 +15,7 @@ f0가 만든 가상 요청(requests.csv)을 상담 메모 형식의 글로 바�
 주의: 규칙 추출기(rules.py)는 basic~phrasing 양식을 보고 만들었으므로 그 사례들에서의 점수는
 일반화 성능이 아니다. freeform 사례가 양식 밖 표현에 대한 비교 기준이다.
 
-실행: python -m intake.synth   → fixtures/request_cards/cases.json
+실행: python -m intake.synth   → fixtures/request_cards/cases.json, holdout.json
 """
 from __future__ import annotations
 
@@ -31,6 +31,9 @@ from .schema import FIELDS, from_minutes
 
 VARIANTS = ("basic", "no_year", "missing_window", "injection", "discharge", "phrasing", "freeform")
 DEFAULT_OUT = Path("fixtures/request_cards/cases.json")
+# 프롬프트를 고칠 때 보지 않는 새 사례(홀드아웃). 기존 사례와 요청이 겹치지 않는다.
+HOLDOUT_OUT = Path("fixtures/request_cards/holdout.json")
+HOLDOUT_SEED = 23
 
 _MOBILITY = {
     "walker": ("보행기 사용", "보행기를 쓰심", "실내에서도 보행기 사용"),
@@ -163,7 +166,8 @@ def _make_case(r, ben: dict, hosp_names: dict, variant: str, rng: random.Random,
 
 
 def build_cases(data_dir: str | Path = "data/processed", n_escort: int = 20, n_household: int = 20,
-                seed: int = 7) -> list[dict]:
+                seed: int = 7, exclude_requests: set[str] | None = None, id_prefix: str = "") -> list[dict]:
+    """exclude_requests 에 든 요청은 쓰지 않는다(평가용 새 사례가 기존 사례와 겹치지 않게)."""
     d = Path(data_dir)
     req = pd.read_csv(d / "requests.csv", dtype={"hospital_id": str})
     ben = dict(pd.read_csv(d / "beneficiaries.csv").set_index("beneficiary_id")["mobility"])
@@ -172,7 +176,7 @@ def build_cases(data_dir: str | Path = "data/processed", n_escort: int = 20, n_h
 
     cases: list[dict] = []
     for service, n in (("hospital_escort", n_escort), ("household_support", n_household)):
-        pool = req[req.service == service]
+        pool = req[(req.service == service) & ~req.request_id.isin(exclude_requests or set())]
         disch = pool[pool.discharge_case == True].sample(frac=1, random_state=seed)  # noqa: E712
         rest = pool[pool.discharge_case != True].sample(frac=1, random_state=seed)  # noqa: E712
         di, ri = iter(disch.itertuples()), iter(rest.itertuples())
@@ -180,23 +184,30 @@ def build_cases(data_dir: str | Path = "data/processed", n_escort: int = 20, n_h
             variant = VARIANTS[i % len(VARIANTS)]
             r = next(di) if variant == "discharge" else next(ri)
             prefix = "E" if service == "hospital_escort" else "H"
-            cases.append(_make_case(r, ben, hosp, variant, rng, f"{prefix}{i + 1:02d}"))
+            cases.append(_make_case(r, ben, hosp, variant, rng, f"{id_prefix}{prefix}{i + 1:02d}"))
     return cases
+
+
+def _save(cases: list[dict], out: Path, seed: int, note: str) -> None:
+    out.parent.mkdir(parents=True, exist_ok=True)
+    payload = {"note": note, "seed": seed, "cases": cases}
+    out.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf-8")
+    print(f"{len(cases)}건 저장: {out}")
+
+
+def build_holdout(data_dir: str | Path = "data/processed") -> list[dict]:
+    dev = build_cases(data_dir)
+    return build_cases(data_dir, seed=HOLDOUT_SEED, exclude_requests={c["request_id"] for c in dev}, id_prefix="T")
 
 
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description="합성 요청 원문·정답 세트 생성")
     ap.add_argument("--data-dir", default="data/processed")
-    ap.add_argument("--out", default=str(DEFAULT_OUT))
-    ap.add_argument("--seed", type=int, default=7)
     a = ap.parse_args(argv)
-    cases = build_cases(a.data_dir, seed=a.seed)
-    out = Path(a.out)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    payload = {"note": "가상 데이터. 정답은 requests.csv 값에서 계산(LLM 미사용).",
-               "seed": a.seed, "cases": cases}
-    out.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf-8")
-    print(f"{len(cases)}건 저장: {out}")
+    note = "가상 데이터. 정답은 requests.csv 값에서 계산(LLM 미사용)."
+    _save(build_cases(a.data_dir), DEFAULT_OUT, 7, note)
+    _save(build_holdout(a.data_dir), HOLDOUT_OUT, HOLDOUT_SEED,
+          note + " 홀드아웃: 프롬프트 수정 때 보지 않는 새 사례, cases.json 과 요청이 겹치지 않음.")
 
 
 if __name__ == "__main__":

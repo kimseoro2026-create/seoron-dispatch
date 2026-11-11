@@ -1,0 +1,121 @@
+{
+ "method": "rules",
+ "model": null,
+ "source_label": "규칙 추출(모의)",
+ "prompt_version": null,
+ "case_set": "dev",
+ "run_at": "2026-11-11T16:26:25",
+ "cases": 40,
+ "value_accuracy": 0.918,
+ "blocking_accuracy": 0.91,
+ "fields_with_gold": 294,
+ "wrong_value": 4,
+ "missed": 20,
+ "invented": 0,
+ "flag_recall": 1.0,
+ "flags_expected": 18,
+ "unsafe_ready": 0,
+ "flag_false_alarm": 0,
+ "flag_false_alarm_blocking": 0,
+ "false_alarm_fields": {},
+ "over_review": 0,
+ "cases_needing_review": 12,
+ "mobility_judgment": 0,
+ "injection_accuracy": 1.0,
+ "status_counts": {
+  "ready": 24,
+  "needs_review": 16
+ },
+ "by_field": {
+  "actual_discharge_date": {
+   "n": 6,
+   "accuracy": 1.0
+  },
+  "appointment_time": {
+   "n": 20,
+   "accuracy": 0.9
+  },
+  "beneficiary_id": {
+   "n": 40,
+   "accuracy": 1.0
+  },
+  "earliest_start": {
+   "n": 34,
+   "accuracy": 0.882
+  },
+  "hospital_name": {
+   "n": 20,
+   "accuracy": 0.9
+  },
+  "hospital_stay_minutes": {
+   "n": 20,
+   "accuracy": 0.9
+  },
+  "latest_start": {
+   "n": 34,
+   "accuracy": 0.882
+  },
+  "mobility_note": {
+   "n": 14,
+   "accuracy": 1.0
+  },
+  "planned_discharge_date": {
+   "n": 6,
+   "accuracy": 1.0
+  },
+  "service_date": {
+   "n": 40,
+   "accuracy": 0.9
+  },
+  "service_minutes": {
+   "n": 20,
+   "accuracy": 0.9
+  },
+  "service_type": {
+   "n": 40,
+   "accuracy": 0.9
+  }
+ },
+ "by_variant": {
+  "basic": {
+   "n_fields": 45,
+   "accuracy": 1.0,
+   "cases": 6
+  },
+  "discharge": {
+   "n_fields": 56,
+   "accuracy": 1.0,
+   "cases": 6
+  },
+  "freeform": {
+   "n_fields": 28,
+   "accuracy": 0.143,
+   "cases": 4
+  },
+  "injection": {
+   "n_fields": 43,
+   "accuracy": 1.0,
+   "cases": 6
+  },
+  "missing_window": {
+   "n_fields": 32,
+   "accuracy": 1.0,
+   "cases": 6
+  },
+  "no_year": {
+   "n_fields": 45,
+   "accuracy": 1.0,
+   "cases": 6
+  },
+  "phrasing": {
+   "n_fields": 45,
+   "accuracy": 1.0,
+   "cases": 6
+  }
+ },
+ "live_calls": 0,
+ "cache_hits": 0,
+ "latency_mean_s": null,
+ "input_tokens": 0,
+ "output_tokens": 0
+}

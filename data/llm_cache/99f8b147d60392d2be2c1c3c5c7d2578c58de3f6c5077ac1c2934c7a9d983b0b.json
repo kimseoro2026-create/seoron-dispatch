@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v2",
+ "input_hash": "ec52c1fc48f926bc181c34d649a6624e2904b4cb5f456e4eeeb23a588d126ca8",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0131\", \"evidence_span\": \"대상자 B0131 어르신\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"hospital_escort\", \"evidence_span\": \"병원동행 요청\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-11-26\", \"evidence_span\": \"2026년 11월 26일\", \"needs_confirmation\": false}, \"earliest_start\": {\"value\": \"13:19\", \"evidence_span\": \"13:19~13:39 사이 출발 희망\", \"needs_confirmation\": false}, \"latest_start\": {\"value\": \"13:39\", \"evidence_span\": \"13:19~13:39 사이 출발 희망\", \"needs_confirmation\": false}, \"service_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_name\": {\"value\": \"늘푸른비뇨기과의원\", \"evidence_span\": \"늘푸른비뇨기과의원 외래 예약\", \"needs_confirmation\": false}, \"appointment_time\": {\"value\": \"14:10\", \"evidence_span\": \"14:10 늘푸른비뇨기과의원 외래 예약\", \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": 190, \"evidence_span\": \"약 3시간 10분 머무를 예정\", \"needs_confirmation\": false}, \"mobility_note\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T16:15:37",
+ "input_tokens": 1440,
+ "output_tokens": 931
+}

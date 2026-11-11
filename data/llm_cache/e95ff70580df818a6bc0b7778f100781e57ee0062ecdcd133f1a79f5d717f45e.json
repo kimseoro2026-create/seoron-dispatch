@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v2",
+ "input_hash": "49965a1fa72bd73bb8b9dbe6283288f1ae09e86780fe8eeb5d9fcad97b8fd5d6",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0072\", \"evidence_span\": \"대상자 B0072\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"household_support\", \"evidence_span\": \"가사지원 요청\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-11-09\", \"evidence_span\": \"2026년 11월 9일\", \"needs_confirmation\": false}, \"earliest_start\": {\"value\": \"09:00\", \"evidence_span\": \"오전 9시부터\", \"needs_confirmation\": false}, \"latest_start\": {\"value\": \"10:00\", \"evidence_span\": \"오전 10시 사이\", \"needs_confirmation\": false}, \"service_minutes\": {\"value\": 120, \"evidence_span\": \"2시간 정도\", \"needs_confirmation\": false}, \"hospital_name\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"appointment_time\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"mobility_note\": {\"value\": \"휠체어 이용\", \"evidence_span\": \"휠체어 이용\", \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": \"2026-11-02\", \"evidence_span\": \"2026년 11월 2일 퇴원 예정\", \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": \"2026-11-03\", \"evidence_span\": \"실제 퇴원은 2026년 11월 3일\", \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T16:23:11",
+ "input_tokens": 1400,
+ "output_tokens": 881
+}

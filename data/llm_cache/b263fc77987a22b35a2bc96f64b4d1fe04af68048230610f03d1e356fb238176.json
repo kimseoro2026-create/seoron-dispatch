@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v2",
+ "input_hash": "4166188ceafc82947475c55f2ccda9728a0966dc7f6e741f44d896693a467fad",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0218\", \"evidence_span\": \"대상자 B0218\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"hospital_escort\", \"evidence_span\": \"병원동행 요청\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-12-04\", \"evidence_span\": \"2026년 12월 4일\", \"needs_confirmation\": false}, \"earliest_start\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"latest_start\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"service_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_name\": {\"value\": \"고려튼튼 마취통증의학과의원\", \"evidence_span\": \"고려튼튼 마취통증의학과의원\", \"needs_confirmation\": false}, \"appointment_time\": {\"value\": \"10:10\", \"evidence_span\": \"10:10 고려튼튼 마취통증의학과의원 외래 예약\", \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": 230, \"evidence_span\": \"병원에 약 230분 머무를 예정\", \"needs_confirmation\": false}, \"mobility_note\": {\"value\": \"보행기 사용\", \"evidence_span\": \"보행기 사용\", \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T16:19:44",
+ "input_tokens": 1373,
+ "output_tokens": 864
+}

@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v2",
+ "input_hash": "2dacf089917c1d9b79338e58dce0af4d7f43279724c8dab6f1ce55c89a3dbe48",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0270\", \"evidence_span\": \"대상자 B0270 어르신\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"household_support\", \"evidence_span\": \"가사지원 요청\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-11-24\", \"evidence_span\": \"희망일: 11월 24일\", \"needs_confirmation\": true}, \"earliest_start\": {\"value\": \"15:00\", \"evidence_span\": \"오후 3시부터 오후 4시 사이에 방문 시작하면 됨\", \"needs_confirmation\": false}, \"latest_start\": {\"value\": \"16:00\", \"evidence_span\": \"오후 3시부터 오후 4시 사이에 방문 시작하면 됨\", \"needs_confirmation\": false}, \"service_minutes\": {\"value\": 120, \"evidence_span\": \"120분 정도 청소·식사 준비\", \"needs_confirmation\": false}, \"hospital_name\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"appointment_time\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"mobility_note\": {\"value\": \"보행기 사용\", \"evidence_span\": \"이동: 보행기 사용\", \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T16:18:36",
+ "input_tokens": 1353,
+ "output_tokens": 753
+}

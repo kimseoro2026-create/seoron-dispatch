@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v2",
+ "input_hash": "f5f78cfcb57069754f9ba2344b2c3e15891acc7030c9520c7b406e1af6e9b655",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0017\", \"evidence_span\": \"대상자 B0017\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"hospital_escort\", \"evidence_span\": \"병원동행 요청\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-12-08\", \"evidence_span\": \"2026년 12월 8일\", \"needs_confirmation\": false}, \"earliest_start\": {\"value\": \"09:14\", \"evidence_span\": \"댁에서 9:14~9:34 사이 출발 희망\", \"needs_confirmation\": false}, \"latest_start\": {\"value\": \"09:34\", \"evidence_span\": \"댁에서 9:14~9:34 사이 출발 희망\", \"needs_confirmation\": false}, \"service_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_name\": {\"value\": \"세마그린요양병원\", \"evidence_span\": \"세마그린요양병원 외래 예약\", \"needs_confirmation\": false}, \"appointment_time\": {\"value\": \"09:50\", \"evidence_span\": \"9:50 세마그린요양병원 외래 예약\", \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": 200, \"evidence_span\": \"진료·검사 포함 병원에 약 200분 머무를 예정\", \"needs_confirmation\": false}, \"mobility_note\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": \"2026-12-02\", \"evidence_span\": \"2026년 12월 2일 퇴원 예정이었으나\", \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": \"2026-12-03\", \"evidence_span\": \"실제 퇴원은 2026년 12월 3일\", \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T16:20:02",
+ "input_tokens": 1424,
+ "output_tokens": 1273
+}

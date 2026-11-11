@@ -260,14 +260,15 @@ if case is not None:
 
 # ── 정확도 평가 결과 ──────────────────────────────────────────────────────
 st.divider()
-st.subheader("정확도 평가 (정답 세트 40건)")
+st.subheader("정확도 평가 (정답 세트 기존 40건 · 새 사례 40건)")
 
 
 def _latest_summaries() -> list[dict]:
     latest: dict[str, tuple[str, dict]] = {}
     for p in sorted(EXP_DIR.glob("cards-summary-*.json")):
         s = json.loads(p.read_text(encoding="utf-8"))
-        tag = s["source_label"] + (f" ({s['model']})" if s.get("model") else "")
+        tag = s["source_label"] + (f" ({s['model']}, {s['prompt_version']})" if s.get("model") else "")
+        tag += " · 새 사례" if s.get("case_set") == "holdout" else " · 기존 사례"
         latest[tag] = (p.name, s)
     return [dict(s, _file=f, _tag=t) for t, (f, s) in latest.items()]
 
@@ -299,5 +300,7 @@ else:
             "안전에는 문제가 없지만 담당자 일을 늘립니다.\n"
             "- 규칙 추출(모의)은 예시 메모 양식을 보고 만든 규칙이라 양식이 같은 메모에서는 점수가 높게 나옵니다. "
             "**양식 없는 메모** 열이 양식 밖 표현에 대한 비교입니다.\n"
-            "- 정답 세트는 가상 요청에서 만든 40건이며, 실제 기관 메모로 다시 평가해야 합니다."
+            "- **기존 사례**는 프롬프트를 고칠 때 본 40건, **새 사례**는 고칠 때 보지 않은 40건(요청이 겹치지 않음)입니다. "
+            "새 사례 점수가 일반화에 더 가까운 값입니다.\n"
+            "- 두 세트 모두 가상 요청에서 만든 메모이며, 실제 기관 메모로 다시 평가해야 합니다."
         )

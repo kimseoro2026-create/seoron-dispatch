@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v2",
+ "input_hash": "82dcccdf2ec26359ddc71a22c7e348c2745f1870957ed3053a92a8491ba0d6f0",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0159\", \"evidence_span\": \"대상자 B0159 어르신\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"hospital_escort\", \"evidence_span\": \"병원동행 요청\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-11-23\", \"evidence_span\": \"2026.11.23 오전 10시 40분\", \"needs_confirmation\": false}, \"earliest_start\": {\"value\": \"09:50\", \"evidence_span\": \"오전 9시 50분\", \"needs_confirmation\": false}, \"latest_start\": {\"value\": \"10:10\", \"evidence_span\": \"오전 10시 10분\", \"needs_confirmation\": false}, \"service_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_name\": {\"value\": \"하이맨비뇨의학과의원\", \"evidence_span\": \"하이맨비뇨의학과의원\", \"needs_confirmation\": false}, \"appointment_time\": {\"value\": \"10:40\", \"evidence_span\": \"오전 10시 40분\", \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": 210, \"evidence_span\": \"약 세 시간 반\", \"needs_confirmation\": false}, \"mobility_note\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T16:15:52",
+ "input_tokens": 1403,
+ "output_tokens": 752
+}

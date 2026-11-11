@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v2",
+ "input_hash": "63080fbaf08b432df9207fe4e80b6fe2919456f5fece9a3747c5dc0c107a67e0",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0154\", \"evidence_span\": \"대상자 B0154\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"hospital_escort\", \"evidence_span\": \"병원동행 요청\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-12-08\", \"evidence_span\": \"2026년 12월 8일\", \"needs_confirmation\": false}, \"earliest_start\": {\"value\": \"09:01\", \"evidence_span\": \"9:01~9:21 사이 출발 희망\", \"needs_confirmation\": false}, \"latest_start\": {\"value\": \"09:21\", \"evidence_span\": \"9:01~9:21 사이 출발 희망\", \"needs_confirmation\": false}, \"service_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_name\": {\"value\": \"서울소망이비인후과의원\", \"evidence_span\": \"서울소망이비인후과의원\", \"needs_confirmation\": false}, \"appointment_time\": {\"value\": \"10:00\", \"evidence_span\": \"10:00 서울소망이비인후과의원 외래 예약\", \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": 150, \"evidence_span\": \"약 150분 머무를 예정\", \"needs_confirmation\": false}, \"mobility_note\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": \"2026-12-05\", \"evidence_span\": \"2026년 12월 5일 퇴원 예정\", \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": \"2026-12-06\", \"evidence_span\": \"실제 퇴원은 2026년 12월 6일\", \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T16:13:18",
+ "input_tokens": 1421,
+ "output_tokens": 965
+}

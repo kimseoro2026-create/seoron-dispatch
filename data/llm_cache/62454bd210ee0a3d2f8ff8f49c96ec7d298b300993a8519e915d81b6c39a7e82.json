@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v2",
+ "input_hash": "1b327d06d5e8004035d55bd71834a06eb2c4e01a15ae2d3a3a890fcf41568012",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0136\", \"evidence_span\": \"대상자 B0136\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"household_support\", \"evidence_span\": \"가사지원 요청\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-12-09\", \"evidence_span\": \"희망일: 2026년 12월 9일\", \"needs_confirmation\": false}, \"earliest_start\": {\"value\": \"13:00\", \"evidence_span\": \"13:00부터 15:00 사이에 방문 시작하면 됨\", \"needs_confirmation\": false}, \"latest_start\": {\"value\": \"15:00\", \"evidence_span\": \"13:00부터 15:00 사이에 방문 시작하면 됨\", \"needs_confirmation\": false}, \"service_minutes\": {\"value\": 120, \"evidence_span\": \"120분 정도 청소와 설거지\", \"needs_confirmation\": false}, \"hospital_name\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"appointment_time\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"mobility_note\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T16:16:11",
+ "input_tokens": 1340,
+ "output_tokens": 634
+}

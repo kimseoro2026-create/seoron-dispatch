@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v2",
+ "input_hash": "c71bc04e61a9f8348fa7eae3f0e6b168c74c67f3931b002c2d33f93f0dce9041",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0221\", \"evidence_span\": \"B0221님\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"hospital_escort\", \"evidence_span\": \"같이 가 주실 분 필요\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-11-24\", \"evidence_span\": \"2026년 11월 24일\", \"needs_confirmation\": false}, \"earliest_start\": {\"value\": \"11:13\", \"evidence_span\": \"오전 11시 13분에서 오전 11시 33분 사이에 나서면 된다고 함\", \"needs_confirmation\": false}, \"latest_start\": {\"value\": \"11:33\", \"evidence_span\": \"오전 11시 13분에서 오전 11시 33분 사이에 나서면 된다고 함\", \"needs_confirmation\": false}, \"service_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_name\": {\"value\": \"한림대학교동탄성심병원\", \"evidence_span\": \"한림대학교동탄성심병원 진료 있으심\", \"needs_confirmation\": false}, \"appointment_time\": {\"value\": \"11:50\", \"evidence_span\": \"오전 11시 50분\", \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": 130, \"evidence_span\": \"병원에서 2시간 10분 걸릴 듯\", \"needs_confirmation\": false}, \"mobility_note\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T16:13:38",
+ "input_tokens": 1399,
+ "output_tokens": 1175
+}

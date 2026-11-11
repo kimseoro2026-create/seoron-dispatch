@@ -101,3 +101,10 @@ def test_system_prompt_lists_all_fields():
     from intake.schema import FIELDS
     for name in FIELDS:
         assert name in ex.SYSTEM_PROMPT
+
+
+def test_prompt_versions_kept():
+    assert set(ex.PROMPTS) >= {"card-v1", "card-v2"}
+    assert ex.PROMPTS["card-v1"] != ex.PROMPTS["card-v2"]
+    assert ex.SYSTEM_PROMPT == ex.PROMPTS[ex.PROMPT_VERSION]
+    assert "2시간 정도" in ex.PROMPTS["card-v2"]
