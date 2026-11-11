@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v1",
+ "input_hash": "aacadafc0b0f230f5a517d0368c209087be41d1487d5642dfb61d9d55573eb5c",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0054\", \"evidence_span\": \"대상자 B0054\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"hospital_escort\", \"evidence_span\": \"병원동행 요청\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-12-04\", \"evidence_span\": \"2026년 12월 4일\", \"needs_confirmation\": false}, \"earliest_start\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": true}, \"latest_start\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": true}, \"service_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_name\": {\"value\": \"연세휴내과의원\", \"evidence_span\": \"연세휴내과의원 외래 예약\", \"needs_confirmation\": false}, \"appointment_time\": {\"value\": \"15:40\", \"evidence_span\": \"오후 3시 40분\", \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": 150, \"evidence_span\": \"약 2시간 30분 머무를 예정\", \"needs_confirmation\": false}, \"mobility_note\": {\"value\": \"휠체어 이용\", \"evidence_span\": \"이동: 휠체어 이용.\", \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T15:56:58",
+ "input_tokens": 1192,
+ "output_tokens": 1203
+}

@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v1",
+ "input_hash": "9eabeb9c137a7111bd04305b8bbbf64dd8f879f4aab7419c6c8b98b2559628d0",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0059\", \"evidence_span\": \"B0059님\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"hospital_escort\", \"evidence_span\": \"진료 있으심\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-12-10\", \"evidence_span\": \"2026년 12월 10일\", \"needs_confirmation\": false}, \"earliest_start\": {\"value\": \"10:11\", \"evidence_span\": \"오전 10시 11분에서 오전 10시 31분 사이에 나서면 된다고 함\", \"needs_confirmation\": false}, \"latest_start\": {\"value\": \"10:31\", \"evidence_span\": \"오전 10시 11분에서 오전 10시 31분 사이에 나서면 된다고 함\", \"needs_confirmation\": false}, \"service_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_name\": {\"value\": \"베스탑비뇨기과의원\", \"evidence_span\": \"베스탑비뇨기과의원\", \"needs_confirmation\": false}, \"appointment_time\": {\"value\": \"11:00\", \"evidence_span\": \"오전 11시\", \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": 210, \"evidence_span\": \"병원에서 3시간 30분 걸릴 듯\", \"needs_confirmation\": false}, \"mobility_note\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T15:57:28",
+ "input_tokens": 1213,
+ "output_tokens": 1105
+}

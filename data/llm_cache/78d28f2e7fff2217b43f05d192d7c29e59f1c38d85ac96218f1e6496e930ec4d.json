@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v1",
+ "input_hash": "04b855b99e1af8b9c3b71693caeced8c3bc3643c6d5086737422db64b8d109e5",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0092\", \"evidence_span\": \"대상자 B0092\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"hospital_escort\", \"evidence_span\": \"병원동행\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-12-10\", \"evidence_span\": \"2026년 12월 10일\", \"needs_confirmation\": false}, \"earliest_start\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": true}, \"latest_start\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": true}, \"service_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": true}, \"hospital_name\": {\"value\": \"마음아안녕정신건강의학과의원\", \"evidence_span\": \"마음아안녕정신건강의학과의원 외래 예약\", \"needs_confirmation\": false}, \"appointment_time\": {\"value\": \"11:40\", \"evidence_span\": \"오전 11시 40분\", \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": 150, \"evidence_span\": \"약 150분 머무를 예정\", \"needs_confirmation\": false}, \"mobility_note\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": true}, \"planned_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": true}, \"actual_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": true}}}",
+ "created_at": "2026-11-11T15:57:52",
+ "input_tokens": 1182,
+ "output_tokens": 843
+}

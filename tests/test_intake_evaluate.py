@@ -74,3 +74,15 @@ def test_flag_recall_safety_net():
     s = summarize(pd.DataFrame(score_case(c, res)), {c["case_id"]: res})
     assert s["flags_expected"] == 1 and s["flag_recall"] == 1.0
     assert res.status == "needs_review"
+
+
+def test_over_review_and_false_alarm(case):
+    """값은 맞지만 확인 필요를 과하게 붙이면 over_review·flag_false_alarm 으로 잡는다."""
+    raw = _raw_from_gold(case)
+    raw["fields"]["service_minutes"]["needs_confirmation"] = True
+    res = _result(case, raw)
+    assert res.status == "needs_review"
+    s = summarize(pd.DataFrame(score_case(case, res)), {case["case_id"]: res})
+    assert s["value_accuracy"] == 1.0
+    assert s["over_review"] == 1 and s["flag_false_alarm"] == 1 and s["flag_false_alarm_blocking"] == 1
+    assert s["cases_needing_review"] == 0

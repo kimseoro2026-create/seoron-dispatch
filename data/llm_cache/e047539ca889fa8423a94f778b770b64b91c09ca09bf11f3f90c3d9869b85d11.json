@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v1",
+ "input_hash": "1792e64573788c56e29686b2c75ecfc2d858b563a43b71b6e77aef775d43399f",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0234\", \"evidence_span\": \"대상자 B0234\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"hospital_escort\", \"evidence_span\": \"병원동행 요청\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-12-09\", \"evidence_span\": \"2026년 12월 9일\", \"needs_confirmation\": false}, \"earliest_start\": {\"value\": \"09:56\", \"evidence_span\": \"오전 9시 56분~오전 10시 16분 사이 출발 희망\", \"needs_confirmation\": false}, \"latest_start\": {\"value\": \"10:16\", \"evidence_span\": \"오전 9시 56분~오전 10시 16분 사이 출발 희망\", \"needs_confirmation\": false}, \"service_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_name\": {\"value\": \"연세뉴키즈소아청소년과의원\", \"evidence_span\": \"연세뉴키즈소아청소년과의원 외래 예약\", \"needs_confirmation\": false}, \"appointment_time\": {\"value\": \"10:40\", \"evidence_span\": \"오전 10시 40분\", \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": 140, \"evidence_span\": \"병원에 약 140분 머무를 예정\", \"needs_confirmation\": true}, \"mobility_note\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": \"2026-12-05\", \"evidence_span\": \"2026년 12월 5일 퇴원 예정이었으나\", \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": \"2026-12-07\", \"evidence_span\": \"실제 퇴원은 2026년 12월 7일\", \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T15:58:37",
+ "input_tokens": 1258,
+ "output_tokens": 1121
+}

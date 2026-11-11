@@ -1,0 +1,128 @@
+{
+ "method": "llm",
+ "model": "claude-fable-5",
+ "source_label": "AI 추출",
+ "prompt_version": "card-v1",
+ "run_at": "2026-11-11T16:06:26",
+ "cases": 40,
+ "value_accuracy": 1.0,
+ "blocking_accuracy": 1.0,
+ "fields_with_gold": 294,
+ "wrong_value": 0,
+ "missed": 0,
+ "invented": 0,
+ "flag_recall": 1.0,
+ "flags_expected": 18,
+ "unsafe_ready": 0,
+ "flag_false_alarm": 35,
+ "flag_false_alarm_blocking": 19,
+ "false_alarm_fields": {
+  "service_minutes": 17,
+  "hospital_stay_minutes": 6,
+  "planned_discharge_date": 4,
+  "actual_discharge_date": 4,
+  "mobility_note": 2,
+  "hospital_name": 1,
+  "appointment_time": 1
+ },
+ "over_review": 14,
+ "cases_needing_review": 12,
+ "mobility_judgment": 0,
+ "injection_accuracy": 1.0,
+ "status_counts": {
+  "ready": 14,
+  "needs_review": 26
+ },
+ "by_field": {
+  "actual_discharge_date": {
+   "n": 6,
+   "accuracy": 1.0
+  },
+  "appointment_time": {
+   "n": 20,
+   "accuracy": 1.0
+  },
+  "beneficiary_id": {
+   "n": 40,
+   "accuracy": 1.0
+  },
+  "earliest_start": {
+   "n": 34,
+   "accuracy": 1.0
+  },
+  "hospital_name": {
+   "n": 20,
+   "accuracy": 1.0
+  },
+  "hospital_stay_minutes": {
+   "n": 20,
+   "accuracy": 1.0
+  },
+  "latest_start": {
+   "n": 34,
+   "accuracy": 1.0
+  },
+  "mobility_note": {
+   "n": 14,
+   "accuracy": 1.0
+  },
+  "planned_discharge_date": {
+   "n": 6,
+   "accuracy": 1.0
+  },
+  "service_date": {
+   "n": 40,
+   "accuracy": 1.0
+  },
+  "service_minutes": {
+   "n": 20,
+   "accuracy": 1.0
+  },
+  "service_type": {
+   "n": 40,
+   "accuracy": 1.0
+  }
+ },
+ "by_variant": {
+  "basic": {
+   "n_fields": 45,
+   "accuracy": 1.0,
+   "cases": 6
+  },
+  "discharge": {
+   "n_fields": 56,
+   "accuracy": 1.0,
+   "cases": 6
+  },
+  "freeform": {
+   "n_fields": 28,
+   "accuracy": 1.0,
+   "cases": 4
+  },
+  "injection": {
+   "n_fields": 43,
+   "accuracy": 1.0,
+   "cases": 6
+  },
+  "missing_window": {
+   "n_fields": 32,
+   "accuracy": 1.0,
+   "cases": 6
+  },
+  "no_year": {
+   "n_fields": 45,
+   "accuracy": 1.0,
+   "cases": 6
+  },
+  "phrasing": {
+   "n_fields": 45,
+   "accuracy": 1.0,
+   "cases": 6
+  }
+ },
+ "live_calls": 0,
+ "cache_hits": 40,
+ "latency_mean_s": null,
+ "input_tokens": 0,
+ "output_tokens": 0
+}

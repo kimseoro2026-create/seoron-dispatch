@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v1",
+ "input_hash": "3251f4e2409a2763292fa8f7a62cc47d73c59d9d6016c8356455089798956ccb",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0099\", \"evidence_span\": \"대상자 B0099 어르신\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"hospital_escort\", \"evidence_span\": \"병원동행 요청\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-11-20\", \"evidence_span\": \"2026년 11월 20일 11:50 희망찬병원 외래 예약\", \"needs_confirmation\": false}, \"earliest_start\": {\"value\": \"10:48\", \"evidence_span\": \"댁에서 10:48~11:08 사이 출발 희망\", \"needs_confirmation\": false}, \"latest_start\": {\"value\": \"11:08\", \"evidence_span\": \"댁에서 10:48~11:08 사이 출발 희망\", \"needs_confirmation\": false}, \"service_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_name\": {\"value\": \"희망찬병원\", \"evidence_span\": \"희망찬병원 외래 예약\", \"needs_confirmation\": false}, \"appointment_time\": {\"value\": \"11:50\", \"evidence_span\": \"11:50 희망찬병원 외래 예약\", \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": 160, \"evidence_span\": \"진료·검사 포함 병원에 약 2시간 40분 머무를 예정\", \"needs_confirmation\": false}, \"mobility_note\": {\"value\": \"보행기 사용\", \"evidence_span\": \"이동: 보행기 사용.\", \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T15:56:07",
+ "input_tokens": 1249,
+ "output_tokens": 784
+}

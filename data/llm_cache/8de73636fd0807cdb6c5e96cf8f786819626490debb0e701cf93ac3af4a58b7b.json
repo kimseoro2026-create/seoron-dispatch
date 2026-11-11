@@ -1,0 +1,10 @@
+{
+ "model": "claude-fable-5",
+ "requested_model": "claude-fable-5",
+ "prompt_version": "card-v1",
+ "input_hash": "7cf71ffeb3d28341580b48fa3f15d3993168b19728d6c5374fe070f041874e02",
+ "text": "{\"fields\": {\"beneficiary_id\": {\"value\": \"B0264\", \"evidence_span\": \"대상자 B0264 어르신\", \"needs_confirmation\": false}, \"service_type\": {\"value\": \"hospital_escort\", \"evidence_span\": \"병원동행 요청\", \"needs_confirmation\": false}, \"service_date\": {\"value\": \"2026-12-02\", \"evidence_span\": \"2026.12.2 오전 11시 반\", \"needs_confirmation\": false}, \"earliest_start\": {\"value\": \"10:45\", \"evidence_span\": \"오전 10시 45분\", \"needs_confirmation\": false}, \"latest_start\": {\"value\": \"11:05\", \"evidence_span\": \"오전 11시 5분\", \"needs_confirmation\": false}, \"service_minutes\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"hospital_name\": {\"value\": \"자연미인의원\", \"evidence_span\": \"자연미인의원 외래 예약\", \"needs_confirmation\": false}, \"appointment_time\": {\"value\": \"11:30\", \"evidence_span\": \"오전 11시 반\", \"needs_confirmation\": false}, \"hospital_stay_minutes\": {\"value\": 170, \"evidence_span\": \"약 2시간 50분 머무를 예정\", \"needs_confirmation\": false}, \"mobility_note\": {\"value\": \"실내에서도 보행기 사용\", \"evidence_span\": \"실내에서도 보행기 사용\", \"needs_confirmation\": false}, \"planned_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}, \"actual_discharge_date\": {\"value\": null, \"evidence_span\": null, \"needs_confirmation\": false}}}",
+ "created_at": "2026-11-11T15:56:21",
+ "input_tokens": 1230,
+ "output_tokens": 742
+}
