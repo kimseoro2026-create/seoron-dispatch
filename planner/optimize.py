@@ -81,6 +81,8 @@ class OptimizeResult:
     solve_seconds: float = 0.0
     objective: float = 0.0
     warm_started: bool = False
+    route_dropped: list = field(default_factory=list)   # 해의 경로에 있었으나 시각 재계산에서 불가능했던 요청
+    kept_start: bool = False   # 탐색 결과가 첫 해(근거리)보다 나빠 첫 해를 그대로 돌려줬는가
 
     def assigned_count(self) -> int:
         return len(self.assignments)
@@ -193,24 +195,25 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
         time_dim.CumulVar(manager.NodeToIndex(rnode(i))).SetRange(lo, hi)
 
     # ── 휴게: 고정 시각 구간. 서비스·이동과 겹치지 않는다 ─────────────────
-    # (1) OR-Tools 휴게 구간: 휴게가 서비스(점유)와 겹치지 않게 하고, 휴게 시간만큼 대기를 늘린다.
-    #     Python 바인딩에는 '이동 전후' 지정 버전이 없어, 휴게가 이동 도중에 들어가는 것은 막지 못한다.
-    # (2) 그래서 구간마다 직접 제약을 더한다. 노드 i 에서 다음 노드로 가는 이동이 휴게와 겹치면 안 된다:
-    #       (가) 바로 출발해 휴게 시작 전에 도착: cumul(i) + transit(i) ≤ 휴게 시작
-    #       (나) 휴게가 끝난 뒤 출발:          cumul(i) + 점유(i) + 대기(i) ≥ 휴게 끝
-    #     (cumul(다음) = cumul(i) + transit(i) + 대기(i), transit = 점유 + 이동)
-    #     둘 중 하나는 성립해야 한다. 검증기 기준(이동·점유 모두 휴게와 겹치지 않음)과 같다.
+    # 휴게는 시각이 정해져 있으므로(break_start_min), '그 구간에 일(점유·이동)을 하지 않는다'로 충분하다.
+    # 구간이 대기(slack)나 근무 시작 전·종료 후에 놓이면 휴게가 보장된다. 검증기 기준과 같다.
+    # 노드 i(점유 svc, 다음 노드까지 이동)마다 두 가지를 직접 제약한다:
+    #   (A) 점유가 휴게와 겹치지 않음:  cumul(i) + svc ≤ 휴게 시작  또는  cumul(i) ≥ 휴게 끝
+    #   (B) 이동이 휴게와 겹치지 않음. 데이터 계약상 '도착 = 서비스 시작'이고 이동은 도착 직전에 한다
+    #       (검증기: 이동 구간 = [도착 − 이동, 도착]). 대기는 직전 장소에서 한다. 그래서
+    #       cumul(다음) ≤ 휴게 시작 (휴게 전에 도착)  또는  cumul(다음) − 이동 ≥ 휴게 끝 (휴게 뒤 출발)
+    #     OR-Tools 의 TransitVar 는 '고정 통행(점유 + 이동) + 대기'다. 그래서
+    #       cumul(다음) = cumul(i) + TransitVar(i),  cumul(다음) − 이동 = cumul(i) + svc + 대기(i)
+    # 11/12: 해(solution)에는 방문 순서만 정해지고 시각은 범위로 남을 수 있다. 그러면 위의 '또는' 제약이
+    # 실제로 확인되지 않아, 휴게와 겹치는 경로가 받아들여졌다. 그래서 모든 시각을 최종 단계(finalizer)에서
+    # 하나의 값으로 정하게 한다(아래 AddVariableMinimizedByFinalizer). 시각이 정해져야 제약이 검사된다.
+    # 11/11: OR-Tools 내장 휴게(SetBreakIntervalsOfVehicle)와 (B)를 함께 쓰면, 검증을 통과한 근거리 해를
+    # 첫 해로 읽지 못하는 경우가 생겼다(휴게 시각이 인력마다 다를 때, 표본에서 날짜 13%).
+    # 내장 휴게를 빼고 (A)를 직접 넣어 같은 의미를 유지한다.
     solver = routing.solver()
     size = routing.Size()
     node_visit = [_service(manager.IndexToNode(ix)) if ix < size else 0 for ix in range(size)]
-    has_break = []
-    for k, w in enumerate(workers):
-        b_lo, b_len = int(w["break_start_min"]), int(w["break_minutes"])
-        has_break.append(b_len > 0)
-        if b_len <= 0:
-            continue
-        brk = solver.FixedDurationIntervalVar(b_lo, b_lo, b_len, False, f"break_{k}")
-        time_dim.SetBreakIntervalsOfVehicle([brk], k, node_visit)
+    has_break = [int(w["break_minutes"]) > 0 for w in workers]
 
     if any(has_break):
         far = -10 ** 6      # 수행하지 않는 노드(차량 −1)는 제약이 저절로 성립하도록 아주 이른 휴게로 둔다
@@ -226,9 +229,17 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
             b_e = solver.Element(b_ends, veh1)
             cum, tr, sl = time_dim.CumulVar(ix), time_dim.TransitVar(ix), time_dim.SlackVar(ix)
             svc = node_visit[ix]
+            if svc > 0:
+                v_before = solver.IsLessOrEqualCstVar(cum + svc - b_s, 0)
+                v_after = solver.IsGreaterOrEqualCstVar(cum - b_e, 0)
+                solver.Add(v_before + v_after >= 1)
             before = solver.IsLessOrEqualCstVar(cum + tr - b_s, 0)
             after = solver.IsGreaterOrEqualCstVar(cum + sl + svc - b_e, 0)
             solver.Add(before + after >= 1)
+        for ix in range(size):
+            routing.AddVariableMinimizedByFinalizer(time_dim.CumulVar(ix))
+        for k in range(W):
+            routing.AddVariableMinimizedByFinalizer(time_dim.CumulVar(routing.End(k)))
 
     # ── 근무 차원: 휴게를 빼고 이동 + 서비스만 누적(초과근무 금지) ─────────
     def work_cb(frm: int, to: int) -> int:
@@ -265,17 +276,22 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
     # 휴게 제약을 직접 더한 모델에서는 삽입 기반 첫 해 전략이 해를 못 찾는 경우가 많다(실측: 표본 8일 모두 실패).
     # 그래서 탐색은 항상 주어진 첫 해에서 출발한다: 근거리 배정, 그것이 없으면 '아무도 배정하지 않은 빈 일정'
     # (빈 일정은 모든 제약을 지키므로 언제나 출발점이 된다).
-    routes = _warm_start_routes(instance, workers, requests, skip) if warm_start else None
-    warm = routes is not None
-    if routes is None:
-        routes = [[] for _ in workers]
+    warm_in = _warm_start_routes(instance, workers, requests, skip) if warm_start else None
+    warm = warm_in is not None
+    routes, arrive = warm_in if warm_in is not None else ([[] for _ in workers], {})
+    start_assignments = [{"request_id": requests[i]["request_id"], "worker_id": workers[k]["worker_id"],
+                          "arrive_min": arrive[i]} for k, route in enumerate(routes) for i in route]
     routing.CloseModelWithParameters(params)
-    init = routing.ReadAssignmentFromRoutes(
-        [[manager.NodeToIndex(rnode(i)) for i in route] for route in routes], True)
+    index_routes = [[manager.NodeToIndex(rnode(i)) for i in route] for route in routes]
+    init = routing.ReadAssignmentFromRoutes(index_routes, True)
     if init is not None:
         assignment = routing.SolveFromAssignmentWithParameters(init, params)
-    else:
+    if assignment is None:
+        # 첫 해를 읽지 못했다(11/12 실측: 휴게 시각이 인력마다 다를 때 표본 10일 중 6일). 빈 일정에서 출발한다.
         warm = False
+        empty = routing.ReadAssignmentFromRoutes([[] for _ in workers], True)
+        if empty is not None:
+            assignment = routing.SolveFromAssignmentWithParameters(empty, params)
     if assignment is None:
         assignment = routing.SolveWithParameters(params)
     elapsed = round(time.time() - t0, 2)
@@ -291,22 +307,38 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
 
     result.objective = float(assignment.ObjectiveValue())
 
+    # 경로(방문 순서)만 해에서 읽고, 시각은 그 순서대로 '가장 이른 가능 도착'을 다시 계산한다.
+    # (모델 시각은 finalizer 로 정해지지만, 기준선·검증기와 똑같은 계산으로 한 번 더 맞춘다.
+    #  모델과 실제 계산이 어긋나 빠지는 요청은 route_dropped 에 남긴다 — 11/12 수정 후 표본 20일에서 0건.)
+    # 순서가 정해지면 가장 이르게 도착하는 것이 늘 가장 낫다(시간창·휴게·근무 종료 모두 '늦을수록 불리').
+    from planner.baseline import _State, _occupancy, _travel_map, _try_assign
+    tmap = _travel_map(instance["travel"])
     visited: set[int] = set()
     for k in range(W):
+        st = _State(worker=workers[k], cursor=workers[k]["base_node"],
+                    free=int(workers[k]["shift_start_min"]))
         idx = routing.Start(k)
         while not routing.IsEnd(idx):
             node = manager.IndexToNode(idx)
-            if node >= W:
+            # 모델에서 제외한 요청은 시간창을 걸지 않았으므로 결과에서도 버린다.
+            if node >= W and (node - W) not in skip:
                 i = node - W
-                # 모델에서 제외한 요청은 시간창을 걸지 않았으므로 결과에서도 버린다.
-                if i not in skip:
+                req = requests[i]
+                t, _ = _try_assign(st, req, tmap)  # _ = 불가 사유
+                if t is not None:
+                    leg = int(round(tmap[(st.cursor, req["home_node"])]))
+                    end, span = _occupancy(req, tmap, t)
+                    st.work_min += leg + span
+                    st.cursor = req["home_node"]
+                    st.free = int(end)
                     visited.add(i)
                     result.assignments.append({
-                        "request_id": requests[i]["request_id"],
+                        "request_id": req["request_id"],
                         "worker_id": workers[k]["worker_id"],
-                        # 가장 이른 가능 도착(시간창·휴게를 지키는 하한)
-                        "arrive_min": int(assignment.Min(time_dim.CumulVar(idx))),
+                        "arrive_min": int(t),
                     })
+                else:
+                    result.route_dropped.append((req["request_id"], workers[k]["worker_id"], _))
             idx = assignment.Value(routing.NextVar(idx))
 
     for i, req in enumerate(requests):
@@ -335,12 +367,38 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
                     result.unassigned = [u for u in result.unassigned
                                          if u["request_id"] not in added_ids]
 
+    # ── 안전장치: 첫 해(검증을 통과한 근거리 배정)보다 나쁜 결과는 돌려주지 않는다 ─────────
+    # 드물게(휴게 시각이 인력마다 다를 때) 첫 해를 읽지 못해 빈 일정에서 다시 풀면, 제한시간 안에
+    # 첫 해보다 못한 해가 나올 수 있다. 같은 목적(우선순위 벌점 → 이동)으로 비교해 나은 쪽을 쓴다.
+    if start_assignments and _score(instance, start_assignments) < _score(instance, result.assignments):
+        kept = {a["request_id"] for a in start_assignments}
+        result.assignments = sorted(start_assignments, key=lambda a: a["request_id"])
+        result.unassigned = [u for u in result.unassigned if u["request_id"] not in kept] + [
+            {"request_id": r["request_id"], "reason": SOLVER_UNRESOLVED, "certainty": "unknown"}
+            for r in requests
+            if r["request_id"] not in kept
+            and r["request_id"] not in {u["request_id"] for u in result.unassigned}]
+        result.kept_start = True
+
     return result
 
 
+def _score(instance: dict, assignments: list[dict]) -> tuple[int, int]:
+    """모델과 같은 목적: (미배정 우선순위 벌점 합, 총 이동). 작을수록 좋다. 검증 실패는 가장 나쁨."""
+    from verifier import verify
+    rep = verify(instance, assignments)
+    if rep.violations:
+        return (10 ** 18, 10 ** 9)
+    done = {a["request_id"] for a in assignments}
+    missed = sum(drop_penalty(r.get("priority", 1)) for r in instance["requests"]
+                 if r["request_id"] not in done)
+    return (missed, sum(t.travel_min for t in rep.timelines))
+
+
 def _warm_start_routes(instance: dict, workers: list[dict], requests: list[dict],
-                       skip: set[int]) -> list[list[int]] | None:
-    """근거리 기준선 배정 → 인력별 요청 순서(요청 번호 목록). 검증을 통과하지 못하면 None."""
+                       skip: set[int]) -> tuple[list[list[int]], dict[int, int]] | None:
+    """근거리 기준선 배정 → (인력별 요청 순서(요청 번호 목록), 요청 번호별 도착 시각).
+    검증을 통과하지 못하면 None."""
     from planner.baseline import nearest
     from verifier import verify
 
@@ -350,11 +408,13 @@ def _warm_start_routes(instance: dict, workers: list[dict], requests: list[dict]
     pos = {r["request_id"]: i for i, r in enumerate(requests)}
     wpos = {w["worker_id"]: k for k, w in enumerate(workers)}
     routes: list[list[int]] = [[] for _ in workers]
+    arrive: dict[int, int] = {}
     for a in sorted(base.assignments, key=lambda x: x["arrive_min"]):
         i = pos[a["request_id"]]
         if i not in skip:
             routes[wpos[a["worker_id"]]].append(i)
-    return routes
+            arrive[i] = int(a["arrive_min"])
+    return routes, arrive
 
 
 def _repair(instance: dict, assignments: list[dict], dropped_ids: list[str],

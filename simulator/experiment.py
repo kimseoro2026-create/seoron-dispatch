@@ -143,6 +143,65 @@ def widen_windows(instance: dict, escort_width: int | None = None, household_ext
     return dict(instance, requests=out_reqs)
 
 
+ESCORT_SKILL = "hospital_escort"
+
+
+def change_staffing(instance: dict, retrain: int = 0, add: int = 0) -> dict:
+    """동행 가능 인력 수를 바꾼 새 instance (실험 변수). 원래 instance 는 바꾸지 않는다.
+
+    retrain  가사 전담 인력 중 이만큼에게 병원동행 자격을 더한다(같은 인원·같은 예산, 교육 가정).
+             worker_id 순서로 고른다(재현 가능).
+    add      병원동행 자격 인력을 이만큼 새로 더한다(추가 채용 가정). 기존 동행 인력을
+             worker_id 순서로 돌아가며 복제해 출퇴근 위치·근무시간·휴게를 같게 둔다
+             (이동시간 행렬에 없는 새 위치를 만들지 않기 위해서다).
+    요청 집합은 그대로라서 같은 날·같은 시드끼리 짝지어 비교할 수 있다.
+    인력이 늘면 가용시간이 늘어 실제 부하율(actual_rho)은 낮아진다.
+    """
+    workers = [dict(w, skills=list(w.get("skills") or [])) for w in instance["workers"]]
+    if retrain:
+        plain = sorted((w for w in workers if ESCORT_SKILL not in w["skills"]),
+                       key=lambda w: w["worker_id"])
+        if retrain > len(plain):
+            raise ValueError(f"교육할 가사 전담 인력이 {len(plain)}명뿐입니다(요청 {retrain}명)")
+        for w in plain[:retrain]:
+            w["skills"].append(ESCORT_SKILL)
+    if add:
+        escort = sorted((w for w in instance["workers"] if ESCORT_SKILL in (w.get("skills") or [])),
+                        key=lambda w: w["worker_id"])
+        if not escort:
+            raise ValueError("복제할 동행 인력이 없습니다")
+        for i in range(add):
+            src = escort[i % len(escort)]
+            workers.append(dict(src, skills=list(src["skills"]), worker_id=f"WADD{i + 1:02d}"))
+    return dict(instance, workers=workers)
+
+
+DEFAULT_BREAK_STARTS = (660, 720, 780, 840)   # 11·12·13·14시
+
+
+def stagger_breaks(instance: dict, starts: Iterable[int] = DEFAULT_BREAK_STARTS) -> dict:
+    """휴게 시작 시각을 인력마다 돌아가며 다르게 둔 새 instance (실험 변수).
+
+    기본 데이터는 모든 인력이 같은 시각에 휴게한다. 병원동행은 2.5~4시간 연속 점유라
+    휴게를 넘는 예약은 누구도 맡을 수 없다. 휴게 길이는 그대로 두고 시작 시각만
+    worker_id 순서로 starts 를 돌아가며 배정한다(휴게 보장은 유지, 시각은 운영 가정).
+    근무시간 밖으로 나가는 시작 시각은 쓰지 않는다.
+    """
+    starts = [int(s) for s in starts]
+    workers = []
+    order = sorted(instance["workers"], key=lambda w: w["worker_id"])
+    pos = {w["worker_id"]: i for i, w in enumerate(order)}
+    for w in instance["workers"]:
+        w = dict(w)
+        s = starts[pos[w["worker_id"]] % len(starts)]
+        lo, hi = int(w["shift_start_min"]), int(w["shift_end_min"]) - int(w["break_minutes"])
+        if not lo <= s <= hi:
+            raise ValueError(f"{w['worker_id']} 휴게 시작 {s}분이 근무시간 밖입니다")
+        w["break_start_min"] = s
+        workers.append(w)
+    return dict(instance, workers=workers)
+
+
 # ── 하루 실행 ─────────────────────────────────────────────────────────────
 
 @dataclass
@@ -166,6 +225,7 @@ class DayResult:
     # 서비스별 요청·배정 수(병원동행이 병목인지 보기 위함)
     requests_escort: int = 0
     assigned_escort: int = 0
+    start_note: str = ""
     # 재생(replay) 실행에서만 채워지는 취소 관련 수치
     extra: dict = field(default_factory=dict)
 
@@ -196,6 +256,7 @@ class DayResult:
             "status": self.status,
             "requests_escort": self.requests_escort,
             "assigned_escort": self.assigned_escort,
+            "start_note": self.start_note,
         }
         # 재생 실행이면 취소 관련 열을 덧붙인다. 다른 방식은 비워 둔다.
         for key in ("cancellations", "cancelled_with_assignment", "refilled",
@@ -223,6 +284,7 @@ def run_day(instance: dict, algorithm: str, seed: int = 42,
 
     cancel_stats: dict = {}
     verify_instance = instance
+    start_note = ""     # 최적화만: warm(근거리 첫 해에서 출발) / cold / kept_start(첫 해를 그대로 반환)
     if algorithm.endswith("_replay") or algorithm.endswith("_cancel"):
         is_replay = algorithm.endswith("_replay")
         suffix = "_replay" if is_replay else "_cancel"
@@ -250,6 +312,7 @@ def run_day(instance: dict, algorithm: str, seed: int = 42,
         r = optimize(instance, time_limit_sec=time_limit_sec, seed=seed)
         assignments, unassigned = r.assignments, r.unassigned
         status, secs = r.status, r.solve_seconds
+        start_note = ("kept_start" if r.kept_start else "warm" if r.warm_started else "cold")
     else:
         raise ValueError(f"알 수 없는 방식: {algorithm}")
 
@@ -284,6 +347,7 @@ def run_day(instance: dict, algorithm: str, seed: int = 42,
         requests_escort=sum(1 for x in instance["requests"] if x["service_type"] == "hospital_escort"),
         assigned_escort=sum(1 for a in assignments
                             if req_by_id[a["request_id"]]["service_type"] == "hospital_escort"),
+        start_note=start_note,
     )
     # 재생 실행이면 취소 관련 수치를 함께 남긴다
     if cancel_stats:

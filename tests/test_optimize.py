@@ -214,3 +214,60 @@ def test_priority_penalty_dominates():
     from planner.optimize import drop_penalty
     assert drop_penalty(2) > 9 * drop_penalty(1)
     assert drop_penalty(1) > 10 * 1440   # 하루 이동시간 전부보다 크다
+
+
+def test_warm_start_loads_when_second_job_starts_at_break():
+    """11/11 회귀: 휴게 13~14시, 두 번째 일의 시간창이 휴게 시작과 같은 날.
+    내장 휴게 + 이동 제약을 함께 쓰던 모델은 검증을 통과한 근거리 해를 첫 해로 읽지 못했다."""
+    nodes = [{"node_id": "N_W1", "kind": "worker_base"},
+             {"node_id": "N_A", "kind": "beneficiary_home"}, {"node_id": "N_B", "kind": "beneficiary_home"}]
+    mins = {("N_W1", "N_A"): 7.1, ("N_A", "N_B"): 4.8, ("N_B", "N_W1"): 9.6,
+            ("N_A", "N_W1"): 7.1, ("N_B", "N_A"): 4.8, ("N_W1", "N_B"): 9.6}
+    travel = [{"from_node": a, "to_node": b, "minutes": m, "source": "estimate"} for (a, b), m in mins.items()]
+    def hh(rid, node, lo, hi):
+        return {"request_id": rid, "beneficiary_id": rid, "service_type": "household_support",
+                "service_date": "2026-11-11", "home_node": node, "earliest_start_min": lo,
+                "latest_start_min": hi, "service_minutes": 120, "priority": 1, "priority_reason": None,
+                "requested_at": "2026-11-10T09:00:00", "required_skills": ["household_support"]}
+    inst = {"service_date": "2026-11-11", "nodes": nodes, "travel": travel,
+            "workers": [{"worker_id": "W1", "skills": ["household_support"], "base_node": "N_W1",
+                         "shift_start_min": 540, "shift_end_min": 1080, "break_start_min": 780,
+                         "break_minutes": 60, "max_work_minutes": 480},
+                        # 일이 없는 두 번째 인력만 있어도 예전 모델은 첫 해를 읽지 못했다
+                        {"worker_id": "W2", "skills": ["household_support"], "base_node": "N_W1",
+                         "shift_start_min": 540, "shift_end_min": 1080, "break_start_min": 660,
+                         "break_minutes": 60, "max_work_minutes": 480}],
+            "requests": [hh("RA", "N_A", 540, 660), hh("RB", "N_B", 780, 900)]}
+    import planner.optimize as po
+    real = po._warm_start_routes
+    # 근거리가 두 일을 W1 한 명에게 몰아주는 경로를 첫 해로 준다(검증 통과 확인)
+    routes = ([[0, 1], []], {0: 547, 1: 845})
+    assert verify(inst, [{"request_id": "RA", "worker_id": "W1", "arrive_min": 547},
+                         {"request_id": "RB", "worker_id": "W1", "arrive_min": 845}]).ok
+    po._warm_start_routes = lambda *a: routes
+    try:
+        r = optimize(inst, time_limit_sec=2)
+    finally:
+        po._warm_start_routes = real
+    assert r.warm_started
+    assert len(r.assignments) == 2
+    assert verify(inst, r.assignments).ok
+
+
+def test_break_either_or_is_enforced_in_solution():
+    """11/12 회귀: 해에 시각이 범위로 남으면 '휴게 전 도착 또는 휴게 후 출발' 제약이 확인되지 않았다.
+    휴게 12~13시, 시간창 11~13시, 120분 서비스, 이동 1분 → 어떤 시각에도 불가능하다.
+    모델이 이 요청을 경로에 넣으면(시각 재계산에서 빠짐) route_dropped 가 생긴다."""
+    nodes = [{"node_id": "N_W1", "kind": "worker_base"}, {"node_id": "N_A", "kind": "beneficiary_home"}]
+    travel = [{"from_node": "N_W1", "to_node": "N_A", "minutes": 1.2, "source": "estimate"},
+              {"from_node": "N_A", "to_node": "N_W1", "minutes": 1.2, "source": "estimate"}]
+    req = {"request_id": "RA", "beneficiary_id": "B", "service_type": "household_support",
+           "service_date": "2026-11-11", "home_node": "N_A", "earliest_start_min": 660,
+           "latest_start_min": 780, "service_minutes": 120, "priority": 1, "priority_reason": None,
+           "requested_at": "2026-11-10T09:00", "required_skills": ["household_support"]}
+    w = {"worker_id": "W1", "skills": ["household_support"], "base_node": "N_W1", "shift_start_min": 540,
+         "shift_end_min": 1080, "break_start_min": 720, "break_minutes": 60, "max_work_minutes": 480}
+    inst = {"service_date": "2026-11-11", "nodes": nodes, "travel": travel, "workers": [w], "requests": [req]}
+    r = optimize(inst, time_limit_sec=1, repair=False, warm_start=False)
+    assert r.assignments == []
+    assert r.route_dropped == []
