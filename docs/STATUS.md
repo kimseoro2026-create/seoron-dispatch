@@ -1155,3 +1155,6 @@ claude-haiku 비교, 확인 완료 카드 → 배정 입력 연결.
   표는 핵심 6열 + 자세히 보기, 진단 문구를 첫 화면과 같은 쉬운 말로. 비용 0원 시나리오의 1명당 비용은 '추가 비용 없음'.
 - 시연 대본(`demo_script_3min.md` + PDF)을 바뀐 화면에 맞게 다시 씀: 담당자 하루 흐름 5장면(접수 → 배정 → 승인 → 30일 효과 → 부족 자원), 휴게 분산 결과 추가.
   PDF는 Edge headless로 생성(별도 프로필 필요, PowerShell Start-Process로 실행).
+- **배포 오류 수정**: 배포 화면 '못 맡은 요청' 표에서 ImportError. 배포 서버가 프로세스를 다시 시작하지 않아 예전 `simulator.experiment`가
+  메모리에 남은 것이 원인(저장소 코드는 정상). 함수가 없으면 모듈을 한 번 다시 읽고, 진단이 실패해도 '진단 불가'로 두고 화면은 계속 그린다.
+  재현 테스트 `tests/test_day_page_stale_module.py` 추가. 같은 일이 또 생기면 Streamlit Cloud 'Manage app → Reboot'으로도 풀린다.

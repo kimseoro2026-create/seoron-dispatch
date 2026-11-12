@@ -344,15 +344,33 @@ def _hour_ticks(shift_s: int, shift_e: int) -> str:
 
 def _unassigned_rows(d: dict) -> list[dict]:
     """못 맡은 요청 표. 엔진 사유에 더해, 빈 일정의 자격 인력이면 가능했는지 다시 시험한 쉬운 설명을 붙인다."""
-    from simulator.experiment import (IDLE_BREAK, IDLE_CAPACITY, IDLE_NO_SKILL, IDLE_ROUTE,
-                                      IDLE_WINDOW, _travel_map, idle_check)
+    import importlib
+
+    import simulator.experiment as ex
+    # 배포 서버는 프로세스를 다시 시작하지 않고 화면 파일만 다시 읽는다. 예전 simulator.experiment 가
+    # 메모리에 남아 있으면 진단 함수가 없으므로 한 번 다시 읽는다(2026-11-12 배포에서 ImportError 확인).
+    if not hasattr(ex, "idle_check"):
+        ex = importlib.reload(ex)
     inst_d = d["inst"].as_instance()
-    tmap = _travel_map(inst_d["travel"])
     req_by_id = {r_["request_id"]: r_ for r_ in inst_d["requests"]}
-    idle_ko = {IDLE_CAPACITY: "다른 일정과 겹침 (인력이 더 있으면 가능)",
-               IDLE_BREAK: "점심 휴게 시간과 겹침",
-               IDLE_WINDOW: "희망 시간이 근무시간과 안 맞음",
-               IDLE_NO_SKILL: "자격 맞는 인력 없음", IDLE_ROUTE: "이동경로 확인 불가"}
+    idle_ko = {"CAPACITY": "다른 일정과 겹침 (인력이 더 있으면 가능)",
+               "BREAK": "점심 휴게 시간과 겹침",
+               "WINDOW": "희망 시간이 근무시간과 안 맞음",
+               "NO_SKILL": "자격 맞는 인력 없음", "ROUTE": "이동경로 확인 불가"}
+
+    def explain(r_: dict | None) -> str:
+        # 진단은 보조 정보다. 실패하면 지어내지 않고 '진단 불가'로 둔다(화면 전체를 멈추지 않음).
+        if not r_:
+            return "진단 불가"
+        try:
+            return idle_ko.get(ex.idle_check(r_, inst_d["workers"], tmap), "진단 불가")
+        except Exception:
+            return "진단 불가"
+
+    try:
+        tmap = ex._travel_map(inst_d["travel"])
+    except Exception:
+        tmap = None
     rows = []
     for u in d["unassigned"]:
         r_ = req_by_id.get(u["request_id"])
@@ -361,7 +379,7 @@ def _unassigned_rows(d: dict) -> list[dict]:
             "서비스": SERVICE_KO.get(r_["service_type"], "") if r_ else "",
             "희망 시작": f"{_hhmm(r_['earliest_start_min'])}~{_hhmm(r_['latest_start_min'])}" if r_ else "",
             "우선순위": ("높음" if int(r_.get("priority", 1)) >= 2 else "보통") if r_ else "",
-            "왜 못 맡았나 (쉬운 설명)": idle_ko.get(idle_check(r_, inst_d["workers"], tmap), "") if r_ else "",
+            "왜 못 맡았나 (쉬운 설명)": explain(r_) if tmap is not None else "진단 불가",
             "엔진 사유": REASON_KO.get(u.get("reason"), u.get("reason", "")),
             "확실성": CERT_KO.get(u.get("certainty"), u.get("certainty", "")),
         })
