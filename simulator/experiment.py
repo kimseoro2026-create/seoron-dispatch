@@ -226,8 +226,14 @@ class DayResult:
     requests_escort: int = 0
     assigned_escort: int = 0
     start_note: str = ""
+    # 높은 우선순위(priority >= 2, 퇴원 14일 이내 등) 요청·배정 수와 그날 요청이 모두 배정된 사람 수
+    requests_high: int = 0
+    assigned_high: int = 0
+    fully_met_beneficiaries: int = 0
     # 재생(replay) 실행에서만 채워지는 취소 관련 수치
     extra: dict = field(default_factory=dict)
+    # 요청별 결과(outcome_rows). 표(as_row)에는 넣지 않는다.
+    outcomes: list = field(default_factory=list)
 
     @property
     def on_time_rate(self) -> float:
@@ -257,6 +263,9 @@ class DayResult:
             "requests_escort": self.requests_escort,
             "assigned_escort": self.assigned_escort,
             "start_note": self.start_note,
+            "requests_high": self.requests_high,
+            "assigned_high": self.assigned_high,
+            "fully_met_beneficiaries": self.fully_met_beneficiaries,
         }
         # 재생 실행이면 취소 관련 열을 덧붙인다. 다른 방식은 비워 둔다.
         for key in ("cancellations", "cancelled_with_assignment", "refilled",
@@ -265,6 +274,85 @@ class DayResult:
                     "delay_moved", "delay_late_avg", "delay_late_max"):
             row[key] = self.extra.get(key, "")
         return row
+
+
+HIGH_PRIORITY = 2
+
+
+def outcome_rows(instance: dict, assigned: dict[str, str], unassigned: list,
+                 area_of: dict[str, str] | None = None) -> list[dict]:
+    """요청마다 한 줄: 배정 여부·인력·미배정 사유·확실성·서비스·우선순위·희망 시작 시간대·권역.
+
+    assigned 는 {request_id: worker_id}. 사유가 없는 미배정은 UNKNOWN/unknown 으로 둔다(지어내지 않음).
+    권역을 모르면 빈 값으로 둔다.
+    """
+    why = {}
+    for u in unassigned:
+        u = u if isinstance(u, dict) else u.as_dict()
+        why[u["request_id"]] = (u.get("reason") or "UNKNOWN", u.get("certainty") or "unknown")
+    area_of = area_of or {}
+    rows = []
+    for r in instance["requests"]:
+        rid = r["request_id"]
+        ok = rid in assigned
+        reason, cert = ("", "") if ok else why.get(rid, ("UNKNOWN", "unknown"))
+        rows.append({
+            "request_id": rid,
+            "beneficiary_id": r["beneficiary_id"],
+            "service_type": r["service_type"],
+            "priority": int(r.get("priority", 1)),
+            "start_hour": int(r["earliest_start_min"]) // 60,
+            "area": area_of.get(r["beneficiary_id"], ""),
+            "assigned": ok,
+            "worker_id": assigned.get(rid, ""),
+            "reason": reason,
+            "certainty": cert,
+            "idle_check": "",
+        })
+    return rows
+
+
+IDLE_CAPACITY = "CAPACITY"   # 빈 일정의 자격 인력이면 맡을 수 있었다 → 인력 여유(경쟁) 부족
+IDLE_BREAK = "BREAK"         # 빈 일정이어도 불가, 휴게를 빼면 가능 → 휴게 시각과 충돌
+IDLE_WINDOW = "WINDOW"       # 휴게를 빼도 불가 → 시간창·근무시간 자체가 안 맞음
+IDLE_NO_SKILL = "NO_SKILL"   # 자격 맞는 인력이 없음
+IDLE_ROUTE = "ROUTE"         # 이동시간 없음
+
+
+def idle_check(req: dict, workers: list[dict], travel_map: dict) -> str:
+    """미배정 요청을 '빈 일정의 자격 인력'으로 다시 시험해 구조적 원인과 인력 여유 부족을 나눈다.
+
+    배정 엔진의 사유 코드를 바꾸지 않는 진단용 분류다(부족 자원 리포트에서만 쓴다).
+    """
+    from planner.baseline import ROUTE_UNKNOWN, _State, _try_assign
+
+    need = set(req.get("required_skills") or [])
+    skilled = [w for w in workers if need.issubset(set(w.get("skills") or []))]
+    if not skilled:
+        return IDLE_NO_SKILL
+
+    def fits(w):
+        return _try_assign(_State(worker=w, cursor=w["base_node"], free=int(w["shift_start_min"])),
+                           req, travel_map)
+
+    tried = [fits(w) for w in skilled]
+    if any(t is not None for t, _ in tried):
+        return IDLE_CAPACITY
+    if all(r == ROUTE_UNKNOWN for _, r in tried):
+        return IDLE_ROUTE
+    # 휴게를 없앤 경우: 길이 0이라도 겹침 검사에 걸리므로 근무 종료 시각으로 옮긴다
+    if any(fits(dict(w, break_minutes=0, break_start_min=int(w["shift_end_min"])))[0] is not None
+           for w in skilled):
+        return IDLE_BREAK
+    return IDLE_WINDOW
+
+
+def fully_met(rows: list[dict]) -> int:
+    """그날 요청이 모두 배정된 고유 인원 수(PRD 4.1 '필수 요청 전체 충족 인원'의 하루 단위)."""
+    people: dict[str, bool] = {}
+    for r in rows:
+        people[r["beneficiary_id"]] = people.get(r["beneficiary_id"], True) and r["assigned"]
+    return sum(people.values())
 
 
 def run_day(instance: dict, algorithm: str, seed: int = 42,
@@ -317,6 +405,15 @@ def run_day(instance: dict, algorithm: str, seed: int = 42,
         raise ValueError(f"알 수 없는 방식: {algorithm}")
 
     rep = verify(verify_instance, assignments)
+    outcomes = outcome_rows(instance, {a["request_id"]: a["worker_id"] for a in assignments},
+                            unassigned, instance.get("area_of"))
+    if any(not o["assigned"] for o in outcomes):
+        from planner.baseline import _travel_map
+        tmap = _travel_map(instance["travel"])
+        for o, r in zip(outcomes, instance["requests"]):
+            if not o["assigned"]:
+                o["idle_check"] = idle_check(r, instance["workers"], tmap)
+    high = [o for o in outcomes if o["priority"] >= HIGH_PRIORITY]
 
     req_by_id = {x["request_id"]: x for x in instance["requests"]}
     served = {req_by_id[a["request_id"]]["beneficiary_id"] for a in assignments}
@@ -348,6 +445,10 @@ def run_day(instance: dict, algorithm: str, seed: int = 42,
         assigned_escort=sum(1 for a in assignments
                             if req_by_id[a["request_id"]]["service_type"] == "hospital_escort"),
         start_note=start_note,
+        requests_high=len(high),
+        assigned_high=sum(o["assigned"] for o in high),
+        fully_met_beneficiaries=fully_met(outcomes),
+        outcomes=outcomes,
     )
     # 재생 실행이면 취소 관련 수치를 함께 남긴다
     if cancel_stats:
@@ -379,7 +480,8 @@ def run_experiment(data_dir: str | Path,
                    dates: Iterable[str] | None = None,
                    time_limit_sec: int = 10,
                    progress: Callable[[str], None] | None = None,
-                   transform: Callable[[dict], dict] | None = None) -> pd.DataFrame:
+                   transform: Callable[[dict], dict] | None = None,
+                   outcome_sink: list | None = None) -> pd.DataFrame:
     """여러 날 × 여러 방식 × 여러 부하율 × 여러 시드를 돌려 한 표로 돌려준다.
 
     algorithms 에 'request_order_replay' 처럼 '_replay' 를 붙이면 취소 재배정을 포함한다.
@@ -387,11 +489,13 @@ def run_experiment(data_dir: str | Path,
 
     계산 시간이 크게 늘 수 있으므로 날짜·시드 수를 먼저 줄여 확인할 것.
     transform 은 요청을 고른 '뒤'에 적용한다(예: widen_windows). 요청 집합과 부하율은 그대로다.
+    outcome_sink 에 목록을 주면 요청별 결과(outcome_rows + 날짜·시드·부하율·방식)를 덧붙인다.
     """
     from planner.data import load_day, load_travel, service_dates
 
     d = Path(data_dir)
     travel = load_travel(d)
+    area_of = _area_of(d) if outcome_sink is not None else {}
     all_dates = list(dates) if dates is not None else service_dates(d)
 
     rows: list[dict] = []
@@ -415,11 +519,25 @@ def run_experiment(data_dir: str | Path,
                     res.target_rho = rho
                     res.actual_rho = actual
                     rows.append(res.as_row())
+                    if outcome_sink is not None:
+                        for o in res.outcomes:
+                            o = dict(o, service_date=date, seed=seed, target_rho=rho, algorithm=algo)
+                            o["area"] = o["area"] or area_of.get(o["beneficiary_id"], "")
+                            outcome_sink.append(o)
                     if progress:
                         progress(f"{date} rho={rho} seed={seed} {algo} "
                                  f"→ {res.assigned}/{res.requests}")
 
     return pd.DataFrame(rows)
+
+
+def _area_of(data_dir: Path) -> dict[str, str]:
+    """beneficiaries.csv 의 행정동(dong). 파일이 없으면 빈 사전."""
+    p = Path(data_dir) / "beneficiaries.csv"
+    if not p.exists():
+        return {}
+    b = pd.read_csv(p, usecols=["beneficiary_id", "dong"], encoding="utf-8-sig")
+    return dict(zip(b.beneficiary_id.astype(str), b.dong.astype(str)))
 
 
 def summarize(df: pd.DataFrame) -> pd.DataFrame:

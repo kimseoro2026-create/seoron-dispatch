@@ -41,3 +41,10 @@ simulation:
   hospital_class_weights: {"상급종합": 3.0, "종합병원": 3.0, "병원": 2.0, "요양병원": 1.0, "의원": 0.5}
   hospital_distance_decay_km: 5.0
   hourly_cost_krw: 13000        # 서울시 동행매니저 시급 기준(가정)
+
+# 부족 자원·비용 리포트(PRD 13장) 가정. 시급은 simulation.hourly_cost_krw 를 쓴다.
+# 값이 null 이면 해당 금액은 '계산 불가'로 표시한다(지어내지 않음).
+cost:
+  paid_time: shift_minus_break   # 유급시간 가정: 근무시간 - 휴게(무급). 계약 확인 전 가정
+  monthly_salary_krw: null       # 고정급(월급) 모델 단가. 미확정
+  transport_krw_per_min: null    # 이동 1분당 교통비. 미확정
