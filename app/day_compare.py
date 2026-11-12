@@ -36,6 +36,8 @@ st.markdown(
 )
 
 st.title("돌봄배정 하루 비교")
+st.caption("같은 날, 같은 요청과 같은 인력으로 **배정 방식만 바꿔** 계산했습니다. "
+           "기존 방식(신청순·근거리)과 AI 최적화 중 어느 쪽이 더 많은 어르신을 제때 돌보는지 비교합니다.")
 
 
 # ── 데이터 로딩 ───────────────────────────────────────────────────────────
@@ -141,14 +143,17 @@ def _raw_sources() -> dict[str, str]:
 
 # ── 사이드바 ──────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.header("설정")
+    st.header("보기 설정")
     dates = _dates()
     if not dates:
         st.error("data/processed/requests.csv 가 없습니다. python -m f0 all --offline 을 먼저 실행하세요.")
         st.stop()
     date = st.selectbox("날짜", dates, index=0)
-    algos = ["신청순", "근거리", "최적화(OR-Tools)"]
-    selected = st.multiselect("비교할 방식", algos, default=algos[:2])
+    algos = ["신청순", "근거리", "AI 최적화"]
+    selected = st.multiselect("비교할 방식", algos, default=algos,
+                              help="신청순: 먼저 신청한 요청부터 배정(기존 방식)  \n"
+                                   "근거리: 급한 요청부터 가장 가까운 인력에게(기존 방식)  \n"
+                                   "AI 최적화: 근무·휴게·자격·병원 예약을 모두 지키면서 더 많은 요청을 배정")
     if not selected:
         st.warning("방식을 하나 이상 선택하세요.")
         st.stop()
@@ -157,15 +162,16 @@ with st.sidebar:
     stamp = _data_stamp()
     src = _matrix_source(stamp)
     src_label = {"osrm": "OSRM 도로", "estimate": "직선거리 대략값", "kakao": "카카오 길찾기"}.get(src, src)
-    st.caption(f"이동시간 출처: **{src_label}**")
+    st.markdown("**데이터 출처**")
+    st.caption(f"이동시간: **{src_label}**")
     for _label, _text in _raw_sources().items():
-        st.caption(f"{_label} 출처: **{_text}**")
-    st.caption(_source())
+        st.caption(f"{_label}: **{_text}**")
+    st.caption("어르신·인력·요청은 모두 가상으로 만든 데이터입니다.")
 
 
 # ── 각 방식 계산 ──────────────────────────────────────────────────────────
 def _algo_key(a: str) -> str:
-    return {"신청순": "신청순", "근거리": "근거리", "최적화(OR-Tools)": "최적화"}[a]
+    return {"신청순": "신청순", "근거리": "근거리", "AI 최적화": "최적화"}[a]
 
 
 results = {}
@@ -180,157 +186,235 @@ for a in selected:
             st.error(f"{a} 계산 중 오류: {e}")
 
 
-# ── 비교표 ────────────────────────────────────────────────────────────────
-st.subheader("방식별 비교")
+# ── 핵심 결과와 비교표 ───────────────────────────────────────────────────
+def _hhmm(m) -> str:
+    m = int(m)
+    return f"{m // 60:02d}:{m % 60:02d}"
+
+
+SERVICE_KO = {"hospital_escort": "병원동행", "household_support": "가사지원"}
+REASON_KO = {
+    "TIME_WINDOW_CONFLICT": "시간이 맞는 인력 없음", "NO_CAPACITY": "인력 일정이 꽉 참",
+    "NO_SKILL_MATCH": "자격 맞는 인력 없음", "ROUTE_UNKNOWN": "이동경로 확인 불가",
+    "SOLVER_UNRESOLVED": "계산 중 배정 못 함", "MISSING_REQUIRED": "필수 정보 부족",
+}
+CERT_KO = {"verified": "확인됨", "diagnostic": "추정", "unknown": "미상"}
+
 if results:
-    rows = []
+    rows, served_n = [], {}
     for a, d in results.items():
         tl = d["timelines"]
         assigned = len(d["assignments"])
         total = len(d["inst"].requests)
-        unassigned_n = len(d["unassigned"])
-        violations = len(d["rep"].violations)
         # 고유 인원: 같은 사람이 2건 배정되어도 1명으로 센다(PRD 4.1)
         req_by_id = {r["request_id"]: r for r in d["inst"].requests}
         served = {req_by_id[x["request_id"]]["beneficiary_id"] for x in d["assignments"]}
         all_people = {r["beneficiary_id"] for r in d["inst"].requests}
+        served_n[a] = (len(served), len(all_people))
         travel_sum = sum(t.get("travel_min", 0) for t in tl)
         work_sum = sum(d["rep"].work_minutes.values()) if d["rep"].work_minutes else 0
         cap_sum = sum(max(0, w["shift_end_min"] - w["shift_start_min"] - w["break_minutes"])
                       for w in d["inst"].workers)
         rows.append({
             "방식": a,
-            "전체 요청": total,
-            "배정": assigned,
-            "미배정": unassigned_n,
-            "적기 배정률": f"{100*assigned/total:.0f}%" if total else "-",
-            "고유 인원": f"{len(served)}/{len(all_people)}",
-            "총 이동(분)": int(travel_sum),
-            "활용률": f"{100*work_sum/cap_sum:.0f}%" if cap_sum else "-",
-            "위반": violations,
+            "제때 돌봄받은 어르신(명)": f"{len(served)} / {len(all_people)}",
+            "배정한 요청(건)": f"{assigned} / {total}",
+            "못 맡은 요청(건)": len(d["unassigned"]),
+            "인력 이동 합계": f"{int(travel_sum) // 60}시간 {int(travel_sum) % 60}분",
+            "인력이 일한 비율": f"{100*work_sum/cap_sum:.0f}%" if cap_sum else "-",
+            "규칙 위반(건)": len(d["rep"].violations),
         })
-    df_cmp = pd.DataFrame(rows).set_index("방식")
-    st.dataframe(df_cmp, width="stretch")
-    st.caption("고유 인원 = 배정받은 사람 수 / 요청이 있는 전체 사람 수 (같은 사람 2건 = 1명)")
+
+    st.subheader(f"{date} 결과")
+    cols = st.columns(len(results))
+    base = "신청순" if "신청순" in served_n else None
+    for col, a in zip(cols, results):
+        n, tot = served_n[a]
+        delta = None if base is None or a == base else f"{n - served_n[base][0]:+d}명 (신청순 대비)"
+        col.metric(f"{a} · 제때 돌봄받은 어르신", f"{n}명", delta=delta,
+                   help=f"요청이 있던 어르신 {tot}명 중. 같은 분이 2건을 받아도 1명으로 셉니다.")
+    if base and "AI 최적화" in served_n:
+        diff = served_n["AI 최적화"][0] - served_n[base][0]
+        if diff > 0:
+            st.success(f"같은 인력으로 AI 최적화가 신청순보다 **어르신 {diff}명을 더** 제때 돌봤습니다.")
+        elif diff == 0:
+            st.info("이 날은 AI 최적화와 신청순이 돌본 어르신 수가 같습니다.")
+        else:
+            st.warning(f"이 날은 AI 최적화가 신청순보다 {-diff}명 적습니다. "
+                       "높은 우선순위(퇴원 직후 등) 요청을 먼저 배정한 결과일 수 있습니다.")
+
+    with st.expander("방식별 자세히 보기", expanded=False):
+        st.dataframe(pd.DataFrame(rows).set_index("방식"), width="stretch")
+        st.caption("규칙 위반 = 근무시간·휴게·자격·병원 예약 시각을 어긴 건수. 모든 배정은 별도 검증기로 다시 검사합니다.")
 
     if any(r["rep"].violations for r in results.values()):
-        st.warning("⚠️ 하드 제약 위반이 있는 방식은 배정안으로 사용할 수 없습니다.")
+        st.warning("⚠️ 규칙 위반이 있는 방식은 배정안으로 사용할 수 없습니다.")
+    else:
+        st.caption("✅ 모든 방식이 근무시간·휴게·자격·병원 예약 시각을 지켰습니다(위반 0건).")
 
 
-# ── 인력별 타임라인 ───────────────────────────────────────────────────────
-COLORS = {
-    "이동": "#93c5fd",
-    "서비스(가사)": "#86efac",
-    "서비스(동행)": "#f9a8d4",
-    "휴게": "#fde68a",
-    "미배정": "#e5e7eb",
-}
+# ── 인력별 하루 일정 ─────────────────────────────────────────────────────
+# 색은 dataviz 기본 팔레트(범주형 1~4번)를 쓰고 validate_palette.js 로 밝은·어두운 화면 모두 검사했다.
+# 밝은 화면에서 노랑·청록은 배경 대비가 낮으므로 범례 + 마우스 설명 + '표로 보기'를 함께 둔다.
+def _is_dark() -> bool:
+    try:
+        return (st.context.theme.type or "light") == "dark"
+    except Exception:
+        return False
 
-def _timeline_html(worker_id: str, w: dict, timelines: list[dict]) -> str:
-    """인력 한 명의 하루를 한 줄 막대로 그린다.
 
-    분 단위로 칠한다. 구간을 그냥 이어 붙이면 휴게와 서비스가 겹칠 때
-    폭 합이 100%를 넘어 막대가 넘쳐 보인다(중복을 먼저 지우고 칠해야 한다).
-    우선순위: 서비스 > 이동 > 휴게 > 빈 시간.
+DARK = _is_dark()
+KINDS = ["가사지원", "병원동행", "이동", "휴게", "빈 시간"]
+PALETTE = ({"가사지원": "#3987e5", "병원동행": "#d95926", "이동": "#199e70", "휴게": "#c98500", "빈 시간": "#2c2c2a"}
+           if DARK else
+           {"가사지원": "#2a78d6", "병원동행": "#eb6834", "이동": "#1baf7a", "휴게": "#eda100", "빈 시간": "#e8e7e3"})
+MUTED = "#9a998f" if DARK else "#6b6a64"
+SKILL_KO = {"hospital_escort": "병원동행", "household_support": "가사"}
+
+
+def _segments(worker_id: str, w: dict, timelines: list[dict]) -> list[tuple[int, int, str, str]]:
+    """인력 한 명의 하루를 (시작분, 끝분, 종류, 요청) 구간으로 나눈다.
+
+    분 단위로 칠한다. 구간을 그냥 이어 붙이면 휴게와 서비스가 겹칠 때 폭 합이 100%를 넘는다
+    (중복을 먼저 지우고 칠해야 한다). 우선순위: 서비스 > 이동 > 휴게 > 빈 시간.
     """
-    shift_s = int(w["shift_start_min"])
-    shift_e = int(w["shift_end_min"])
+    shift_s, shift_e = int(w["shift_start_min"]), int(w["shift_end_min"])
     brk_s = int(w["break_start_min"])
     brk_e = brk_s + int(w["break_minutes"])
     span = max(1, shift_e - shift_s)
-
-    # 0=빈시간 1=휴게 2=이동 3=서비스가사 4=서비스동행
-    RANK = {"미배정": 0, "휴게": 1, "이동": 2, "서비스(가사)": 3, "서비스(동행)": 4}
+    rank = {"빈 시간": 0, "휴게": 1, "이동": 2, "가사지원": 3, "병원동행": 4}
     paint = [0] * span
+    note = [""] * span
 
-    def fill(s: int, e: int, kind: str) -> None:
-        rank = RANK[kind]
-        a = max(shift_s, min(s, shift_e))
-        b = max(shift_s, min(e, shift_e))
-        for i in range(a - shift_s, b - shift_s):
-            if paint[i] < rank:
-                paint[i] = rank
+    def fill(s_: int, e_: int, kind: str, text: str = "") -> None:
+        a = max(shift_s, min(s_, shift_e)) - shift_s
+        b = max(shift_s, min(e_, shift_e)) - shift_s
+        for i in range(a, b):
+            if paint[i] < rank[kind]:
+                paint[i] = rank[kind]
+                note[i] = text
 
     fill(brk_s, brk_e, "휴게")
     for t in timelines:
         if t.get("worker_id") != worker_id:
             continue
-        arrive = int(t["arrive_min"])
-        end = int(t["end_min"])
-        fill(arrive - int(t["travel_min"]), arrive, "이동")
-        kind = "서비스(동행)" if t.get("service_type") == "hospital_escort" else "서비스(가사)"
-        fill(arrive, end, kind)
-
-    # 휴게가 업무와 겹쳐 덮인 구간은 실제로 쉰 게 아니다. 덮인 부분은 지운다.
-    # (휴게는 하드 제약이라 정상 배정에서는 겹치지 않지만, 위반 배정을 보여줄 때도 깨지지 않게)
-    NAME_OF = {0: "미배정", 1: "휴게", 2: "이동", 3: "서비스(가사)", 4: "서비스(동행)"}
-    CLR = {0: "#e5e7eb", 1: "#fde68a", 2: "#93c5fd", 3: "#86efac", 4: "#f9a8d4"}
-
-    bars = ""
-    i = 0
+        arrive, end = int(t["arrive_min"]), int(t["end_min"])
+        kind = "병원동행" if t.get("service_type") == "hospital_escort" else "가사지원"
+        rid = str(t.get("request_id", ""))
+        fill(arrive - int(t["travel_min"]), arrive, "이동", rid)
+        fill(arrive, end, kind, rid)
+    name = {v: k for k, v in rank.items()}
+    out, i = [], 0
     while i < span:
-        v = paint[i]
         j = i
-        while j < span and paint[j] == v:
+        while j < span and paint[j] == paint[i] and note[j] == note[i]:
             j += 1
-        pct = (j - i) / span * 100
-        label = NAME_OF[v]
-        bars += (f'<div style="display:inline-block;width:{pct:.3f}%;height:28px;'
-                 f'background:{CLR[v]};vertical-align:top;" '
-                 f'title="{label} {shift_s + i}~{shift_s + j}분"></div>')
+        out.append((shift_s + i, shift_s + j, name[paint[i]], note[i]))
         i = j
-
-    return (f'<div style="font-size:0.78rem;margin-bottom:4px;">'
-            f'<b>{worker_id}</b> <span style="color:#94a3b8;">'
-            f'{shift_s}~{shift_e}분</span></div>'
-            f'<div style="height:28px;background:#f1f5f9;border-radius:4px;'
-            f'overflow:hidden;white-space:nowrap;">{bars}</div>'
-            f'<div style="margin-bottom:8px;"></div>')
+    return out
 
 
-tab_names = list(results.keys())
+def _timeline_html(worker_id: str, w: dict, timelines: list[dict]) -> str:
+    shift_s, shift_e = int(w["shift_start_min"]), int(w["shift_end_min"])
+    span = max(1, shift_e - shift_s)
+    bars = ""
+    for a, b, kind, text in _segments(worker_id, w, timelines):
+        tip = f"{kind} {_hhmm(a)}~{_hhmm(b)}" + (f" · 요청 {text}" if text else "")
+        bars += (f'<div style="display:inline-block;width:{(b - a) / span * 100:.3f}%;height:26px;'
+                 f'background:{PALETTE[kind]};vertical-align:top;" title="{tip}"></div>')
+    skills = "·".join(SKILL_KO.get(x, x) for x in w.get("skills", []))
+    return (f'<div style="font-size:0.85rem;margin:2px 0 3px;"><b>{worker_id}</b> '
+            f'<span style="color:{MUTED};">{skills} · 근무 {_hhmm(shift_s)}~{_hhmm(shift_e)}</span></div>'
+            f'<div style="height:26px;border-radius:4px;overflow:hidden;white-space:nowrap;">{bars}</div>'
+            f'<div style="margin-bottom:10px;"></div>')
+
+
+def _hour_ticks(shift_s: int, shift_e: int) -> str:
+    span = max(1, shift_e - shift_s)
+    marks = ""
+    hours = list(range((shift_s + 59) // 60, shift_e // 60 + 1))
+    for h in hours:
+        left = (h * 60 - shift_s) / span * 100
+        shift = "0" if h == hours[0] else ("-100%" if h == hours[-1] else "-50%")
+        marks += (f'<span style="position:absolute;left:{left:.2f}%;transform:translateX({shift});">'
+                  f'{h}시</span>')
+    return (f'<div style="position:relative;height:16px;font-size:0.72rem;color:{MUTED};'
+            f'margin:0 0 2px;">{marks}</div>')
+
+
+def _unassigned_rows(d: dict) -> list[dict]:
+    """못 맡은 요청 표. 엔진 사유에 더해, 빈 일정의 자격 인력이면 가능했는지 다시 시험한 쉬운 설명을 붙인다."""
+    from simulator.experiment import (IDLE_BREAK, IDLE_CAPACITY, IDLE_NO_SKILL, IDLE_ROUTE,
+                                      IDLE_WINDOW, _travel_map, idle_check)
+    inst_d = d["inst"].as_instance()
+    tmap = _travel_map(inst_d["travel"])
+    req_by_id = {r_["request_id"]: r_ for r_ in inst_d["requests"]}
+    idle_ko = {IDLE_CAPACITY: "다른 일정과 겹침 (인력이 더 있으면 가능)",
+               IDLE_BREAK: "점심 휴게 시간과 겹침",
+               IDLE_WINDOW: "희망 시간이 근무시간과 안 맞음",
+               IDLE_NO_SKILL: "자격 맞는 인력 없음", IDLE_ROUTE: "이동경로 확인 불가"}
+    rows = []
+    for u in d["unassigned"]:
+        r_ = req_by_id.get(u["request_id"])
+        rows.append({
+            "요청": u["request_id"],
+            "서비스": SERVICE_KO.get(r_["service_type"], "") if r_ else "",
+            "희망 시작": f"{_hhmm(r_['earliest_start_min'])}~{_hhmm(r_['latest_start_min'])}" if r_ else "",
+            "우선순위": ("높음" if int(r_.get("priority", 1)) >= 2 else "보통") if r_ else "",
+            "왜 못 맡았나 (쉬운 설명)": idle_ko.get(idle_check(r_, inst_d["workers"], tmap), "") if r_ else "",
+            "엔진 사유": REASON_KO.get(u.get("reason"), u.get("reason", "")),
+            "확실성": CERT_KO.get(u.get("certainty"), u.get("certainty", "")),
+        })
+    return rows
+
+
+tab_names = sorted(results.keys(), key=lambda k: k != "AI 최적화")  # AI 최적화 일정을 먼저 보여준다
 if tab_names:
+    st.subheader("인력별 하루 일정")
+    st.caption("막대 한 줄이 인력 한 명의 하루입니다. 막대에 마우스를 올리면 시각과 요청 번호가 보입니다.")
     tabs = st.tabs(tab_names)
     for tab, a in zip(tabs, tab_names):
         with tab:
             d = results[a]
-            # 타임라인 — 배정이 있는 인력만, 최대 8명 (화면 속도)
             assigned_wids = {x["worker_id"] for x in d["assignments"]}
             workers_map = {w["worker_id"]: w for w in d["inst"].workers}
-            show_wids = [wid for wid in workers_map if wid in assigned_wids][:8]
-            rest = len(assigned_wids) - len(show_wids)
+            busy = [wid for wid in workers_map if wid in assigned_wids]
+            show_all = st.toggle("모든 인력 보기", value=False, key=f"all_{a}",
+                                 help="기본은 배정이 있는 인력 8명만 보여줍니다.")
+            show_wids = busy if show_all else busy[:8]
 
-            st.markdown("**인력별 타임라인**")
             legend = "　".join(
-                f'<span style="display:inline-block;width:14px;height:14px;background:{c};'
-                f'border-radius:2px;vertical-align:middle;"></span> {k}'
-                for k, c in COLORS.items()
-            )
-            st.markdown(f'<div style="font-size:0.78rem;margin-bottom:10px;">{legend}</div>',
+                f'<span style="display:inline-block;width:14px;height:14px;background:{PALETTE[k]};'
+                f'border-radius:3px;vertical-align:middle;"></span> {k}' for k in KINDS)
+            st.markdown(f'<div style="font-size:0.85rem;margin-bottom:8px;">{legend}</div>',
                         unsafe_allow_html=True)
-            html_rows = ""
-            for wid in show_wids:
-                html_rows += _timeline_html(wid, workers_map[wid], d["timelines"])
-            st.markdown(html_rows, unsafe_allow_html=True)
-            if rest > 0:
-                st.caption(f"… 외 {rest}명 생략 (배정 있는 인력 상위 8명만 표시)")
+            if show_wids:
+                w0 = workers_map[show_wids[0]]
+                html_rows = _hour_ticks(int(w0["shift_start_min"]), int(w0["shift_end_min"]))
+                html_rows += "".join(_timeline_html(wid, workers_map[wid], d["timelines"]) for wid in show_wids)
+                st.markdown(html_rows, unsafe_allow_html=True)
+            if not show_all and len(busy) > len(show_wids):
+                st.caption(f"배정이 있는 인력 {len(busy)}명 중 {len(show_wids)}명만 보여줍니다. "
+                           "'모든 인력 보기'를 켜면 다 보입니다.")
 
-            # 미배정 목록
+            with st.expander("일정을 표로 보기"):
+                rows_t = [{"인력": wid, "시작": _hhmm(sa), "끝": _hhmm(sb), "하는 일": kind, "요청": text}
+                          for wid in show_wids
+                          for sa, sb, kind, text in _segments(wid, workers_map[wid], d["timelines"])
+                          if kind != "빈 시간"]
+                st.dataframe(pd.DataFrame(rows_t), width="stretch", hide_index=True)
+
             if d["unassigned"]:
-                st.markdown("**미배정 목록**")
-                udf = pd.DataFrame(d["unassigned"])
-                cert_label = {"verified": "확인됨", "diagnostic": "추정", "unknown": "미상"}
-                if "certainty" in udf.columns:
-                    udf["certainty"] = udf["certainty"].map(cert_label).fillna(udf["certainty"])
-                rename = {"request_id": "요청", "reason": "사유", "certainty": "확실성", "detail": "상세"}
-                udf = udf.rename(columns={k: v for k, v in rename.items() if k in udf.columns})
-                st.dataframe(udf, width="stretch", hide_index=True)
+                urows = _unassigned_rows(d)
+                st.markdown(f"**못 맡은 요청 {len(urows)}건**")
+                st.dataframe(pd.DataFrame(urows), width="stretch", hide_index=True)
+                st.caption("'쉬운 설명'은 빈 일정의 자격 인력에게 다시 넣어 본 진단입니다. "
+                           "'엔진 사유'는 배정 엔진이 남긴 기록입니다.")
             else:
-                st.success("미배정 요청이 없습니다.")
+                st.success("못 맡은 요청이 없습니다.")
 
-            # 위반
             if d["rep"].violations:
-                st.error("**하드 제약 위반 — 이 배정안은 사용할 수 없습니다.**")
+                st.error("**규칙 위반 — 이 배정안은 사용할 수 없습니다.**")
                 vdf = pd.DataFrame([v.as_dict() for v in d["rep"].violations])
                 st.dataframe(vdf, width="stretch", hide_index=True)
 
@@ -375,7 +459,7 @@ else:
                     "요청": a["request_id"],
                     "대상자": req["beneficiary_id"],
                     "인력": a["worker_id"],
-                    "도착(분)": a["arrive_min"],
+                    "도착 시각": _hhmm(a["arrive_min"]),
                     "서비스": "병원동행" if req["service_type"] == "hospital_escort" else "가사지원",
                     "결정": "보류",
                     "거부 사유": "",
@@ -385,7 +469,7 @@ else:
                 pd.DataFrame(rows),
                 width="stretch",
                 hide_index=True,
-                disabled=["요청", "대상자", "인력", "도착(분)", "서비스"],
+                disabled=["요청", "대상자", "인력", "도착 시각", "서비스"],
                 column_config={
                     "결정": st.column_config.SelectboxColumn(
                         "결정", options=["수락", "거부", "보류"], required=True, width="small"),
@@ -447,8 +531,10 @@ else:
         if confirmed:
             st.markdown(f"**확정된 배정 {len(confirmed)}건** (schedule version {gate.schedule_version})")
             cdf = pd.DataFrame(confirmed)
+            if "arrive_min" in cdf.columns:
+                cdf["arrive_min"] = cdf["arrive_min"].map(_hhmm)
             cdf = cdf.rename(columns={"request_id": "요청", "worker_id": "인력",
-                                      "arrive_min": "도착(분)", "service_date": "날짜",
+                                      "arrive_min": "도착 시각", "service_date": "날짜",
                                       "locked": "잠금"})
             st.dataframe(cdf, width="stretch", hide_index=True)
 
@@ -462,7 +548,10 @@ else:
 
 # ── 30일 실험 결과 ────────────────────────────────────────────────────────
 st.divider()
-st.subheader("30일 실험 결과")
+st.subheader("30일 동안 비교하면")
+st.caption("하루 결과는 날마다 다릅니다. 30일 × 3회 반복한 평균으로 방식을 비교합니다. "
+           "'인력 바쁨'은 인력이 쓸 수 있는 시간 중 요청이 차지하는 비율(부하율)입니다.")
+BUSY_KO = {0.6: "여유 (0.6)", 0.9: "바쁨 (0.9)", 1.1: "매우 바쁨 (1.1)"}
 
 def _latest_by_name(pattern: str) -> Path | None:
     """파일 이름의 시각(…-YYYYMMDD-HHMMSS.csv)으로 가장 최근 실험 파일을 고른다.
@@ -483,30 +572,45 @@ summ = _load_experiment_summary(str(_summ_file)) if _summ_file else None
 if summ is None:
     st.info("아직 실험 결과가 없습니다. scripts/run_simulator_full.bat 을 실행하세요.")
 else:
-    st.caption("부하율(ρ)별 3방식 비교 — 30일 × 3시드(각 90관측), 위반 건수가 있는 방식은 사용 불가 · "
-               f"출처 파일: {_summ_file.name}")
+    st.caption(f"각 막대는 하루 평균(90일·회)입니다 · 출처 파일: {_summ_file.name}")
 
-    algo_kr = {"nearest": "근거리", "request_order": "신청순", "optimize": "최적화(OR-Tools)"}
+    algo_kr = {"nearest": "근거리", "request_order": "신청순", "optimize": "AI 최적화"}
     summ = summ.copy()
     summ["방식"] = summ["algorithm"].map(algo_kr).fillna(summ["algorithm"])
-    summ["ρ(부하율)"] = summ["target_rho"]
-    summ["적기 배정률"] = (summ["적기배정률_평균"] * 100).round(1).astype(str) + "% ± " + \
-                         (summ["적기배정률_표준편차"] * 100).round(1).astype(str) + "%p"
-    summ["고유인원"] = summ["고유인원_평균"].round(1)
-    summ["총이동(분)"] = summ["총이동_평균"].round(0).astype(int)
-    summ["활용률"] = (summ["활용률_평균"] * 100).round(1).astype(str) + "%"
+    summ["인력 바쁨"] = summ["target_rho"].map(lambda v: BUSY_KO.get(round(float(v), 1), f"{v}"))
+    summ["제때 돌봄받은 어르신(명/일)"] = summ["고유인원_평균"].round(1)
+    summ["요청 중 배정 비율"] = (summ["적기배정률_평균"] * 100).round(1).astype(str) + "%"
+    summ["인력 이동(분/일)"] = summ["총이동_평균"].round(0).astype(int)
+    summ["인력이 일한 비율"] = (summ["활용률_평균"] * 100).round(1).astype(str) + "%"
     summ["위반"] = summ["위반_합계"].astype(int)
 
-    show = summ[["ρ(부하율)", "방식", "적기 배정률", "고유인원", "총이동(분)", "활용률", "위반"]]
-    st.dataframe(show.set_index(["ρ(부하율)", "방식"]), width="stretch")
+    # 한눈에: 바쁨별 제때 돌봄받은 어르신(방식별 막대)
+    import altair as alt
+    order = [m for m in ["신청순", "근거리", "AI 최적화"] if m in set(summ["방식"])]
+    colors = ["#c3c2b7", "#86b6ef", "#2a78d6"] if not DARK else ["#5f5e58", "#5598e7", "#3987e5"]
+    chart = alt.Chart(summ).mark_bar(cornerRadiusEnd=4).encode(
+        y=alt.Y("방식:N", sort=order, title=None),
+        x=alt.X("제때 돌봄받은 어르신(명/일):Q"),
+        color=alt.Color("방식:N", scale=alt.Scale(domain=order, range=colors[-len(order):]), legend=None),
+        row=alt.Row("인력 바쁨:N", sort=list(BUSY_KO.values()), title=None,
+                    header=alt.Header(labelAngle=0, labelAlign="left")),
+        tooltip=["인력 바쁨", "방식", "제때 돌봄받은 어르신(명/일)", "인력 이동(분/일)"],
+    ).properties(height=70)
+    st.altair_chart(chart)
+
+    show = summ[["인력 바쁨", "방식", "제때 돌봄받은 어르신(명/일)", "요청 중 배정 비율",
+                 "인력 이동(분/일)", "인력이 일한 비율", "위반"]]
+    with st.expander("표로 보기"):
+        st.dataframe(show.set_index(["인력 바쁨", "방식"]), width="stretch")
 
     with st.expander("해석 안내"):
         st.markdown("""
-- **적기 배정률**: 배정 건수 ÷ 전체 요청 건수. 높을수록 좋다.
-- **고유인원**: 배정받은 서로 다른 어르신 수 (같은 분이 2건이면 1명으로 센다).
-- **위반 ≠ 0**: 하드 제약(근무·휴게·자격·예약)을 어겼다는 뜻. 그 배정안은 쓸 수 없다.
-- **이동시간 출처**: 사이드바에 표시된 값. OSRM 도로 기준이 가장 정확하다.
-- **한계**: 인구 데이터가 아직 모의값이며, 동행 시간창이 20분으로 좁게 생성된 문제가 있다.
+- **제때 돌봄받은 어르신**: 배정받은 서로 다른 어르신 수입니다(같은 분이 2건이면 1명).
+- **요청 중 배정 비율**: 배정 건수 ÷ 전체 요청 건수입니다.
+- **위반 ≠ 0**: 근무·휴게·자격·병원 예약 규칙을 어겼다는 뜻이며, 그 배정안은 쓸 수 없습니다.
+- **이동시간 출처**: 왼쪽 메뉴에 표시된 값입니다.
+- **한계**: 인구 데이터는 아직 모의값입니다. 못 맡은 요청의 대부분은 모든 인력의 점심 휴게가 12시로 같아서 생깁니다
+  ('부족 자원·비용 리포트' 페이지 참고).
         """)
 
     viol_total = int(summ["위반"].sum())
@@ -549,7 +653,7 @@ else:
     gmax = num.groupby(["target_rho", "algorithm"])
 
     rs["방식"] = rs["algorithm"].map(REPLAY_KR)
-    rs["ρ(부하율)"] = rs["target_rho"]
+    rs["인력 바쁨"] = rs["target_rho"].map(lambda v: BUSY_KO.get(round(float(v), 1), f"{v}"))
     rs["적기 배정률"] = (rs["적기배정률_평균"] * 100).round(1).astype(str) + "% ± " + \
                        (rs["적기배정률_표준편차"] * 100).round(1).astype(str) + "%p"
     cols_map = {
@@ -562,7 +666,7 @@ else:
         "다른인력이동_평균": "다른 인력이 맡음",
         "지연폭_평균": "평균 늦어진 시간(분)",
     }
-    shown = ["ρ(부하율)", "방식", "적기 배정률"]
+    shown = ["인력 바쁨", "방식", "적기 배정률"]
     for src, label in cols_map.items():
         if src in rs.columns:
             rs[label] = rs[src]
@@ -574,7 +678,7 @@ else:
     rs["위반"] = rs["위반_합계"].astype(int)
     shown.append("위반")
 
-    st.dataframe(rs[shown].set_index(["ρ(부하율)", "방식"]), width="stretch")
+    st.dataframe(rs[shown].set_index(["인력 바쁨", "방식"]), width="stretch")
     n_obs = int(rs["관측수"].iloc[0]) if "관측수" in rs.columns else len(raw)
     st.caption(
         f"하루 평균값입니다(가장 늦어진 시간만 전체 기간 최댓값). 관측 {n_obs}일·방식, "
