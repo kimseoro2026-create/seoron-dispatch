@@ -45,8 +45,17 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.title("요청 카드 검토")
-st.caption("상담 메모를 배정에 필요한 항목으로 정리합니다. AI는 정리만 하고, **확인은 담당자가 합니다.** "
+st.caption("전화·상담 메모를 배정에 필요한 항목(요청 카드)으로 정리합니다. AI는 정리만 하고, **확인은 담당자가 합니다.** "
            "확인 완료된 카드만 배정 대상이 됩니다.")
+st.markdown(
+    "<div style='display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 12px;font-size:0.9rem;'>"
+    + "".join(f"<div style='flex:1;min-width:180px;border:1px solid rgba(128,128,128,.35);border-radius:8px;"
+              f"padding:8px 12px;'><b>{n}</b> {t}</div>"
+              for n, t in [("①", "메모를 고릅니다"), ("②", "AI가 정리한 카드를 원문과 비교해 확인합니다"),
+                           ("③", "‘확인 완료’를 누르면 배정 대상이 됩니다")])
+    + "</div>", unsafe_allow_html=True)
+SERVICE_KO = {"hospital_escort": "병원동행", "household_support": "가사지원"}
+SERVICE_EN = {v: k for k, v in SERVICE_KO.items()}
 
 
 @st.cache_data
@@ -77,26 +86,24 @@ def _n_cache_files() -> int:
 cfg = llm.load_config(ROOT / ".env")
 saved_models = _cached_models(_n_cache_files())
 # 기본값은 사용량을 쓰지 않는 방식(저장된 결과 → 규칙 추출). 실시간 호출은 맨 뒤에 둔다.
-options = [f"AI 추출 · 저장된 결과 ({m})" for m in saved_models]
-options.append("규칙 추출 (모의)")
+# (화면 이름, 방식, 모델, 실시간 여부)
+options = [(f"AI 정리 · 저장된 결과" + (f" ({m})" if len(saved_models) > 1 else ""), "llm", m, False)
+           for m in saved_models]
+options.append(("규칙으로 정리 (비교용 모의)", "rules", None, False))
 if cfg:
-    options.append(f"AI 추출 · 실시간 호출 ({cfg.model})")
+    options.append(("AI 정리 · 지금 새로 호출", "llm", cfg.model, True))
 
 with st.sidebar:
-    st.header("추출 방식")
-    choice = st.radio("방식", options, label_visibility="collapsed")
-    if choice.startswith("규칙"):
-        st.info("정규식 규칙으로 뽑은 **모의 결과**입니다. 실제 AI 결과가 아닙니다.")
-    elif "실시간" in choice:
-        st.warning("실시간 호출은 AI 사용량을 씁니다. 같은 메모는 저장된 결과를 다시 씁니다.")
-    elif not cfg:
-        st.caption("AI 키가 없는 환경이라 저장된 결과만 보여줍니다.")
-
-method = "rules" if choice.startswith("규칙") else "llm"
-model = None
-if method == "llm":
-    model = choice.split("(")[-1].rstrip(")")
-allow_live = "실시간" in choice
+    st.header("정리 방식")
+    pick = st.radio("방식", range(len(options)), format_func=lambda i: options[i][0],
+                    label_visibility="collapsed")
+    _, method, model, allow_live = options[pick]
+    if method == "rules":
+        st.info("미리 정한 규칙으로 뽑은 **모의 결과**입니다. AI 결과와 비교하려고 둡니다.")
+    elif allow_live:
+        st.warning("새로 호출하면 AI 사용량을 씁니다. 같은 메모는 저장된 결과를 다시 씁니다.")
+    else:
+        st.caption(f"미리 AI({model})로 정리해 저장해 둔 결과입니다. 키 없이도 볼 수 있습니다.")
 
 # ── 메모 고르기 ───────────────────────────────────────────────────────────
 cases = _cases()
@@ -153,7 +160,7 @@ fields = res.check.fields
 service = fields["service_type"]["value"]
 blocking = BLOCKING_BY_SERVICE.get(service, BLOCKING_COMMON)
 
-left, right = st.columns([1, 1.4])
+left, right = st.columns([1, 2])
 with left:
     st.markdown("**원문** (노란색 = 근거로 쓴 구간)")
     st.markdown(
@@ -168,7 +175,7 @@ with left:
             st.markdown(f"- {name}: {i['message']}")
 
 with right:
-    st.markdown("**요청 카드** — 값이 틀리면 ‘수정값’에 고쳐 쓰고, 확인한 항목은 ‘확인함’을 체크하세요.")
+    st.markdown("**요청 카드** — 틀린 값은 ‘고칠 값’에 적고, 확인한 항목은 ‘확인함’을 체크하세요.")
     rows = []
     for name, f in fields.items():
         if service == "household_support" and name in ("hospital_name", "appointment_time", "hospital_stay_minutes") \
@@ -182,7 +189,8 @@ with right:
         rows.append({
             "key": name,
             "항목": FIELD_LABELS[name] + (" *" if name in blocking else ""),
-            "추출값": "" if f["value"] is None else str(f["value"]),
+            "추출값": "" if f["value"] is None else (SERVICE_KO.get(f["value"], str(f["value"]))
+                                                    if name == "service_type" else str(f["value"])),
             "수정값": "",
             "상태": "⚠️ 확인 필요" if need else "정상",
             "확인함": False,
@@ -194,11 +202,12 @@ with right:
         disabled=["항목", "추출값", "근거", "상태"],
         column_config={
             "항목": st.column_config.TextColumn(width="medium"),
-            "추출값": st.column_config.TextColumn(width="small"),
-            "수정값": st.column_config.TextColumn(width="small"),
+            "추출값": st.column_config.TextColumn("AI가 읽은 값", width="small"),
+            "수정값": st.column_config.TextColumn("고칠 값", width="small",
+                                                 help="틀렸을 때만 적습니다. 서비스 종류는 '병원동행' 또는 '가사지원'"),
             "상태": st.column_config.TextColumn(width="small"),
             "확인함": st.column_config.CheckboxColumn(width="small"),
-            "근거": st.column_config.TextColumn(width="medium"),
+            "근거": st.column_config.TextColumn("원문 근거", width="medium"),
         },
     )
     st.caption("* 배정에 꼭 필요한 항목. 형식: 날짜 2026-11-02, 시각 13:10, 시간(분) 120")
@@ -207,6 +216,8 @@ with right:
     final, problems = {}, []
     for name, row in edited.iterrows():
         val = row["수정값"].strip() if row["수정값"] else row["추출값"]
+        if name == "service_type":
+            val = SERVICE_EN.get(val, val)   # 화면에는 한국어, 저장은 내부 코드
         kind = FIELDS[name][1]
         parsed = (int(val) if val.isdigit() else val) if (kind == "minutes" and val) else (val or None)
         if row["수정값"] and not check_format(name, parsed):
@@ -260,7 +271,7 @@ if case is not None:
 
 # ── 정확도 평가 결과 ──────────────────────────────────────────────────────
 st.divider()
-st.subheader("정확도 평가 (정답 세트 기존 40건 · 새 사례 40건)")
+st.subheader("AI 정리는 얼마나 정확한가")
 
 
 def _latest_summaries() -> list[dict]:
@@ -290,7 +301,21 @@ else:
             "양식 없는 메모": f"{s['by_variant'].get('freeform', {}).get('accuracy', 0):.1%}",
             "계산 시각": s["run_at"].replace("T", " "),
         })
-    st.dataframe(pd.DataFrame(table), hide_index=True, width="stretch")
+    held = [x for x in summ if x.get("case_set") == "holdout"]
+    if held:
+        st.markdown("**새 사례 40건**(프롬프트를 고칠 때 보지 않은 메모)에서의 결과")
+        cols = st.columns(len(held))
+        for col, x in zip(cols, sorted(held, key=lambda v: v["method"] != "llm")):
+            name = "AI 정리" + (f" ({x['model']})" if x.get("model") else "") if x["method"] == "llm" else "규칙(모의)"
+            with col.container(border=True):
+                st.markdown(f"**{name}**")
+                a, b, c = st.columns(3)
+                a.metric("값 정확도", f"{x['value_accuracy']:.1%}")
+                b.metric("지어낸 값", f"{x['invented']}건")
+                c.metric("위험한 카드", f"{x['unsafe_ready']}건",
+                         help="확인 필요 표시 없이 넘어왔는데 배정 필수 값이 틀린 카드. 0이어야 합니다.")
+    with st.expander("모든 평가 결과 표로 보기"):
+        st.dataframe(pd.DataFrame(table), hide_index=True, width="stretch")
     with st.expander("지표 읽는 법과 한계"):
         st.markdown(
             "- **틀린 값**: 값을 냈지만 틀린 항목 수. 비워 둔 것(누락)보다 위험합니다. 담당자가 놓치기 쉽기 때문입니다.\n"

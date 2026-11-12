@@ -18,7 +18,8 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from tools.shortage_report import ALGO_KO, CERT, IDLE, NA, REASON, SERVICE, build, latest_pair, to_markdown
+from simulator.report import BY_KEY
+from tools.shortage_report import ALGO_KO, CERT, NA, REASON, SERVICE, build, latest_pair, to_markdown
 
 EXP = Path(os.environ.get("SEORON_EXP_DIR") or ROOT / "data" / "experiments")  # 테스트용 덮어쓰기
 DATA = ROOT / "data" / "processed"
@@ -33,8 +34,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.title("부족 자원·비용 리포트")
-st.caption("같은 날·같은 요청에서 **휴게 운영과 인력만 바꿔** 다시 배정했습니다. "
-           "무엇을 바꾸면 제때 돌봄받는 어르신이 늘어나는지, 비용은 얼마나 드는지 봅니다.")
+st.caption("같은 날·같은 요청에서 **점심 휴게 시각과 인력 수만 바꿔** 다시 배정했습니다. "
+           "인력을 늘리기 전에 무엇을 바꾸면 더 많은 어르신을 제때 돌볼 수 있는지, 비용은 얼마인지 봅니다.")
 
 try:
     d_path, _ = latest_pair(EXP)
@@ -71,46 +72,72 @@ with st.expander("실험 조건과 비용 가정", expanded=False):
         "근무 규정상 가능한지는 확인하지 않았습니다.")
 
 algo = st.radio("배정 방식", ["optimize", "nearest"], horizontal=True,
-                format_func={"optimize": "최적화", "nearest": "근거리(참고)"}.get)
+                format_func={"optimize": "AI 최적화", "nearest": "근거리(기존 방식, 참고)"}.get)
 t = r["tables"].get(algo)
 if t is None:
     st.warning("이 방식의 결과가 실험 파일에 없습니다.")
     st.stop()
 
-st.subheader("1. 무엇을 바꾸면 얼마나 늘어나나 (하루 평균)")
+st.subheader("1. 무엇을 바꾸면 더 많은 어르신을 돌볼 수 있나 (하루 평균)")
+
+# 한 줄 결론: 표의 계산값에서 고른다(문장 속 숫자도 계산값).
+zero = t[(t["extra_cost_per_day"].fillna(-1) == 0) & (t.index != "base") & (t["d_unique"] > 0)]
+paid = t[t["cost_per_added_person"].notna() & (t["extra_cost_per_day"].fillna(0) > 0) & (t["d_unique"] > 0)]
+msgs = []
+if not zero.empty:
+    z = zero.loc[zero["d_unique"].idxmax()]
+    msgs.append(f"**{z.label}**: 추가 비용 없이 하루 **{z.d_unique:+.1f}명** 더 제때 돌봄")
+if not paid.empty:
+    q = paid.loc[paid["cost_per_added_person"].idxmin()]
+    msgs.append(f"돈을 들인다면 **{q.label}**이 가장 효율적: 늘어난 1명당 하루 {won(q.cost_per_added_person)}")
+if msgs:
+    st.success("  \n".join(msgs))
+
 show = pd.DataFrame({
     "시나리오": t["label"],
-    "적기 배정(건)": t["assigned"].round(1),
-    "적기 지원 고유 인원(명)": t["uniq"].round(1),
+    "제때 돌봄받은 어르신(명)": t["uniq"].round(1),
     "현재 대비(명)": t["d_unique"].round(1),
-    "요청 모두 충족 인원(명)": t["fully_met"].round(1),
-    "높은 우선순위 미충족률": (t["high_unmet_rate"] * 100).round(1).astype(str) + "%",
-    "병원동행 배정/요청": t["escort"].round(1).astype(str) + " / " + t["requests_escort"].round(1).astype(str),
-    "총 이동(분)": t["travel"].round(0).astype(int),
+    "급한 요청을 못 맡은 비율": (t["high_unmet_rate"] * 100).round(1).astype(str) + "%",
     "추가 인건비/일": t["extra_cost_per_day"].map(won),
-    "늘어난 1명당 추가 비용/일": t["cost_per_added_person"].map(won),
+    "늘어난 1명당 비용/일": [("추가 비용 없음" if (c == 0 and d > 0) else won(v))
+                          for v, c, d in zip(t["cost_per_added_person"], t["extra_cost_per_day"].fillna(-1), t["d_unique"].fillna(0))],
 })
-st.dataframe(show, hide_index=True, width="stretch")
+order = list(show["시나리오"])
+bar_colors = ["#8a8980" if k == "base" else ("#2a78d6" if not BY_KEY[k].add else "#1c5cab") for k in t.index]
 st.altair_chart(
-    alt.Chart(show).mark_bar().encode(
-        y=alt.Y("시나리오:N", sort=list(show["시나리오"]), title=None, axis=alt.Axis(labelLimit=260)),
-        x=alt.X("적기 지원 고유 인원(명):Q"),
-        tooltip=["시나리오", "적기 지원 고유 인원(명)", "현재 대비(명)"]),
+    alt.Chart(show.assign(_c=bar_colors)).mark_bar(cornerRadiusEnd=4).encode(
+        y=alt.Y("시나리오:N", sort=order, title=None, axis=alt.Axis(labelLimit=260)),
+        x=alt.X("제때 돌봄받은 어르신(명):Q"),
+        color=alt.Color("_c:N", scale=None, legend=None),
+        tooltip=["시나리오", "제때 돌봄받은 어르신(명)", "현재 대비(명)", "추가 인건비/일"]),
     width="stretch")
-st.caption("'늘어난 1명당 추가 비용'은 추가 인건비 ÷ 현재 대비 늘어난 고유 인원입니다. "
-           "늘어난 인원이 0 이하이거나 단가가 없으면 계산하지 않습니다.")
+st.dataframe(show, hide_index=True, width="stretch")
+st.caption("'급한 요청' = 우선순위가 높은 요청(퇴원 14일 이내 등). "
+           "'늘어난 1명당 비용' = 추가 인건비 ÷ 현재 대비 늘어난 인원(늘어난 인원이 0 이하이거나 단가가 없으면 계산하지 않음).")
+with st.expander("자세한 숫자 보기"):
+    st.dataframe(pd.DataFrame({
+        "시나리오": t["label"],
+        "배정한 요청(건)": t["assigned"].round(1),
+        "요청 모두 충족 인원(명)": t["fully_met"].round(1),
+        "병원동행 배정/요청": t["escort"].round(1).astype(str) + " / " + t["requests_escort"].round(1).astype(str),
+        "인력 이동(분)": t["travel"].round(0).astype(int),
+        "인력이 일한 비율": (t["utilization"] * 100).round(1).astype(str) + "%",
+        "규칙 위반": t["violations"].astype(int),
+    }), hide_index=True, width="stretch")
 
-st.subheader(f"2. 지금 조건에서 미배정은 어디서 생기나 ({ALGO_KO.get(r['unmet_algo'])}, 현재)")
+st.subheader(f"2. 지금은 왜 못 맡는 요청이 생기나 (현재 조건, {ALGO_KO.get(r['unmet_algo'])})")
 u = r["unmet"]
-idle = u["idle_check"].assign(진단=lambda x: x.idle_check.map(IDLE).fillna(x.idle_check),
+IDLE_EASY = {"CAPACITY": "다른 일정과 겹침 (인력이 더 있으면 가능)", "BREAK": "점심 휴게 시간과 겹침",
+             "WINDOW": "희망 시간이 근무시간과 안 맞음", "NO_SKILL": "자격 맞는 인력 없음", "ROUTE": "이동경로 확인 불가"}
+idle = u["idle_check"].assign(진단=lambda x: x.idle_check.map(IDLE_EASY).fillna(x.idle_check),
                               서비스=lambda x: x.service_type.map(SERVICE))
-st.markdown("**미배정 진단** — 빈 일정의 자격 인력이라면 맡을 수 있었는지 다시 시험했습니다.")
+st.markdown("못 맡은 요청을 **일정이 빈 자격 인력**에게 다시 넣어 보았습니다. 그래도 안 되면 원인은 사람 수가 아닙니다.")
 st.dataframe(pd.DataFrame({"진단": idle["진단"], "서비스": idle["서비스"],
                            "미배정/일": idle["unmet_per_day"].round(1),
                            "비중": (idle["share"] * 100).round(1).astype(str) + "%"}),
              hide_index=True, width="stretch")
-st.caption("'인력 여유 부족'은 인력·배치로, '휴게 시각과 충돌'은 휴게 운영으로, "
-           "'시간창·근무시간 불일치'는 요청 조건 조정으로만 줄일 수 있습니다. 엔진의 사유 코드와 별개인 진단용 분류입니다.")
+st.caption("'다른 일정과 겹침'은 인력을 늘리면, '점심 휴게 시간과 겹침'은 휴게 시각을 나누면, "
+           "'희망 시간이 근무시간과 안 맞음'은 요청 시간을 조정해야 줄어듭니다. 엔진의 사유 코드와 별개인 진단용 분류입니다.")
 
 
 def _rate_table(df: pd.DataFrame, key: str, label: str, fmt=lambda v: v) -> pd.DataFrame:
