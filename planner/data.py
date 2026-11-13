@@ -103,18 +103,26 @@ def estimate_travel(data_dir: str | Path,
 
 
 def load_day(data_dir: str | Path, service_date: str,
-             travel: dict[tuple[str, str], float] | None = None) -> DayInstance:
+             travel: dict[tuple[str, str], float] | None = None,
+             extra_requests: list[dict] | None = None) -> DayInstance:
     """하루치 instance 를 만든다.
 
     travel 을 주지 않으면 그날 필요한 노드만으로 추정 행렬을 만든다.
     전체 721개 노드를 쓰면 519,120구간이지만, 하루치면 70개 안팎(4,900구간)이라
     화면이 훨씬 빠르게 뜬다.
+
+    extra_requests: 담당자가 확인한 요청 카드(intake.to_request). 그날 것만 더하고,
+    같은 대상자·서비스 요청이 이미 있으면 카드 값으로 바꾼다.
     """
     d = Path(data_dir)
     req = pd.read_csv(d / "requests.csv", dtype={"request_id": str, "beneficiary_id": str})
     req = req[req["service_date"] == service_date]
     workers = _workers(d)
     requests = [_request(r) for r in req.itertuples()]
+    cards = [dict(c) for c in (extra_requests or []) if c.get("service_date") == service_date]
+    if cards:
+        from intake.to_request import merge_card_requests
+        requests, _ = merge_card_requests(requests, cards)
     if travel is None:
         node_ids = (
             {w["base_node"] for w in workers}
@@ -122,6 +130,15 @@ def load_day(data_dir: str | Path, service_date: str,
             | {r["hospital_node"] for r in requests if r.get("hospital_node")}
         )
         travel = load_travel(d, node_ids)
+    for r in cards:
+        # 카드 병원동행의 service_minutes 는 비워 두었다. 엔진·검증기는 이동+체류로 다시 계산하지만
+        # 계약상 값이 있어야 하므로 같은 식(이동+체류+이동)으로 채운다. 경로가 없으면 체류만 넣고
+        # 검증기가 '경로 없음'으로 막게 둔다(0분으로 숨기지 않음).
+        if r["service_type"] == "hospital_escort" and r.get("service_minutes") is None:
+            to_h = travel.get((r["home_node"], r["hospital_node"]))
+            back = travel.get((r["hospital_node"], r["home_node"]))
+            r["service_minutes"] = int(r["hospital_stay_min"]) + (
+                int(round(to_h)) + int(round(back)) if to_h is not None and back is not None else 0)
     return DayInstance(service_date=service_date, workers=workers, requests=requests, travel=travel)
 
 

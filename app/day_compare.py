@@ -55,14 +55,16 @@ def _load_travel(stamp: str):  # stamp 는 캐시 키 역할, 실제로 사용�
 
 
 @st.cache_data(show_spinner="배정 계산 중…")
-def _run(date: str, algo: str, stamp: str):
+def _run(date: str, algo: str, stamp: str, cards_json: str = "[]"):
+    # cards_json: 담당자가 확인한 요청 카드(요청 카드 검토 화면). 캐시 키가 되도록 JSON 문자열로 받는다.
+    import json
     from planner.data import load_day
     from planner.optimize import optimize
     from verifier import verify
 
     # travel=None 으로 두면 load_day 가 그날 필요한 노드만으로 행렬을 만든다.
     # 전체 519,120구간 대신 70개 노드(~4,900구간)만 계산하므로 훨씬 빠르다.
-    inst = load_day(ROOT / "data" / "processed", date, travel=None)
+    inst = load_day(ROOT / "data" / "processed", date, travel=None, extra_requests=json.loads(cards_json))
     instance = inst.as_instance()
 
     if algo == "신청순":
@@ -168,6 +170,19 @@ with st.sidebar:
         st.caption(f"{_label}: **{_text}**")
     st.caption("어르신·인력·요청은 모두 가상으로 만든 데이터입니다.")
 
+    # 요청 카드 검토에서 '확인 완료'한 카드(같은 브라우저 세션)
+    _all_cards = list(st.session_state.get("card_requests", {}).values())
+    day_cards = sorted((c for c in _all_cards if c["service_date"] == date), key=lambda c: c["request_id"])
+    if _all_cards:
+        st.divider()
+        st.markdown("**확인된 요청 카드**")
+        if day_cards:
+            st.caption(f"이 날짜에 **{len(day_cards)}건**을 배정 계산에 넣었습니다: "
+                       + ", ".join(c["request_id"] for c in day_cards))
+        other = sorted({c["service_date"] for c in _all_cards} - {date})
+        if other:
+            st.caption("다른 날짜의 카드: " + ", ".join(other) + " (위 '날짜'에서 고르세요)")
+
 
 # ── 각 방식 계산 ──────────────────────────────────────────────────────────
 def _algo_key(a: str) -> str:
@@ -179,7 +194,8 @@ stamp = _data_stamp()
 for a in selected:
     with st.spinner(f"{a} 계산 중…"):
         try:
-            inst, assignments, unassigned, timelines, rep = _run(date, _algo_key(a), stamp)
+            inst, assignments, unassigned, timelines, rep = _run(
+                date, _algo_key(a), stamp, json.dumps(day_cards, ensure_ascii=False, sort_keys=True))
             results[a] = dict(inst=inst, assignments=assignments,
                               unassigned=unassigned, timelines=timelines, rep=rep)
         except Exception as e:
@@ -226,6 +242,9 @@ if results:
         })
 
     st.subheader(f"{date} 결과")
+    if day_cards:
+        st.info(f"요청 카드 검토에서 확인한 요청 **{len(day_cards)}건**을 넣어 계산했습니다. "
+                "번호가 '카드-'로 시작하는 요청입니다. 같은 어르신·같은 서비스 요청이 원래 목록에 있으면 카드 값으로 바꿨습니다.")
     cols = st.columns(len(results))
     base = "신청순" if "신청순" in served_n else None
     for col, a in zip(cols, results):

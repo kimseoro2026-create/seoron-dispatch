@@ -42,6 +42,11 @@ simulation:
   hospital_distance_decay_km: 5.0
   hourly_cost_krw: 13000        # 서울시 동행매니저 시급 기준(가정)
 
+# 확인된 요청 카드 → 배정 요청 변환 가정(intake/to_request.py).
+card_intake:
+  arrival_buffer_min: 10        # 병원 예약 도착 여유(분). 가상 요청 생성(f0)과 같은 값. 기관 규정 확인 전 가정
+  high_priority_discharge_days: 14   # 실제 퇴원 후 이 일수 이내면 우선순위 높음(2). f0 와 같은 규칙
+
 # 부족 자원·비용 리포트(PRD 13장) 가정. 시급은 simulation.hourly_cost_krw 를 쓴다.
 # 값이 null 이면 해당 금액은 '계산 불가'로 표시한다(지어내지 않음).
 cost:

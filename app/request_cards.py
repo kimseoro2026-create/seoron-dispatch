@@ -23,6 +23,7 @@ import streamlit as st
 
 from adapters import llm
 from intake.extract import PROMPT_VERSION, extract_card
+from intake.to_request import card_to_request
 from intake.schema import BLOCKING_BY_SERVICE, BLOCKING_COMMON, FIELD_LABELS, FIELDS, check_format
 
 CASES_PATH = ROOT / "fixtures/request_cards/cases.json"
@@ -56,6 +57,15 @@ st.markdown(
     + "</div>", unsafe_allow_html=True)
 SERVICE_KO = {"hospital_escort": "병원동행", "household_support": "가사지원"}
 SERVICE_EN = {v: k for k, v in SERVICE_KO.items()}
+
+
+@st.cache_data
+def _service_date_range() -> tuple[str, str] | None:
+    p = ROOT / "data" / "processed" / "requests.csv"
+    if not p.exists():
+        return None
+    d = pd.read_csv(p, usecols=["service_date"])["service_date"]
+    return d.min(), d.max()
 
 
 @st.cache_data
@@ -246,14 +256,39 @@ with right:
         else:
             edits = {n: {"추출값": edited.loc[n, "추출값"], "수정값": edited.loc[n, "수정값"]}
                      for n in edited.index if edited.loc[n, "수정값"]}
-            reviews[key] = {"처리": action, "처리자": reviewer.strip(), "사유": reason.strip(),
-                            "시각": dt.datetime.now().strftime("%H:%M:%S"), "추출 방식": res.source_label,
-                            "수정": edits, "최종값": final}
+            # '확인 완료'면 배정 요청으로 바꿔 '하루 배정 비교' 계산에 넣는다. 바꿀 수 없으면 확인 완료를 막는다.
+            card_reqs = st.session_state.setdefault("card_requests", {})
+            card_id = case["case_id"] if case is not None else f"직접-{llm.sha256(text)[:6]}"
+            req, conv_problems = (None, [])
+            if action == "확인 완료":
+                req, conv_problems = card_to_request(
+                    final, ROOT / "data" / "processed", card_id,
+                    confirmed_at=dt.datetime.now().strftime("%Y-%m-%dT%H:%M"))
+            if conv_problems:
+                st.error("배정 요청으로 바꿀 수 없어 확인 완료하지 않았습니다:\n\n"
+                         + "\n".join(f"- {p}" for p in conv_problems))
+            else:
+                if req is not None:
+                    card_reqs[key] = req
+                else:
+                    card_reqs.pop(key, None)   # 보류·취소면 배정 계산에서 뺀다
+                reviews[key] = {"처리": action, "처리자": reviewer.strip(), "사유": reason.strip(),
+                                "시각": dt.datetime.now().strftime("%H:%M:%S"), "추출 방식": res.source_label,
+                                "수정": edits, "최종값": final}
     if key in reviews:
         r = reviews[key]
         st.success(f"{r['시각']} · {r['처리자']} · **{r['처리']}**" + (f" (사유: {r['사유']})" if r["사유"] else "")
                    + (f" · 수정 {len(r['수정'])}개 항목" if r["수정"] else ""))
-        st.caption("이 화면의 처리 기록은 시연용으로 브라우저 세션에만 남습니다.")
+        req = st.session_state.get("card_requests", {}).get(key)
+        if req is not None:
+            dates = _service_date_range()
+            if dates and not (dates[0] <= req["service_date"] <= dates[1]):
+                st.warning(f"서비스일 {req['service_date']}은 가상 실험 기간({dates[0]}~{dates[1]}) 밖이라 "
+                           "'하루 배정 비교'에서 고를 수 없습니다.")
+            else:
+                st.info(f"**{req['request_id']}** 요청이 배정 계산에 들어갔습니다. 왼쪽 메뉴 '**하루 배정 비교**'에서 "
+                        f"날짜 **{req['service_date']}**를 고르면 이 요청을 넣어 다시 계산합니다.")
+        st.caption("이 화면의 처리 기록은 시연용으로 브라우저 세션에만 남습니다(새로고침하면 사라집니다).")
 
 if case is not None:
     with st.expander("정답과 비교 (평가용 정답 세트)"):
