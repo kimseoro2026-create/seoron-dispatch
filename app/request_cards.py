@@ -245,7 +245,9 @@ with right:
     with c2:
         reviewer = st.text_input("처리자", placeholder="담당자 이름 또는 ID")
         reason = st.text_input("사유 (보류·취소 시 필수)")
-    reviews = st.session_state.setdefault("card_reviews", {})
+    from store import Store
+    store = Store()                       # 처리 기록은 파일 DB 에 남는다(새로고침·다른 화면에서도 유지)
+    card_key = llm.sha256(text)           # 같은 메모는 정리 방식이 달라도 같은 카드
     if st.button("처리 적용", type="primary"):
         if not reviewer.strip():
             st.error("처리자를 입력해 주세요.")
@@ -254,11 +256,8 @@ with right:
         elif action != "확인 완료" and not reason.strip():
             st.error("보류·취소 사유를 입력해 주세요.")
         else:
-            edits = {n: {"추출값": edited.loc[n, "추출값"], "수정값": edited.loc[n, "수정값"]}
-                     for n in edited.index if edited.loc[n, "수정값"]}
             # '확인 완료'면 배정 요청으로 바꿔 '하루 배정 비교' 계산에 넣는다. 바꿀 수 없으면 확인 완료를 막는다.
-            card_reqs = st.session_state.setdefault("card_requests", {})
-            card_id = case["case_id"] if case is not None else f"직접-{llm.sha256(text)[:6]}"
+            card_id = case["case_id"] if case is not None else f"직접-{card_key[:6]}"
             req, conv_problems = (None, [])
             if action == "확인 완료":
                 req, conv_problems = card_to_request(
@@ -268,18 +267,21 @@ with right:
                 st.error("배정 요청으로 바꿀 수 없어 확인 완료하지 않았습니다:\n\n"
                          + "\n".join(f"- {p}" for p in conv_problems))
             else:
-                if req is not None:
-                    card_reqs[key] = req
-                else:
-                    card_reqs.pop(key, None)   # 보류·취소면 배정 계산에서 뺀다
-                reviews[key] = {"처리": action, "처리자": reviewer.strip(), "사유": reason.strip(),
-                                "시각": dt.datetime.now().strftime("%H:%M:%S"), "추출 방식": res.source_label,
-                                "수정": edits, "최종값": final}
-    if key in reviews:
-        r = reviews[key]
-        st.success(f"{r['시각']} · {r['처리자']} · **{r['처리']}**" + (f" (사유: {r['사유']})" if r["사유"] else "")
-                   + (f" · 수정 {len(r['수정'])}개 항목" if r["수정"] else ""))
-        req = st.session_state.get("card_requests", {}).get(key)
+                # AI 값과 담당자 확정 값을 함께 남긴다(FR-11). 원문·근거 문장은 저장하지 않는다.
+                extracted = {n: edited.loc[n, "추출값"] for n in edited.index}
+                store.save_card_review(card_key, card_id=card_id, text_hash=card_key, extracted=extracted,
+                                       final=final, action=action, reason=reason.strip(),
+                                       reviewer=reviewer.strip(), request=req)
+    last = store.card_review(card_key)
+    if last is not None:
+        n_edit = sum(1 for k, v in last["final"].items()
+                     if str(v if v is not None else "") != str(last["extracted"].get(k) or "")
+                     and k != "service_type")
+        st.success(f"{last['reviewed_at'][11:19]} · {last['reviewer']} · **{last['action']}**"
+                   + (f" (사유: {last['reason']})" if last["reason"] else "")
+                   + (f" · 수정 {n_edit}개 항목" if n_edit else ""))
+        rid = last["request_id"]
+        req = next((r for r in store.ready_requests() if r["request_id"] == rid), None) if rid else None
         if req is not None:
             dates = _service_date_range()
             if dates and not (dates[0] <= req["service_date"] <= dates[1]):
@@ -288,7 +290,14 @@ with right:
             else:
                 st.info(f"**{req['request_id']}** 요청이 배정 계산에 들어갔습니다. 왼쪽 메뉴 '**하루 배정 비교**'에서 "
                         f"날짜 **{req['service_date']}**를 고르면 이 요청을 넣어 다시 계산합니다.")
-        st.caption("이 화면의 처리 기록은 시연용으로 브라우저 세션에만 남습니다(새로고침하면 사라집니다).")
+        hist = store.card_history(card_key)
+        if len(hist) > 1:
+            with st.expander(f"이 메모의 처리 기록 {len(hist)}건"):
+                st.dataframe(pd.DataFrame([{"시각": h["reviewed_at"][:19].replace("T", " "), "처리": h["action"],
+                                            "처리자": h["reviewer"], "사유": h["reason"]} for h in hist]),
+                             hide_index=True, width="stretch")
+        st.caption("처리 기록은 이 앱의 저장소에 남아 새로고침해도 유지됩니다. "
+                   "배포 화면은 앱을 다시 켜면 처음 상태로 돌아갑니다(가상 데이터 시연용).")
 
 if case is not None:
     with st.expander("정답과 비교 (평가용 정답 세트)"):

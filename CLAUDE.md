@@ -42,6 +42,7 @@ f0/          가상 권역 생성 (구현됨: 병원·인구·경계 → 어르�
 planner/     데이터 모델, 기준선(신청순·근거리), Routing 최적화
 verifier/    엔진과 독립된 하드 제약 검증기 (planner를 import하지 않는다)
 simulator/   다일·다중 시드·부하율 실험, 지표 계산
+store/       운영 데이터 저장소(SQLite): 요청 카드 처리 기록, 확인된 요청, 계산 실행 기록, 승인·감사 기록
 adapters/    플랫폼 API(병원·인구·기상청·ODsay), 카카오, OSRM, LLM, mock
 app/         Streamlit 화면
 config/      region.yaml(권역·실험 가정), apis.yaml(호출 설정, 키 제외)

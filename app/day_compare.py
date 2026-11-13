@@ -24,6 +24,11 @@ if str(ROOT) not in sys.path:
 import pandas as pd
 import streamlit as st
 
+from store import Store
+
+# 운영 데이터 저장소: 확인된 요청 카드, 계산 실행 기록, 승인. 새로고침·다른 화면에서도 같은 값을 본다.
+_store = Store()
+
 # ── 상단 배너 ─────────────────────────────────────────────────────────────
 st.markdown(
     """
@@ -72,19 +77,22 @@ def _run(date: str, algo: str, stamp: str, cards_json: str = "[]"):
         r = fn(instance)
         assignments = r.assignments
         unassigned  = [u.as_dict() for u in r.unassigned]
+        meta = {"status": "feasible", "solve_seconds": None, "config": {}}
     elif algo == "근거리":
         from planner.baseline import nearest as fn
         r = fn(instance)
         assignments = r.assignments
         unassigned  = [u.as_dict() for u in r.unassigned]
+        meta = {"status": "feasible", "solve_seconds": None, "config": {}}
     else:
         r = optimize(instance, time_limit_sec=8)
         assignments = r.assignments
         unassigned  = r.unassigned
+        meta = {"status": r.status, "solve_seconds": r.solve_seconds, "config": {"time_limit_sec": 8}}
 
     rep = verify(instance, assignments)
     timelines = [t.__dict__ for t in rep.timelines]
-    return inst, assignments, unassigned, timelines, rep
+    return inst, assignments, unassigned, timelines, rep, meta
 
 
 @st.cache_data(show_spinner=False)
@@ -170,8 +178,8 @@ with st.sidebar:
         st.caption(f"{_label}: **{_text}**")
     st.caption("어르신·인력·요청은 모두 가상으로 만든 데이터입니다.")
 
-    # 요청 카드 검토에서 '확인 완료'한 카드(같은 브라우저 세션)
-    _all_cards = list(st.session_state.get("card_requests", {}).values())
+    # 요청 카드 검토에서 '확인 완료'한 카드(앱 저장소 — 새로고침해도 유지)
+    _all_cards = _store.ready_requests()
     day_cards = sorted((c for c in _all_cards if c["service_date"] == date), key=lambda c: c["request_id"])
     if _all_cards:
         st.divider()
@@ -194,10 +202,16 @@ stamp = _data_stamp()
 for a in selected:
     with st.spinner(f"{a} 계산 중…"):
         try:
-            inst, assignments, unassigned, timelines, rep = _run(
+            inst, assignments, unassigned, timelines, rep, meta = _run(
                 date, _algo_key(a), stamp, json.dumps(day_cards, ensure_ascii=False, sort_keys=True))
-            results[a] = dict(inst=inst, assignments=assignments,
-                              unassigned=unassigned, timelines=timelines, rep=rep)
+            # 실행 기록(FR-23): 입력 스냅샷 해시·엔진 버전·설정. 같은 입력이면 같은 실행 ID.
+            run_id = _store.record_run(
+                date, a, inst.as_instance(), config=meta["config"], status=meta["status"],
+                solve_seconds=meta["solve_seconds"],
+                metrics={"assigned": len(assignments), "unassigned": len(unassigned),
+                         "violations": len(rep.violations)})
+            results[a] = dict(inst=inst, assignments=assignments, unassigned=unassigned,
+                              timelines=timelines, rep=rep, run_id=run_id, meta=meta)
         except Exception as e:
             st.error(f"{a} 계산 중 오류: {e}")
 
@@ -468,136 +482,158 @@ st.caption(
 if not results:
     st.info("위에서 방식을 하나 이상 선택하세요.")
 else:
-    from planner.approval import ACCEPT, PENDING, REJECT, ApprovalGate, Decision
+    import hashlib
 
-    # 승인 상태는 세션에 보관한다(새로고침에도 확정 내역이 유지되도록)
-    if "gate" not in st.session_state:
-        st.session_state.gate = ApprovalGate()
-    gate: ApprovalGate = st.session_state.gate
+    from planner.approval import ACCEPT, PENDING, REJECT, Decision
 
     algo_opts = list(results.keys())
     approve_algo = st.selectbox("승인할 배정안", algo_opts, key="approve_algo",
                                 index=algo_opts.index("AI 최적화") if "AI 최적화" in algo_opts else 0)
     d_sel = results[approve_algo]
     proposal = d_sel["assignments"]
+    run_id = d_sel["run_id"]
+
+    # 담당자가 이 배정안을 처음 본 시점의 일정 버전. 그사이 다른 승인이 있으면 오래된 화면으로 보고 막는다(PRD 7장).
+    seen_key = f"seen_version_{date}_{run_id}"
+    current_version = _store.schedule_version(date)
+    seen_version = st.session_state.setdefault(seen_key, current_version)
+    confirmed_ids = {c["request_id"] for c in _store.confirmed(date)}
 
     if not proposal:
         st.warning("이 방식은 배정된 요청이 없습니다. 승인할 내용이 없습니다.")
+    elif d_sel["rep"].violations:
+        st.error("이 배정안은 하드 제약 위반이 있어 승인할 수 없습니다. 위반이 없는 배정안을 선택하세요.")
     else:
-        if d_sel["rep"].violations:
-            st.error(
-                "이 배정안은 하드 제약 위반이 있어 승인할 수 없습니다. "
-                "위반이 없는 배정안을 선택하세요."
-            )
-        else:
-            # '모두 수락' 은 표의 기본값만 채운다. 실제 확정은 '승인 적용'을 눌러야 한다.
-            fill_key = f"fill_{date}_{approve_algo}"
-            fill = st.session_state.get(fill_key, "보류")
-            st.markdown("**사용법**: 표의 **'결정'** 칸을 두 번 클릭해 **수락 / 거부 / 보류**를 고른 뒤 "
-                        "아래 '**승인 적용**'을 누르세요. 거부할 때는 '거부 사유'를 꼭 적어 주세요.")
-            b1, b2, _ = st.columns([1, 1, 1])
-            if b1.button("모두 수락으로 채우기", help="표의 '결정'을 모두 '수락'으로 바꿉니다. "
-                                                  "거부할 건만 골라 바꾼 뒤 '승인 적용'을 누르세요."):
-                st.session_state[fill_key] = "수락"
+        if seen_version != current_version:
+            st.warning("이 화면을 연 뒤에 일정이 바뀌었습니다(다른 승인·해제). "
+                       "아래 '최신 일정으로 다시 보기'를 누른 뒤 결정해 주세요.")
+            if st.button("최신 일정으로 다시 보기"):
+                st.session_state[seen_key] = current_version
                 st.rerun()
-            if b2.button("모두 보류로 되돌리기"):
-                st.session_state[fill_key] = "보류"
-                st.rerun()
-            req_by_id = {r["request_id"]: r for r in d_sel["inst"].requests}
-            rows = []
-            for a in proposal:
-                req = req_by_id[a["request_id"]]
-                rows.append({
-                    "요청": a["request_id"],
-                    "대상자": req["beneficiary_id"],
-                    "인력": a["worker_id"],
-                    "도착 시각": _hhmm(a["arrive_min"]),
-                    "서비스": "병원동행" if req["service_type"] == "hospital_escort" else "가사지원",
-                    "결정": fill,
-                    "거부 사유": "",
-                })
+        # '모두 수락' 은 표의 기본값만 채운다. 실제 확정은 '승인 적용'을 눌러야 한다.
+        fill_key = f"fill_{date}_{approve_algo}"
+        fill = st.session_state.get(fill_key, "보류")
+        st.markdown("**사용법**: 표의 **'결정'** 칸을 두 번 클릭해 **수락 / 거부 / 보류**를 고른 뒤 "
+                    "아래 '**승인 적용**'을 누르세요. 거부할 때는 '거부 사유'를 꼭 적어 주세요.")
+        b1, b2, _ = st.columns([1, 1, 1])
+        if b1.button("모두 수락으로 채우기", help="표의 '결정'을 모두 '수락'으로 바꿉니다. "
+                                              "거부할 건만 골라 바꾼 뒤 '승인 적용'을 누르세요."):
+            st.session_state[fill_key] = "수락"
+            st.rerun()
+        if b2.button("모두 보류로 되돌리기"):
+            st.session_state[fill_key] = "보류"
+            st.rerun()
+        req_by_id = {r["request_id"]: r for r in d_sel["inst"].requests}
+        rows = []
+        for a in proposal:
+            req = req_by_id[a["request_id"]]
+            done = a["request_id"] in confirmed_ids
+            rows.append({
+                "요청": a["request_id"],
+                "대상자": req["beneficiary_id"],
+                "인력": a["worker_id"],
+                "도착 시각": _hhmm(a["arrive_min"]),
+                "서비스": "병원동행" if req["service_type"] == "hospital_escort" else "가사지원",
+                "지금 상태": "확정됨" if done else "제안",
+                "결정": "보류" if done else fill,
+                "거부 사유": "",
+            })
 
-            edited = st.data_editor(
-                pd.DataFrame(rows),
-                width="stretch",
-                hide_index=True,
-                disabled=["요청", "대상자", "인력", "도착 시각", "서비스"],
-                column_config={
-                    "결정": st.column_config.SelectboxColumn(
-                        "결정", options=["수락", "거부", "보류"], required=True, width="small"),
-                    "거부 사유": st.column_config.TextColumn(
-                        "거부 사유", help="거부를 선택했다면 사유를 적어 주세요(필수)"),
-                },
-                key=f"editor_{date}_{approve_algo}_{fill}",
-            )
+        edited = st.data_editor(
+            pd.DataFrame(rows),
+            width="stretch",
+            hide_index=True,
+            disabled=["요청", "대상자", "인력", "도착 시각", "서비스", "지금 상태"],
+            column_config={
+                "결정": st.column_config.SelectboxColumn(
+                    "결정", options=["수락", "거부", "보류"], required=True, width="small"),
+                "거부 사유": st.column_config.TextColumn(
+                    "거부 사유", help="거부를 선택했다면 사유를 적어 주세요(필수)"),
+            },
+            key=f"editor_{date}_{approve_algo}_{fill}_{current_version}",
+        )
+        st.caption(f"계산 실행 ID `{run_id}` · 일정 버전 {current_version} · "
+                   "'확정됨' 줄은 이미 확정되어 잠겨 있습니다(바꾸려면 아래에서 확정 해제).")
 
-            cols = st.columns([1, 1, 3])
-            apply_clicked = cols[0].button("승인 적용", type="primary")
-            reset_clicked = cols[1].button("확정 초기화")
+        cols = st.columns([1, 1, 3])
+        apply_clicked = cols[0].button("승인 적용", type="primary")
+        reset_clicked = cols[1].button("확정 초기화", help="실험용: 이 날짜의 확정을 모두 해제합니다. 기록은 남습니다.")
+        approver = cols[2].text_input("승인자", value=st.session_state.get("approver", "담당자"),
+                                      label_visibility="collapsed", placeholder="승인자 이름")
+        st.session_state["approver"] = approver
 
-            if reset_clicked:
-                gate.reset()
-                for v in ("보류", "수락"):
-                    st.session_state.pop(f"editor_{date}_{approve_algo}_{v}", None)
-                st.session_state.pop(fill_key, None)
-                st.success("확정 내역을 초기화했습니다.")
-                st.rerun()
+        if reset_clicked:
+            _store.reset_date(date, actor=approver or "담당자")
+            st.session_state[seen_key] = _store.schedule_version(date)
+            st.session_state.pop(fill_key, None)
+            st.success("이 날짜의 확정을 모두 해제했습니다(기록은 남습니다).")
+            st.rerun()
 
-            if apply_clicked:
-                label_to_action = {"수락": ACCEPT, "거부": REJECT, "보류": PENDING}
-                decisions, errors = [], []
-                for _, row in edited.iterrows():
-                    action = label_to_action.get(row["결정"], PENDING)
-                    reason = (row.get("거부 사유") or "").strip()
-                    if action == REJECT and not reason:
-                        errors.append(f"{row['요청']}: 거부 사유를 입력하세요.")
-                        continue
-                    if action != PENDING:
-                        decisions.append(Decision(row["요청"], action, reason))
+        if apply_clicked:
+            label_to_action = {"수락": ACCEPT, "거부": REJECT, "보류": PENDING}
+            decisions, errors = [], []
+            for _, row in edited.iterrows():
+                if row["요청"] in confirmed_ids:
+                    continue                     # 확정된 건은 잠겨 있어 다시 결정하지 않는다
+                action = label_to_action.get(row["결정"], PENDING)
+                reason = (row.get("거부 사유") or "").strip()
+                if action == REJECT and not reason:
+                    errors.append(f"{row['요청']}: 거부 사유를 입력하세요.")
+                    continue
+                if action != PENDING:
+                    decisions.append(Decision(row["요청"], action, reason))
 
-                if errors:
-                    for e in errors:
-                        st.error(e)
-                elif not decisions:
-                    st.info("결정한 항목이 없습니다. '수락' 또는 '거부'를 선택하세요.")
+            if errors:
+                for e in errors:
+                    st.error(e)
+            elif not decisions:
+                st.info("결정한 항목이 없습니다. '수락' 또는 '거부'를 선택하세요.")
+            else:
+                # 같은 화면에서 같은 결정을 두 번 눌러도 한 번만 반영되도록(AT-08) 결정 내용으로 키를 만든다.
+                idem = hashlib.sha256(json.dumps(
+                    [date, run_id, seen_version, [(d.request_id, d.action, d.reason) for d in decisions]],
+                    ensure_ascii=False).encode()).hexdigest()
+                try:
+                    res = _store.approve(date, d_sel["inst"].as_instance(), proposal, decisions,
+                                         expected_version=seen_version, actor=approver or "담당자",
+                                         idempotency_key=idem, run_id=run_id)
+                except Exception as e:
+                    st.error(f"승인 처리 중 오류: {e}")
                 else:
-                    try:
-                        res = gate.approve(
-                            d_sel["inst"].as_instance(),
-                            proposal,
-                            decisions,
-                            schedule_version=gate.schedule_version,
-                            service_date=date,
-                        )
-                    except Exception as e:
-                        st.error(f"승인 처리 중 오류: {e}")
+                    if res.ok:
+                        st.session_state[seen_key] = res.schedule_version
+                        st.success(res.message)
                     else:
-                        if res.ok:
-                            st.success(res.message)
-                        else:
-                            st.error(res.message)
-                        if res.violations:
-                            st.dataframe(pd.DataFrame(res.violations),
-                                         width="stretch", hide_index=True)
+                        st.error(res.message)
+                    if res.violations:
+                        st.dataframe(pd.DataFrame(res.violations), width="stretch", hide_index=True)
 
-        # 확정 내역
-        confirmed = gate.confirmed
-        if confirmed:
-            st.markdown(f"**확정된 배정 {len(confirmed)}건** (schedule version {gate.schedule_version})")
-            cdf = pd.DataFrame(confirmed)
-            if "arrive_min" in cdf.columns:
-                cdf["arrive_min"] = cdf["arrive_min"].map(_hhmm)
-            cdf = cdf.rename(columns={"request_id": "요청", "worker_id": "인력",
-                                      "arrive_min": "도착 시각", "service_date": "날짜",
-                                      "locked": "잠금"})
-            st.dataframe(cdf, width="stretch", hide_index=True)
-
-            if st.button("확정 내역 CSV 내려받기"):
-                csv = cdf.to_csv(index=False).encode("utf-8-sig")
-                st.download_button("CSV 저장", csv,
-                                   file_name=f"confirmed-{date}.csv", mime="text/csv")
-        else:
-            st.info("아직 확정된 배정이 없습니다. 위에서 '수락'을 선택하고 승인 적용을 누르세요.")
+    # 확정 내역(저장소)
+    confirmed = _store.confirmed(date)
+    if confirmed:
+        st.markdown(f"**{date} 확정된 배정 {len(confirmed)}건** (일정 버전 {_store.schedule_version(date)})")
+        cdf = pd.DataFrame(confirmed)[["request_id", "worker_id", "arrive_min", "actor", "run_id"]]
+        cdf["arrive_min"] = cdf["arrive_min"].map(_hhmm)
+        cdf = cdf.rename(columns={"request_id": "요청", "worker_id": "인력", "arrive_min": "도착 시각",
+                                  "actor": "승인자", "run_id": "계산 실행 ID"})
+        st.dataframe(cdf, width="stretch", hide_index=True)
+        st.download_button("확정 내역 CSV 내려받기", cdf.to_csv(index=False).encode("utf-8-sig"),
+                           file_name=f"confirmed-{date}.csv", mime="text/csv")
+        with st.expander("확정 해제 (사유 필수)"):
+            rel_id = st.selectbox("해제할 요청", [c["request_id"] for c in confirmed], key=f"rel_{date}")
+            rel_reason = st.text_input("해제 사유", key=f"rel_reason_{date}")
+            if st.button("확정 해제"):
+                if not rel_reason.strip():
+                    st.error("해제 사유를 입력해 주세요.")
+                else:
+                    _store.release(date, rel_id, actor=st.session_state.get("approver") or "담당자",
+                                   reason=rel_reason.strip())
+                    st.session_state[seen_key] = _store.schedule_version(date)
+                    st.rerun()
+    else:
+        st.info("아직 확정된 배정이 없습니다. 위에서 '수락'을 선택하고 승인 적용을 누르세요.")
+    st.caption("승인 기록은 이 앱의 저장소에 남아 새로고침해도 유지됩니다. "
+               "배포 화면은 앱을 다시 켜면 처음 상태로 돌아갑니다(가상 데이터 시연용).")
 
 
 # ── 30일 실험 결과 ────────────────────────────────────────────────────────

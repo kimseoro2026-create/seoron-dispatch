@@ -44,3 +44,6 @@ data/experiments/repaircheck-*.csv
 
 # LLM 호출 기록(모델·시간·토큰·해시). 원문·키는 없지만 실행 부산물이므로 제외한다.
 data/llm_logs/
+
+# 운영 데이터 저장소(SQLite). 실행하면 생기는 파일이라 저장소에 넣지 않는다.
+data/store/
