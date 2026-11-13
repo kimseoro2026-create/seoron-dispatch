@@ -31,9 +31,22 @@ def _config() -> dict:
             "high_priority_discharge_days": int(c["high_priority_discharge_days"])}
 
 
+def hospital_candidates(name: str, data_dir: str | Path) -> list[dict]:
+    """병원 목록에서 이름이 정확히 같은 병원들(주소로 고르게 보여 주기 위함). 비슷한 이름은 찾지 않는다."""
+    d = Path(data_dir)
+    path = d / "hospitals.csv" if (d / "hospitals.csv").exists() else ROOT / "data" / "raw" / "hospitals.csv"
+    hos = pd.read_csv(path, dtype={"hospital_id": str})
+    m = hos[hos["name"] == str(name or "").strip()]
+    return [{"hospital_id": r.hospital_id, "name": r.name, "class_name": getattr(r, "class_name", ""),
+             "address": getattr(r, "address", "")} for r in m.itertuples()]
+
+
 def card_to_request(final: dict, data_dir: str | Path, card_id: str,
-                    confirmed_at: str) -> tuple[dict | None, list[str]]:
-    """확인된 카드 값(final) → (요청 dict, 문제 목록). 문제가 있으면 요청은 None."""
+                    confirmed_at: str, hospital_id: str | None = None) -> tuple[dict | None, list[str]]:
+    """확인된 카드 값(final) → (요청 dict, 문제 목록). 문제가 있으면 요청은 None.
+
+    hospital_id: 같은 이름 병원이 여러 곳일 때 담당자가 주소를 보고 고른 병원(FR-15). 그 이름의 후보여야 한다.
+    """
     d = Path(data_dir)
     problems: list[str] = []
     service = final.get("service_type")
@@ -58,15 +71,20 @@ def card_to_request(final: dict, data_dir: str | Path, card_id: str,
         problems.append("시작 시각: '시작 가능 시각'이 '늦어도 시작할 시각'보다 늦습니다")
 
     cfg = _config()
-    hospital_id = None
+    if service != "hospital_escort":
+        hospital_id = None
     if service == "hospital_escort":
         hos = pd.read_csv(d / "hospitals.csv", dtype={"hospital_id": str})
         match = hos[hos["name"] == str(final["hospital_name"]).strip()]
         if match.empty:
             problems.append(f"병원 이름 '{final['hospital_name']}': 병원 목록에서 같은 이름을 찾지 못했습니다. "
                             "정확한 이름을 '고칠 값'에 적어 주세요")
+        elif hospital_id is not None:
+            if hospital_id not in set(match["hospital_id"]):
+                problems.append(f"병원 이름 '{final['hospital_name']}': 고른 병원이 이 이름의 후보가 아닙니다")
         elif len(match) > 1:
-            problems.append(f"병원 이름 '{final['hospital_name']}': 같은 이름의 병원이 여러 곳입니다")
+            problems.append(f"병원 이름 '{final['hospital_name']}': 같은 이름의 병원이 {len(match)}곳입니다. "
+                            "주소를 보고 하나를 골라 주세요")
         else:
             hospital_id = match.iloc[0]["hospital_id"]
     if problems:

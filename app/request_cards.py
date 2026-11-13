@@ -23,7 +23,7 @@ import streamlit as st
 
 from adapters import llm
 from intake.extract import PROMPT_VERSION, extract_card
-from intake.to_request import card_to_request
+from intake.to_request import card_to_request, hospital_candidates
 from intake.schema import BLOCKING_BY_SERVICE, BLOCKING_COMMON, FIELD_LABELS, FIELDS, check_format
 
 CASES_PATH = ROOT / "fixtures/request_cards/cases.json"
@@ -239,6 +239,20 @@ with right:
             elif row["상태"] != "정상" and not row["수정값"] and not row["확인함"]:
                 problems.append(f"{FIELD_LABELS[name]}: 확인이 필요합니다")
 
+    # 같은 이름 병원이 여러 곳이면 주소를 보고 고르게 한다(FR-15). 비슷한 이름으로 추측하지 않는다.
+    chosen_hospital = None
+    if final.get("service_type") == "hospital_escort" and final.get("hospital_name"):
+        cands = hospital_candidates(final["hospital_name"], ROOT / "data" / "processed")
+        if len(cands) > 1:
+            label = {c["hospital_id"]: f"{c['name']} · {c['class_name']} · {c['address']}" for c in cands}
+            chosen_hospital = st.selectbox(f"같은 이름의 병원이 {len(cands)}곳입니다 — 주소를 보고 골라 주세요",
+                                           list(label), index=None, format_func=label.get,
+                                           placeholder="병원을 고르세요", key=f"hosp|{key}")
+            if chosen_hospital is None:
+                problems.append(f"병원 이름 '{final['hospital_name']}': 같은 이름 병원 {len(cands)}곳 중 하나를 골라 주세요")
+            else:
+                final["hospital_id"] = chosen_hospital
+
     c1, c2 = st.columns([1, 2])
     with c1:
         action = st.radio("처리", ACTIONS, horizontal=False)
@@ -248,7 +262,10 @@ with right:
     from store import Store
     store = Store()                       # 처리 기록은 파일 DB 에 남는다(새로고침·다른 화면에서도 유지)
     card_key = llm.sha256(text)           # 같은 메모는 정리 방식이 달라도 같은 카드
+    # 검토 조작 수(FR-57 사용성 평가): 고친 값 + 확인 체크 + 처리 적용 누른 횟수(실패 포함)
+    tries_key = f"tries|{card_key}"
     if st.button("처리 적용", type="primary"):
+        st.session_state[tries_key] = st.session_state.get(tries_key, 0) + 1
         if not reviewer.strip():
             st.error("처리자를 입력해 주세요.")
         elif action == "확인 완료" and problems:
@@ -262,16 +279,22 @@ with right:
             if action == "확인 완료":
                 req, conv_problems = card_to_request(
                     final, ROOT / "data" / "processed", card_id,
-                    confirmed_at=dt.datetime.now().strftime("%Y-%m-%dT%H:%M"))
+                    confirmed_at=dt.datetime.now().strftime("%Y-%m-%dT%H:%M"), hospital_id=chosen_hospital)
             if conv_problems:
                 st.error("배정 요청으로 바꿀 수 없어 확인 완료하지 않았습니다:\n\n"
                          + "\n".join(f"- {p}" for p in conv_problems))
             else:
                 # AI 값과 담당자 확정 값을 함께 남긴다(FR-11). 원문·근거 문장은 저장하지 않는다.
                 extracted = {n: edited.loc[n, "추출값"] for n in edited.index}
+                ops = {"edited_fields": int(sum(1 for n in edited.index if edited.loc[n, "수정값"])),
+                       "confirm_checks": int(edited["확인함"].sum()),
+                       "hospital_choice": int(chosen_hospital is not None),
+                       "apply_clicks": int(st.session_state.get(tries_key, 1))}
+                ops["total"] = sum(ops.values())
                 store.save_card_review(card_key, card_id=card_id, text_hash=card_key, extracted=extracted,
                                        final=final, action=action, reason=reason.strip(),
-                                       reviewer=reviewer.strip(), request=req)
+                                       reviewer=reviewer.strip(), request=req, ops=ops)
+                st.session_state.pop(tries_key, None)
     last = store.card_review(card_key)
     if last is not None:
         n_edit = sum(1 for k, v in last["final"].items()
@@ -296,6 +319,10 @@ with right:
                 st.dataframe(pd.DataFrame([{"시각": h["reviewed_at"][:19].replace("T", " "), "처리": h["action"],
                                             "처리자": h["reviewer"], "사유": h["reason"]} for h in hist]),
                              hide_index=True, width="stretch")
+        _ops = store.review_ops_summary()
+        if _ops["cards"]:
+            st.caption(f"검토 조작 수(사용성 기록): 확인 완료한 요청 {_ops['cards']}건, 1건당 평균 {_ops['avg']}회"
+                       f"(최대 {_ops['max']}회). 고친 값·확인 체크·병원 고르기·'처리 적용' 누른 횟수를 셉니다.")
         st.caption("처리 기록은 이 앱의 저장소에 남아 새로고침해도 유지됩니다. "
                    "배포 화면은 앱을 다시 켜면 처음 상태로 돌아갑니다(가상 데이터 시연용).")
 

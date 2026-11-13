@@ -151,6 +151,8 @@ class Store:
             con.execute("INSERT OR IGNORE INTO meta(key, value) VALUES ('schema_version', ?)",
                         (str(SCHEMA_VERSION),))
             # 열 추가(예전 파일 DB 도 그대로 쓰도록)
+            if "ops_json" not in {r["name"] for r in con.execute("PRAGMA table_info(card_reviews)")}:
+                con.execute("ALTER TABLE card_reviews ADD COLUMN ops_json TEXT")
             cols = {r["name"] for r in con.execute("PRAGMA table_info(planning_runs)")}
             for c in ("assignments_json", "unassigned_json"):
                 if c not in cols:
@@ -213,7 +215,7 @@ class Store:
     # ── 요청 카드 ──────────────────────────────────────────────────────────
     def save_card_review(self, card_key: str, *, card_id: str, text_hash: str, extracted: dict,
                          final: dict, action: str, reason: str, reviewer: str,
-                         request: dict | None) -> None:
+                         request: dict | None, ops: dict | None = None) -> None:
         """카드 처리 한 번을 기록한다. 원문은 받지 않는다(해시만).
 
         확인 완료 → 요청 ready(배정 계산 대상). 보류 → needs_review. 취소 → cancelled.
@@ -231,9 +233,9 @@ class Store:
                                " ORDER BY id DESC LIMIT 1", (card_key,)).fetchone()
             rid = request["request_id"] if request else (prev["request_id"] if prev else None)
             con.execute("INSERT INTO card_reviews(card_key, card_id, text_hash, extracted_json, final_json,"
-                        " action, reason, reviewer, request_id, reviewed_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                        " action, reason, reviewer, request_id, reviewed_at, ops_json) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                         (card_key, card_id, text_hash, _dumps(extracted), _dumps(final), action,
-                         reason, reviewer, rid, now))
+                         reason, reviewer, rid, now, None if ops is None else _dumps(ops)))
             self._audit(con, reviewer, f"card:{action}", "card", card_key, request.get("service_date")
                         if request else None, detail={"card_id": card_id, "request_id": rid, "reason": reason})
             if rid is None:
@@ -275,7 +277,18 @@ class Store:
         return [{"card_id": r["card_id"], "text_hash": r["text_hash"], "action": r["action"],
                  "reason": r["reason"], "reviewer": r["reviewer"], "request_id": r["request_id"],
                  "reviewed_at": r["reviewed_at"], "extracted": json.loads(r["extracted_json"]),
-                 "final": json.loads(r["final_json"])} for r in rows]
+                 "final": json.loads(r["final_json"]),
+                 "ops": json.loads(r["ops_json"]) if r["ops_json"] else None} for r in rows]
+
+    def review_ops_summary(self) -> dict:
+        """검토 조작 수(FR-57): 카드마다 마지막 '확인 완료' 처리의 조작 수 → 건수·평균·최대."""
+        vals = []
+        for key in self.card_review_keys():
+            done = [h for h in self.card_history(key) if h["action"] == "확인 완료" and h["ops"]]
+            if done:
+                vals.append(int(done[-1]["ops"]["total"]))
+        return {"cards": len(vals), "avg": round(sum(vals) / len(vals), 2) if vals else None,
+                "max": max(vals) if vals else None}
 
     def card_review_keys(self) -> list[str]:
         """처리 기록이 있는 카드 키(최근 처리 순)."""
