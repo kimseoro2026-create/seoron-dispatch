@@ -717,6 +717,17 @@ class Store:
             con.close()
         return self.run(r["run_id"]) if r else None
 
+    def previous_run(self, service_date: str, algorithm: str, exclude_run_id: str) -> dict | None:
+        """같은 날짜·방식의 바로 앞 계산 기록(배정안 비교용, W06 '기존 대비 변경')."""
+        con = self._connect()
+        try:
+            r = con.execute("SELECT run_id FROM planning_runs WHERE service_date=? AND algorithm=? AND run_id<>?"
+                            " AND assignments_json IS NOT NULL ORDER BY created_at DESC, rowid DESC LIMIT 1",
+                            (service_date, algorithm, exclude_run_id)).fetchone()
+        finally:
+            con.close()
+        return self.run(r["run_id"]) if r else None
+
     def latest_activity(self) -> dict:
         """마지막 가져오기·카드 처리·계산·승인 시각(현황 화면의 '자료 동기화 상태')."""
         con = self._connect()
@@ -803,7 +814,7 @@ class Store:
                 " AND status='confirmed'", (service_date,)).fetchall()]
             locked_ids = {r["request_id"] for r in before}
             accepted = [{"request_id": a["request_id"], "worker_id": a["worker_id"],
-                         "arrive_min": int(a["arrive_min"])}
+                         "arrive_min": int(a["arrive_min"]), "modified": bool(a.get("modified"))}
                         for a in proposal
                         if a["request_id"] in decided and decided[a["request_id"]].action == ACCEPT]
 
@@ -818,7 +829,7 @@ class Store:
 
             # 4. 재검증 — 그날 확정 + 이번 수락을 함께
             from verifier import verify
-            merged = before + accepted
+            merged = before + [{k: a[k] for k in ("request_id", "worker_id", "arrive_min")} for a in accepted]
             rep = verify(instance, merged) if merged else None
             if rep is not None and rep.violations:
                 return remember(ApprovalResult(
@@ -837,7 +848,8 @@ class Store:
                             (uuid.uuid4().hex, run_id, a["request_id"], a["worker_id"], service_date,
                              a["arrive_min"], after, actor, now, now))
                 self._audit(con, actor, ACCEPT, "assignment", a["request_id"], service_date, current, after,
-                            {"worker_id": a["worker_id"], "arrive_min": a["arrive_min"], "run_id": run_id})
+                            {"worker_id": a["worker_id"], "arrive_min": a["arrive_min"], "run_id": run_id,
+                             "modified_by_staff": a["modified"]})
             rejected, pending = [], []
             for a in proposal:
                 d = decided.get(a["request_id"])

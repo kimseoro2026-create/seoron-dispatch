@@ -116,7 +116,11 @@ def _escort_latest(req: dict, travel: dict) -> int:
 
 
 def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
-             seed: int = 42, repair: bool = True, warm_start: bool = True) -> OptimizeResult:
+             seed: int = 42, repair: bool = True, warm_start: bool = True,
+             locked: list[dict] | None = None) -> OptimizeResult:
+    """locked: 확정 일정 [{request_id, worker_id, arrive_min}] — 인력·도착 시각을 그대로 두고 나머지만 계산한다(FR-20).
+    확정 일정은 그 인력에 반드시 들어가고(미배정 불가), 도착 시각은 한 점으로 고정한다.
+    첫 해는 '확정 일정을 지키며 근거리 순서로 끼워 넣은 배정'(planner.locked)이다."""
     travel_in = instance["travel"]
     travel = ({(a, b): float(m) for (a, b), m in travel_in.items()}
               if isinstance(travel_in, dict)
@@ -135,6 +139,12 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
     rnode = lambda i: W + i                # noqa: E731
     n_nodes = W + R
 
+    # 확정 일정: 요청 번호 → (인력 번호, 도착 시각)
+    rpos = {r["request_id"]: i for i, r in enumerate(requests)}
+    wpos_all = {w["worker_id"]: k for k, w in enumerate(workers)}
+    lock_of = {rpos[a["request_id"]]: (wpos_all[a["worker_id"]], int(a["arrive_min"]))
+               for a in (locked or []) if a["request_id"] in rpos and a["worker_id"] in wpos_all}
+
     # 요청별 점유 길이와 유효 시간창 (경로가 없으면 모델에서 제외)
     spans, windows, skip = {}, {}, set()
     for i, req in enumerate(requests):
@@ -145,6 +155,8 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
         lo = int(req["earliest_start_min"])
         hi = (_escort_latest(req, travel) if req["service_type"] == "hospital_escort"
               else int(req["latest_start_min"]))
+        if i in lock_of:
+            lo = hi = lock_of[i][1]      # 확정 시각 한 점
         if hi < lo:
             skip.add(i)
             continue
@@ -257,6 +269,10 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
 
     # ── 미배정 허용(우선순위별 벌점) ───────────────────────────────────────
     for i, req in enumerate(requests):
+        if i in lock_of and i not in skip:
+            # 확정 일정: 그 인력에 반드시 넣는다(미배정 선택지 없음)
+            routing.VehicleVar(manager.NodeToIndex(rnode(i))).SetValues([lock_of[i][0]])
+            continue
         routing.AddDisjunction([manager.NodeToIndex(rnode(i))],
                                drop_penalty(req.get("priority", 1)))
 
@@ -276,7 +292,10 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
     # 휴게 제약을 직접 더한 모델에서는 삽입 기반 첫 해 전략이 해를 못 찾는 경우가 많다(실측: 표본 8일 모두 실패).
     # 그래서 탐색은 항상 주어진 첫 해에서 출발한다: 근거리 배정, 그것이 없으면 '아무도 배정하지 않은 빈 일정'
     # (빈 일정은 모든 제약을 지키므로 언제나 출발점이 된다).
-    warm_in = _warm_start_routes(instance, workers, requests, skip) if warm_start else None
+    if lock_of:
+        warm_in = _locked_start_routes(instance, workers, requests, skip, locked or [])
+    else:
+        warm_in = _warm_start_routes(instance, workers, requests, skip) if warm_start else None
     warm = warm_in is not None
     routes, arrive = warm_in if warm_in is not None else ([[] for _ in workers], {})
     start_assignments = [{"request_id": requests[i]["request_id"], "worker_id": workers[k]["worker_id"],
@@ -324,7 +343,12 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
             if node >= W and (node - W) not in skip:
                 i = node - W
                 req = requests[i]
-                t, _ = _try_assign(st, req, tmap)  # _ = 불가 사유
+                if i in lock_of:
+                    from planner.reschedule import _fits_at
+                    t, _ = ((lock_of[i][1], "") if _fits_at(st, req, tmap, lock_of[i][1])
+                            else (None, "LOCKED_TIME_NOT_FEASIBLE"))
+                else:
+                    t, _ = _try_assign(st, req, tmap)  # _ = 불가 사유
                 if t is not None:
                     leg = int(round(tmap[(st.cursor, req["home_node"])]))
                     end, span = _occupancy(req, tmap, t)
@@ -393,6 +417,27 @@ def _score(instance: dict, assignments: list[dict]) -> tuple[int, int]:
     missed = sum(drop_penalty(r.get("priority", 1)) for r in instance["requests"]
                  if r["request_id"] not in done)
     return (missed, sum(t.travel_min for t in rep.timelines))
+
+
+def _locked_start_routes(instance: dict, workers: list[dict], requests: list[dict], skip: set[int],
+                         locked: list[dict]) -> tuple[list[list[int]], dict[int, int]] | None:
+    """확정 일정을 지키며 근거리 순서로 끼워 넣은 배정 → 첫 해. 검증을 통과하지 못하면 None."""
+    from planner.locked import plan_with_locks
+    from verifier import verify
+
+    base = plan_with_locks(instance, locked, "nearest")
+    if not verify(instance, base.assignments).ok:
+        return None
+    pos = {r["request_id"]: i for i, r in enumerate(requests)}
+    wpos = {w["worker_id"]: k for k, w in enumerate(workers)}
+    routes: list[list[int]] = [[] for _ in workers]
+    arrive: dict[int, int] = {}
+    for a in sorted(base.assignments, key=lambda x: x["arrive_min"]):
+        i = pos[a["request_id"]]
+        if i not in skip:
+            routes[wpos[a["worker_id"]]].append(i)
+            arrive[i] = int(a["arrive_min"])
+    return routes, arrive
 
 
 def _warm_start_routes(instance: dict, workers: list[dict], requests: list[dict],

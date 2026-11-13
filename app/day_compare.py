@@ -60,7 +60,7 @@ def _load_travel(stamp: str):  # stamp 는 캐시 키 역할, 실제로 사용�
 
 
 @st.cache_data(show_spinner="배정 계산 중…")
-def _run(date: str, algo: str, stamp: str, inputs_json: str = "{}"):
+def _run(date: str, algo: str, stamp: str, inputs_json: str = "{}", locked_json: str = "[]"):
     # inputs_json: 저장소 값(확인된 추가 요청·취소·인력 설정·그날 근무, Store.day_inputs). 캐시 키가 되도록 JSON 문자열로 받는다.
     import json
     from planner.data import load_day
@@ -71,28 +71,38 @@ def _run(date: str, algo: str, stamp: str, inputs_json: str = "{}"):
     # 전체 519,120구간 대신 70개 노드(~4,900구간)만 계산하므로 훨씬 빠르다.
     inst = load_day(ROOT / "data" / "processed", date, travel=None, **json.loads(inputs_json))
     instance = inst.as_instance()
+    # 확정 일정 잠금(FR-20): 확정된 배정은 인력·도착 시각을 그대로 두고 나머지만 계산한다. 세 방식 모두.
+    locked = json.loads(locked_json)
+    from planner.locked import plan_with_locks
 
     if algo == "신청순":
-        from planner.baseline import request_order as fn
-        r = fn(instance)
+        r = plan_with_locks(instance, locked, "request_order")
         assignments = r.assignments
         unassigned  = [u.as_dict() for u in r.unassigned]
         meta = {"status": "feasible", "solve_seconds": None, "config": {}}
     elif algo == "근거리":
-        from planner.baseline import nearest as fn
-        r = fn(instance)
+        r = plan_with_locks(instance, locked, "nearest")
         assignments = r.assignments
         unassigned  = [u.as_dict() for u in r.unassigned]
         meta = {"status": "feasible", "solve_seconds": None, "config": {}}
     else:
-        r = optimize(instance, time_limit_sec=8)
+        r = optimize(instance, time_limit_sec=8, locked=locked)
         assignments = r.assignments
         unassigned  = r.unassigned
-        meta = {"status": r.status, "solve_seconds": r.solve_seconds, "config": {"time_limit_sec": 8}}
+        meta = {"status": r.status, "solve_seconds": r.solve_seconds,
+                "config": {"time_limit_sec": 8, "lock_confirmed": bool(locked)}}
 
     rep = verify(instance, assignments)
     timelines = [t.__dict__ for t in rep.timelines]
     return inst, assignments, unassigned, timelines, rep, meta
+
+
+@st.cache_data(show_spinner=False)
+def _day_requests(day: str, inputs_json: str) -> list[tuple[str, str]]:
+    """그날 요청 (ID, 서비스) 목록 — 계산 범위 고르기용(이동시간 없이 가볍게)."""
+    from planner.data import load_day
+    inst = load_day(ROOT / "data" / "processed", day, travel={}, **json.loads(inputs_json))
+    return [(r["request_id"], r["service_type"]) for r in inst.requests]
 
 
 @st.cache_data(show_spinner=False)
@@ -168,6 +178,19 @@ with st.sidebar:
         st.warning("방식을 하나 이상 선택하세요.")
         st.stop()
 
+    # FR-20 요청 집합 선택: 이번 계산에 넣을 요청을 고른다(취소가 아니라 계산 범위만 바꾼다). 확정된 요청은 뺄 수 없다.
+    with st.expander("계산할 요청 고르기", expanded=False):
+        _day_reqs = _day_requests(date, json.dumps(_store.day_inputs(date), ensure_ascii=False, sort_keys=True))
+        _locked_ids = {c["request_id"] for c in _store.confirmed(date)}
+        scope = st.radio("서비스", ["전체", "병원동행만", "가사지원만"], horizontal=True, key=f"scope_{date}")
+        _keep = {"전체": None, "병원동행만": "hospital_escort", "가사지원만": "household_support"}[scope]
+        manual = st.multiselect("이번 계산에서 뺄 요청", [r[0] for r in _day_reqs if r[0] not in _locked_ids],
+                                key=f"manual_ex_{date}")
+        plan_exclude = sorted({r[0] for r in _day_reqs if _keep and r[1] != _keep and r[0] not in _locked_ids}
+                              | set(manual))
+        if plan_exclude:
+            st.caption(f"{len(plan_exclude)}건을 이번 계산에서 뺍니다(취소 아님). '오늘의 현황'은 전체 요청 기준이라 '계산 전'으로 보일 수 있습니다.")
+
     st.divider()
     stamp = _data_stamp()
     src = _matrix_source(stamp)
@@ -197,24 +220,35 @@ def _algo_key(a: str) -> str:
     return {"신청순": "신청순", "근거리": "근거리", "AI 최적화": "최적화"}[a]
 
 
+def _compute(day: str, a: str, plan_exclude: list[str] | tuple = ()) -> dict:
+    """한 날짜·한 방식 계산 + 실행 기록(FR-23). plan_exclude: 이번 계산에서만 뺄 요청(취소 아님)."""
+    inputs = _store.day_inputs(day)
+    if plan_exclude:
+        inputs["exclude_ids"] = sorted(set(inputs["exclude_ids"]) | set(plan_exclude))
+    inst, assignments, unassigned, timelines, rep, meta = _run(
+        day, _algo_key(a), _data_stamp(), json.dumps(inputs, ensure_ascii=False, sort_keys=True),
+        json.dumps([{k: c[k] for k in ("request_id", "worker_id", "arrive_min")}
+                    for c in _store.confirmed(day)], sort_keys=True))
+    # 실행 기록(FR-23): 입력 스냅샷 해시·엔진 버전·설정. 같은 입력이면 같은 실행 ID.
+    run_id = _store.record_run(
+        day, a, inst.as_instance(), config=meta["config"], status=meta["status"],
+        solve_seconds=meta["solve_seconds"],
+        metrics={"assigned": len(assignments), "unassigned": len(unassigned),
+                 "violations": len(rep.violations)},
+        # 검증을 통과한 결과만 제안으로 남긴다(위반이 있으면 배정안으로 보여주지 않는다, CLAUDE.md 원칙 2)
+        assignments=None if rep.violations else assignments,
+        unassigned=None if rep.violations else unassigned)
+    # FR-24: 해를 찾지 못한 계산(시간 초과·해 없음·오류)은 배정안으로 쓰지 않는다. '미배정 0건'으로 보이지 않게 한다.
+    usable = not (meta["status"] in ("timeout", "infeasible", "error") and not assignments)
+    return dict(inst=inst, assignments=assignments, unassigned=unassigned,
+                timelines=timelines, rep=rep, run_id=run_id, meta=meta, usable=usable)
+
+
 results = {}
-stamp = _data_stamp()
 for a in selected:
     with st.spinner(f"{a} 계산 중…"):
         try:
-            inst, assignments, unassigned, timelines, rep, meta = _run(
-                date, _algo_key(a), stamp, json.dumps(_store.day_inputs(date), ensure_ascii=False, sort_keys=True))
-            # 실행 기록(FR-23): 입력 스냅샷 해시·엔진 버전·설정. 같은 입력이면 같은 실행 ID.
-            run_id = _store.record_run(
-                date, a, inst.as_instance(), config=meta["config"], status=meta["status"],
-                solve_seconds=meta["solve_seconds"],
-                metrics={"assigned": len(assignments), "unassigned": len(unassigned),
-                         "violations": len(rep.violations)},
-                # 검증을 통과한 결과만 제안으로 남긴다(위반이 있으면 배정안으로 보여주지 않는다, CLAUDE.md 원칙 2)
-                assignments=None if rep.violations else assignments,
-                unassigned=None if rep.violations else unassigned)
-            results[a] = dict(inst=inst, assignments=assignments, unassigned=unassigned,
-                              timelines=timelines, rep=rep, run_id=run_id, meta=meta)
+            results[a] = _compute(date, a, plan_exclude)
         except Exception as e:
             st.error(f"{a} 계산 중 오류: {e}")
 
@@ -226,6 +260,9 @@ def _hhmm(m) -> str:
 
 
 SERVICE_KO = {"hospital_escort": "병원동행", "household_support": "가사지원"}
+# FR-24 계산 상태. 기준선은 차례로 채우는 규칙이라 '가능한 배정'(feasible)만 낸다.
+STATUS_KO = {"optimal": "최적 증명", "feasible": "가능한 배정(제한시간 안 개선)", "timeout": "시간 초과(해 없음)",
+             "infeasible": "해 없음", "no_solution": "해 없음", "error": "계산 오류"}
 REASON_KO = {
     "TIME_WINDOW_CONFLICT": "시간이 맞는 인력 없음", "NO_CAPACITY": "인력 일정이 꽉 참",
     "NO_SKILL_MATCH": "자격 맞는 인력 없음", "ROUTE_UNKNOWN": "이동경로 확인 불가",
@@ -256,6 +293,7 @@ if results:
             "인력 이동 합계": f"{int(travel_sum) // 60}시간 {int(travel_sum) % 60}분",
             "인력이 일한 비율": f"{100*work_sum/cap_sum:.0f}%" if cap_sum else "-",
             "규칙 위반(건)": len(d["rep"].violations),
+            "계산 상태": STATUS_KO.get(d["meta"]["status"], d["meta"]["status"]),
         })
 
     st.subheader(f"{date} 결과")
@@ -263,6 +301,15 @@ if results:
         st.info(f"담당자가 확인한 요청 **{len(day_cards)}건**을 넣어 계산했습니다. "
                 "번호가 '카드-'(요청 카드 검토) 또는 '가져옴-'(자료 불러오기)으로 시작하는 요청입니다. "
                 "같은 어르신·같은 서비스 요청이 원래 목록에 있으면 새로 확인한 값으로 바꿨습니다.")
+    if plan_exclude:
+        st.info(f"'계산할 요청 고르기'에서 **{len(plan_exclude)}건**을 이번 계산에서 뺐습니다(취소가 아닙니다).")
+    n_locked = len(_store.confirmed(date))
+    if n_locked:
+        st.info(f"이미 확정된 **{n_locked}건**은 인력·도착 시각을 그대로 두고(잠금) 나머지 요청만 세 방식으로 계산했습니다.")
+    for a, d in results.items():
+        if not d["usable"]:
+            st.error(f"{a}: {STATUS_KO.get(d['meta']['status'], d['meta']['status'])} — 계산에서 해를 찾지 못했습니다. "
+                     "'미배정 0건'이 아닙니다. 이 결과는 배정안으로 쓰지 않고, 이전 계획(확정 일정)은 그대로 유지됩니다.")
     cols = st.columns(len(results))
     base = "신청순" if "신청순" in served_n else None
     for col, a in zip(cols, results):
@@ -505,6 +552,8 @@ else:
 
     if not proposal:
         st.warning("이 방식은 배정된 요청이 없습니다. 승인할 내용이 없습니다.")
+    elif not d_sel["usable"]:
+        st.error("이 방식은 계산에서 해를 찾지 못해 승인할 수 없습니다. 이전 계획(확정 일정)은 그대로입니다.")
     elif d_sel["rep"].violations:
         st.error("이 배정안은 하드 제약 위반이 있어 승인할 수 없습니다. 위반이 없는 배정안을 선택하세요.")
     else:
@@ -528,6 +577,33 @@ else:
             st.session_state[fill_key] = "보류"
             st.rerun()
         req_by_id = {r["request_id"]: r for r in d_sel["inst"].requests}
+        tmap = d_sel["inst"].travel
+        prev = _store.previous_run(date, approve_algo, run_id)
+        prev_map = {a["request_id"]: a for a in (prev["assignments"] if prev else [])}
+
+        def _basis(req, a):
+            """배정 근거(FR-25): 시간창 안 도착, 병원 예약 도착, 자격."""
+            bits = [f"희망 {_hhmm(req['earliest_start_min'])}~{_hhmm(req['latest_start_min'])} 안 도착 {_hhmm(a['arrive_min'])}"]
+            if req["service_type"] == "hospital_escort":
+                to_h = tmap.get((req["home_node"], req["hospital_node"]))
+                if to_h is not None:
+                    bits.append(f"병원 도착 {_hhmm(a['arrive_min'] + round(to_h))} ≤ 예약 {_hhmm(req['appointment_min'])}"
+                                f"−{req['arrival_buffer_min']}분")
+            bits.append(f"자격 {SERVICE_KO[req['service_type']]}")
+            return " · ".join(bits)
+
+        def _vs_prev(rid, a):
+            if prev is None:
+                return "처음 계산"
+            b = prev_map.get(rid)
+            if b is None:
+                return "새로 배정"
+            if b["worker_id"] != a["worker_id"]:
+                return f"인력 바뀜({b['worker_id']}→{a['worker_id']})"
+            if int(b["arrive_min"]) != int(a["arrive_min"]):
+                return f"시각 바뀜({_hhmm(b['arrive_min'])}→{_hhmm(a['arrive_min'])})"
+            return "같음"
+
         rows = []
         for a in proposal:
             req = req_by_id[a["request_id"]]
@@ -539,23 +615,37 @@ else:
                 "도착 시각": _hhmm(a["arrive_min"]),
                 "서비스": "병원동행" if req["service_type"] == "hospital_escort" else "가사지원",
                 "지금 상태": "확정됨" if done else "제안",
+                "기존 대비": "확정됨(잠금)" if done else _vs_prev(a["request_id"], a),
+                "근거": _basis(req, a),
                 "결정": "보류" if done else fill,
                 "거부 사유": "",
+                "바꿀 인력": "",
+                "바꿀 도착": "",
             })
+        worker_ids = sorted(w["worker_id"] for w in d_sel["inst"].workers)
 
         edited = st.data_editor(
             pd.DataFrame(rows),
             width="stretch",
             hide_index=True,
-            disabled=["요청", "대상자", "인력", "도착 시각", "서비스", "지금 상태"],
+            disabled=["요청", "대상자", "인력", "도착 시각", "서비스", "지금 상태", "기존 대비", "근거"],
+            # 담당자가 가장 많이 만지는 '결정'을 앞쪽에 둔다(근거·수정 칸은 뒤로)
+            column_order=["요청", "대상자", "인력", "도착 시각", "서비스", "지금 상태", "결정", "거부 사유",
+                          "기존 대비", "근거", "바꿀 인력", "바꿀 도착"],
             column_config={
                 "결정": st.column_config.SelectboxColumn(
                     "결정", options=["수락", "거부", "보류"], required=True, width="small"),
                 "거부 사유": st.column_config.TextColumn(
                     "거부 사유", help="거부를 선택했다면 사유를 적어 주세요(필수)"),
+                "바꿀 인력": st.column_config.SelectboxColumn(
+                    "바꿀 인력", options=[""] + worker_ids, help="수락하면서 인력을 바꿀 때만 고릅니다. 승인할 때 다시 검사합니다."),
+                "바꿀 도착": st.column_config.TextColumn(
+                    "바꿀 도착", help="수락하면서 도착 시각을 바꿀 때만 13:10 형식으로 적습니다. 승인할 때 다시 검사합니다."),
             },
             key=f"editor_{date}_{approve_algo}_{fill}_{current_version}",
         )
+        if prev is not None:
+            st.caption(f"'기존 대비'는 같은 날짜·방식의 바로 앞 계산(`{prev['run_id']}`)과 비교한 것입니다.")
         st.caption(f"계산 실행 ID `{run_id}` · 일정 버전 {current_version} · "
                    "'확정됨' 줄은 이미 확정되어 잠겨 있습니다(바꾸려면 아래에서 확정 해제).")
 
@@ -574,19 +664,10 @@ else:
             st.rerun()
 
         if apply_clicked:
-            label_to_action = {"수락": ACCEPT, "거부": REJECT, "보류": PENDING}
-            decisions, errors = [], []
-            for _, row in edited.iterrows():
-                if row["요청"] in confirmed_ids:
-                    continue                     # 확정된 건은 잠겨 있어 다시 결정하지 않는다
-                action = label_to_action.get(row["결정"], PENDING)
-                reason = (row.get("거부 사유") or "").strip()
-                if action == REJECT and not reason:
-                    errors.append(f"{row['요청']}: 거부 사유를 입력하세요.")
-                    continue
-                if action != PENDING:
-                    decisions.append(Decision(row["요청"], action, reason))
-
+            from app._approval_rows import parse_decisions
+            # 담당자 수정(FR-26): 수락한 줄의 인력·도착을 바꿀 수 있다. 승인 트랜잭션이 검증기로 다시 검사한다.
+            final_proposal, decisions, errors = parse_decisions(edited.to_dict("records"), proposal, confirmed_ids)
+            modified = {a["request_id"]: a for a in final_proposal if a.get("modified")}
             if errors:
                 for e in errors:
                     st.error(e)
@@ -595,10 +676,13 @@ else:
             else:
                 # 같은 화면에서 같은 결정을 두 번 눌러도 한 번만 반영되도록(AT-08) 결정 내용으로 키를 만든다.
                 idem = hashlib.sha256(json.dumps(
-                    [date, run_id, seen_version, [(d.request_id, d.action, d.reason) for d in decisions]],
+                    [date, run_id, seen_version, [(d.request_id, d.action, d.reason) for d in decisions],
+                     sorted((k, v["worker_id"], v["arrive_min"]) for k, v in modified.items())],
                     ensure_ascii=False).encode()).hexdigest()
+                if modified:
+                    st.caption(f"담당자가 바꾼 {len(modified)}건을 포함해 규칙을 다시 검사합니다.")
                 try:
-                    res = _store.approve(date, d_sel["inst"].as_instance(), proposal, decisions,
+                    res = _store.approve(date, d_sel["inst"].as_instance(), final_proposal, decisions,
                                          expected_version=seen_version, actor=approver or "담당자",
                                          idempotency_key=idem, run_id=run_id)
                 except Exception as e:
@@ -638,6 +722,32 @@ else:
         st.info("아직 확정된 배정이 없습니다. 위에서 '수락'을 선택하고 승인 적용을 누르세요.")
     st.caption("승인 기록은 이 앱의 저장소에 남아 새로고침해도 유지됩니다. "
                "배포 화면은 앱을 다시 켜면 처음 상태로 돌아갑니다(가상 데이터 시연용).")
+
+
+# ── 기간 반복 실행 (FR-20) ───────────────────────────────────────────────
+with st.expander("여러 날 한꺼번에 계산하기 (기간 반복 실행)"):
+    st.caption("고른 날짜마다 그날의 확정 일정 잠금·인력 근무를 그대로 적용해 계산하고, 실행 기록을 남깁니다. "
+               "결과는 '오늘의 현황'에서 날짜별 제안·미배정으로 보입니다. AI 최적화는 하루 약 8초 걸립니다.")
+    p_dates = st.multiselect("날짜(최대 5일)", dates, max_selections=5, key="period_dates")
+    p_algo = st.selectbox("방식", ["AI 최적화", "근거리", "신청순"], key="period_algo")
+    if st.button("기간 계산", disabled=not p_dates):
+        prow = []
+        bar = st.progress(0.0)
+        for i, d_ in enumerate(sorted(p_dates)):
+            try:
+                r_ = _compute(d_, p_algo)
+                req_by = {q["request_id"]: q for q in r_["inst"].requests}
+                prow.append({"날짜": d_, "계산 상태": STATUS_KO.get(r_["meta"]["status"], r_["meta"]["status"]),
+                             "배정(건)": len(r_["assignments"]), "못 맡음(건)": len(r_["unassigned"]),
+                             "제때 돌봄받은 어르신(명)": len({req_by[x["request_id"]]["beneficiary_id"]
+                                                         for x in r_["assignments"]}),
+                             "규칙 위반(건)": len(r_["rep"].violations),
+                             "배정안으로 사용": "가능" if r_["usable"] and not r_["rep"].violations else "불가",
+                             "실행 ID": r_["run_id"]})
+            except Exception as e:      # 한 날짜가 실패해도 나머지는 계산하고, 실패를 숨기지 않는다
+                prow.append({"날짜": d_, "계산 상태": f"오류: {e}"})
+            bar.progress((i + 1) / len(p_dates))
+        st.dataframe(pd.DataFrame(prow), hide_index=True, width="stretch")
 
 
 # ── 30일 실험 결과 ────────────────────────────────────────────────────────
