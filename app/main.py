@@ -18,6 +18,11 @@ import streamlit as st
 
 st.set_page_config(page_title="서로ON 돌봄배정 AI", layout="wide")
 
+# 배포 서버가 push 전의 planner·intake 모듈을 붙잡고 있으면 다시 읽는다(app/_fresh.py 참고)
+from app._fresh import reload_stale  # noqa: E402
+
+reload_stale(ROOT)
+
 APP_DIR = Path(__file__).resolve().parent
 nav = st.navigation([
     st.Page(str(APP_DIR / "day_compare.py"), title="하루 배정 비교", icon="📅", default=True),

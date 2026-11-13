@@ -1178,3 +1178,10 @@ claude-haiku 비교, 확인 완료 카드 → 배정 입력 연결.
 - 확인: 예시 카드 정답값 40개 중 33개 변환(실패 7 = 시간 없는 메모 6, 같은 이름 병원 2곳 1). 11/20에 E01 넣어 위반 0건.
   화면에서 E01 확인 완료 → 11/20 선택 → 포함 계산까지 눌러 봄. 테스트 `test_card_to_request.py`, `test_card_to_day_flow.py`.
 - 한계: 확인 기록은 브라우저 세션에만(새로고침 시 사라짐). 같은 이름 병원 구분(주소) 미지원.
+
+## 2026-11-13 밤 — 배포 서버가 예전 계산 코드를 쓰는 문제
+
+- 증상: 14ebbb2 배포 뒤 '하루 배정 비교'에서 세 방식 모두 `load_day() got an unexpected keyword argument 'extra_requests'`. Reboot app 뒤에도 같았다.
+- 원인: Streamlit Cloud 는 화면 파일만 다시 실행하고, 이미 읽은 planner·intake 모듈은 예전 것을 쓴다.
+- 조치: `app/_fresh.py` — 화면을 열 때마다 프로세스 시작(또는 마지막 다시 읽기) 뒤 바뀐 프로젝트 모듈을 다시 읽는다. `app/main.py` 에서 호출. 테스트 `tests/test_fresh_reload.py`.
+- 남은 일: push 뒤 배포 화면에서 카드 E01 → 11/20 계산 확인.
