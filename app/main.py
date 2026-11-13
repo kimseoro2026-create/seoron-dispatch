@@ -7,6 +7,8 @@ Streamlit Cloud 의 Main file 은 이 파일(app/main.py)이다. 페이지:
   - 자료 불러오기 (import_data.py): CSV → 검토 전 요청 → 담당자 확인
   - 인력·근무 (workers.py): 수행 서비스·자격 기한·근무·휴게, 날짜별 휴무, 근무표 CSV
   - 요청 카드 검토 (request_cards.py): 요청 원문 → 요청 카드 자동 정리와 담당자 확인
+  - 효과 검증 실험실 (lab.py): 저장된 실험·새 실험·다음 주 수요
+  - 데이터 연결·출처 (sources.py): 외부 자원 상태(키 값은 보이지 않음)
   - 부족 자원·비용 리포트 (shortage_report.py): 휴게 운영·인력 시나리오 비교, 미배정 진단, 비용
 """
 from __future__ import annotations
@@ -36,5 +38,7 @@ nav = st.navigation([
     st.Page(str(APP_DIR / "workers.py"), title="인력·근무", icon="👥"),
     st.Page(str(APP_DIR / "request_cards.py"), title="요청 카드 검토", icon="📝"),
     st.Page(str(APP_DIR / "shortage_report.py"), title="부족 자원·비용 리포트", icon="📊"),
+    st.Page(str(APP_DIR / "lab.py"), title="효과 검증 실험실", icon="🧪"),
+    st.Page(str(APP_DIR / "sources.py"), title="데이터 연결·출처", icon="🔌"),
 ])
 nav.run()

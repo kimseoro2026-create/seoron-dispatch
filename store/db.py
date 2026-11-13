@@ -87,6 +87,10 @@ CREATE TABLE IF NOT EXISTS worker_profiles(
 CREATE TABLE IF NOT EXISTS worker_shifts(
   worker_id TEXT NOT NULL, service_date TEXT NOT NULL, payload_json TEXT NOT NULL, source TEXT NOT NULL,
   updated_at TEXT NOT NULL, actor TEXT NOT NULL, PRIMARY KEY(worker_id, service_date));
+CREATE TABLE IF NOT EXISTS experiment_runs(
+  experiment_id TEXT PRIMARY KEY, config_json TEXT NOT NULL, input_hash TEXT NOT NULL, engine_version TEXT NOT NULL,
+  result_path TEXT NOT NULL, assumptions_path TEXT NOT NULL, n_rows INTEGER NOT NULL, actor TEXT NOT NULL,
+  created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS audit_logs(
   id INTEGER PRIMARY KEY AUTOINCREMENT, actor TEXT NOT NULL, action TEXT NOT NULL,
   entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, service_date TEXT,
@@ -727,6 +731,31 @@ class Store:
         finally:
             con.close()
         return self.run(r["run_id"]) if r else None
+
+    # ── 실험 기록 (W09, 8장 experiment_runs) ───────────────────────────────
+    def record_experiment(self, *, config: dict, input_hash: str, result_path: str, assumptions_path: str,
+                          n_rows: int, actor: str) -> str:
+        eid = "exp-" + uuid.uuid4().hex[:12]
+        with self._tx() as con:
+            con.execute("INSERT INTO experiment_runs(experiment_id, config_json, input_hash, engine_version,"
+                        " result_path, assumptions_path, n_rows, actor, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+                        (eid, _dumps(config), input_hash, engine_version(), result_path, assumptions_path,
+                         int(n_rows), actor, _now()))
+            self._audit(con, actor, "experiment", "experiment", eid, detail={"result_path": result_path})
+        return eid
+
+    def experiments(self) -> list[dict]:
+        con = self._connect()
+        try:
+            rows = con.execute("SELECT * FROM experiment_runs ORDER BY created_at DESC, rowid DESC").fetchall()
+        finally:
+            con.close()
+        out = []
+        for r in rows:
+            d = dict(r)
+            d["config"] = json.loads(d.pop("config_json"))
+            out.append(d)
+        return out
 
     def latest_activity(self) -> dict:
         """마지막 가져오기·카드 처리·계산·승인 시각(현황 화면의 '자료 동기화 상태')."""
