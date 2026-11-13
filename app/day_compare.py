@@ -209,7 +209,10 @@ for a in selected:
                 date, a, inst.as_instance(), config=meta["config"], status=meta["status"],
                 solve_seconds=meta["solve_seconds"],
                 metrics={"assigned": len(assignments), "unassigned": len(unassigned),
-                         "violations": len(rep.violations)})
+                         "violations": len(rep.violations)},
+                # 검증을 통과한 결과만 제안으로 남긴다(위반이 있으면 배정안으로 보여주지 않는다, CLAUDE.md 원칙 2)
+                assignments=None if rep.violations else assignments,
+                unassigned=None if rep.violations else unassigned)
             results[a] = dict(inst=inst, assignments=assignments, unassigned=unassigned,
                               timelines=timelines, rep=rep, run_id=run_id, meta=meta)
         except Exception as e:

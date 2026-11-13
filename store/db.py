@@ -135,6 +135,11 @@ class Store:
             con.executescript(_SCHEMA)
             con.execute("INSERT OR IGNORE INTO meta(key, value) VALUES ('schema_version', ?)",
                         (str(SCHEMA_VERSION),))
+            # 열 추가(예전 파일 DB 도 그대로 쓰도록)
+            cols = {r["name"] for r in con.execute("PRAGMA table_info(planning_runs)")}
+            for c in ("assignments_json", "unassigned_json"):
+                if c not in cols:
+                    con.execute(f"ALTER TABLE planning_runs ADD COLUMN {c} TEXT")
         finally:
             con.close()
 
@@ -441,18 +446,50 @@ class Store:
 
     # ── 계산 실행 기록 (FR-23) ─────────────────────────────────────────────
     def record_run(self, service_date: str, algorithm: str, instance: dict, *, config: dict,
-                   status: str, solve_seconds: float | None, metrics: dict) -> str:
-        """실행을 기록하고 실행 ID 를 돌려준다. 같은 날짜·방식·입력·설정·엔진이면 같은 ID(처음 기록 유지)."""
+                   status: str, solve_seconds: float | None, metrics: dict,
+                   assignments: list[dict] | None = None, unassigned: list[dict] | None = None) -> str:
+        """실행을 기록하고 실행 ID 를 돌려준다. 같은 날짜·방식·입력·설정·엔진이면 같은 ID(처음 기록 유지).
+
+        assignments·unassigned 는 '오늘의 현황'에서 제안·미배정을 보여주려고 함께 남긴다(검증을 통과한 결과만 넣을 것).
+        """
         snap = snapshot_hash(instance)
         eng = engine_version()
         run_id = "run-" + hashlib.sha256(_dumps([service_date, algorithm, snap, eng, config]).encode()).hexdigest()[:16]
         with self._tx() as con:
-            con.execute("INSERT OR IGNORE INTO planning_runs(run_id, service_date, algorithm, snapshot_hash,"
-                        " engine_version, config_json, status, solve_seconds, metrics_json, created_at)"
-                        " VALUES (?,?,?,?,?,?,?,?,?,?)",
+            con.execute("INSERT INTO planning_runs(run_id, service_date, algorithm, snapshot_hash,"
+                        " engine_version, config_json, status, solve_seconds, metrics_json, created_at,"
+                        " assignments_json, unassigned_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
+                        " ON CONFLICT(run_id) DO UPDATE SET"
+                        " assignments_json=COALESCE(planning_runs.assignments_json, excluded.assignments_json),"
+                        " unassigned_json=COALESCE(planning_runs.unassigned_json, excluded.unassigned_json)",
                         (run_id, service_date, algorithm, snap, eng, _dumps(config), status,
-                         solve_seconds, _dumps(metrics), _now()))
+                         solve_seconds, _dumps(metrics), _now(),
+                         None if assignments is None else _dumps(assignments),
+                         None if unassigned is None else _dumps(unassigned)))
         return run_id
+
+    def find_run(self, service_date: str, algorithm: str, instance: dict) -> dict | None:
+        """지금 입력(스냅샷)·지금 엔진으로 계산한 기록. 자료가 바뀌었으면 None — 예전 결과를 지금 것처럼 보이지 않는다."""
+        con = self._connect()
+        try:
+            r = con.execute("SELECT run_id FROM planning_runs WHERE service_date=? AND algorithm=? AND snapshot_hash=?"
+                            " AND engine_version=? AND assignments_json IS NOT NULL ORDER BY created_at DESC LIMIT 1",
+                            (service_date, algorithm, snapshot_hash(instance), engine_version())).fetchone()
+        finally:
+            con.close()
+        return self.run(r["run_id"]) if r else None
+
+    def latest_activity(self) -> dict:
+        """마지막 가져오기·카드 처리·계산·승인 시각(현황 화면의 '자료 동기화 상태')."""
+        con = self._connect()
+        try:
+            q = lambda sql: (con.execute(sql).fetchone() or [None])[0]
+            return {"가져오기": q("SELECT MAX(created_at) FROM imports"),
+                    "요청 카드 처리": q("SELECT MAX(reviewed_at) FROM card_reviews"),
+                    "배정 계산": q("SELECT MAX(created_at) FROM planning_runs"),
+                    "승인·해제": q("SELECT MAX(at) FROM audit_logs WHERE action IN ('accept','reject','release','reset')")}
+        finally:
+            con.close()
 
     def run(self, run_id: str) -> dict | None:
         con = self._connect()
@@ -465,6 +502,9 @@ class Store:
         d = dict(r)
         d["config"] = json.loads(d.pop("config_json"))
         d["metrics"] = json.loads(d.pop("metrics_json"))
+        a, u = d.pop("assignments_json", None), d.pop("unassigned_json", None)
+        d["assignments"] = None if a is None else json.loads(a)
+        d["unassigned"] = None if u is None else json.loads(u)
         return d
 
     # ── 승인 (PRD 7장 승인 트랜잭션) ───────────────────────────────────────
