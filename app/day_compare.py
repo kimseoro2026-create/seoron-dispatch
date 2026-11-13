@@ -456,7 +456,9 @@ else:
         st.session_state.gate = ApprovalGate()
     gate: ApprovalGate = st.session_state.gate
 
-    approve_algo = st.selectbox("승인할 배정안", list(results.keys()), key="approve_algo")
+    algo_opts = list(results.keys())
+    approve_algo = st.selectbox("승인할 배정안", algo_opts, key="approve_algo",
+                                index=algo_opts.index("AI 최적화") if "AI 최적화" in algo_opts else 0)
     d_sel = results[approve_algo]
     proposal = d_sel["assignments"]
 
@@ -469,6 +471,19 @@ else:
                 "위반이 없는 배정안을 선택하세요."
             )
         else:
+            # '모두 수락' 은 표의 기본값만 채운다. 실제 확정은 '승인 적용'을 눌러야 한다.
+            fill_key = f"fill_{date}_{approve_algo}"
+            fill = st.session_state.get(fill_key, "보류")
+            st.markdown("**사용법**: 표의 **'결정'** 칸을 두 번 클릭해 **수락 / 거부 / 보류**를 고른 뒤 "
+                        "아래 '**승인 적용**'을 누르세요. 거부할 때는 '거부 사유'를 꼭 적어 주세요.")
+            b1, b2, _ = st.columns([1, 1, 1])
+            if b1.button("모두 수락으로 채우기", help="표의 '결정'을 모두 '수락'으로 바꿉니다. "
+                                                  "거부할 건만 골라 바꾼 뒤 '승인 적용'을 누르세요."):
+                st.session_state[fill_key] = "수락"
+                st.rerun()
+            if b2.button("모두 보류로 되돌리기"):
+                st.session_state[fill_key] = "보류"
+                st.rerun()
             req_by_id = {r["request_id"]: r for r in d_sel["inst"].requests}
             rows = []
             for a in proposal:
@@ -479,7 +494,7 @@ else:
                     "인력": a["worker_id"],
                     "도착 시각": _hhmm(a["arrive_min"]),
                     "서비스": "병원동행" if req["service_type"] == "hospital_escort" else "가사지원",
-                    "결정": "보류",
+                    "결정": fill,
                     "거부 사유": "",
                 })
 
@@ -494,7 +509,7 @@ else:
                     "거부 사유": st.column_config.TextColumn(
                         "거부 사유", help="거부를 선택했다면 사유를 적어 주세요(필수)"),
                 },
-                key=f"editor_{date}_{approve_algo}",
+                key=f"editor_{date}_{approve_algo}_{fill}",
             )
 
             cols = st.columns([1, 1, 3])
@@ -503,7 +518,9 @@ else:
 
             if reset_clicked:
                 gate.reset()
-                st.session_state.pop(f"editor_{date}_{approve_algo}", None)
+                for v in ("보류", "수락"):
+                    st.session_state.pop(f"editor_{date}_{approve_algo}_{v}", None)
+                st.session_state.pop(fill_key, None)
                 st.success("확정 내역을 초기화했습니다.")
                 st.rerun()
 
