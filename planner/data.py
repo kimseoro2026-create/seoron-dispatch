@@ -105,7 +105,9 @@ def estimate_travel(data_dir: str | Path,
 def load_day(data_dir: str | Path, service_date: str,
              travel: dict[tuple[str, str], float] | None = None,
              extra_requests: list[dict] | None = None,
-             exclude_ids: set[str] | list[str] | None = None) -> DayInstance:
+             exclude_ids: set[str] | list[str] | None = None,
+             worker_profiles: dict | None = None,
+             day_shifts: dict | None = None) -> DayInstance:
     """하루치 instance 를 만든다.
 
     travel 을 주지 않으면 그날 필요한 노드만으로 추정 행렬을 만든다.
@@ -115,11 +117,14 @@ def load_day(data_dir: str | Path, service_date: str,
     extra_requests: 담당자가 확인한 요청 카드(intake.to_request). 그날 것만 더하고,
     같은 대상자·서비스 요청이 이미 있으면 카드 값으로 바꾼다.
     exclude_ids: 담당자가 취소 처리한 요청(저장소). 계산에서 뺀다.
+    worker_profiles·day_shifts: 담당자가 고친 인력 설정·날짜별 근무(저장소). apply_worker_settings 참고.
     """
     d = Path(data_dir)
     req = pd.read_csv(d / "requests.csv", dtype={"request_id": str, "beneficiary_id": str})
     req = req[req["service_date"] == service_date]
     workers = _workers(d)
+    if worker_profiles or day_shifts:
+        workers = apply_worker_settings(workers, service_date, worker_profiles or {}, day_shifts or {})
     requests = [_request(r) for r in req.itertuples()]
     cards = [dict(c) for c in (extra_requests or []) if c.get("service_date") == service_date]
     if cards:
@@ -145,6 +150,39 @@ def load_day(data_dir: str | Path, service_date: str,
             r["service_minutes"] = int(r["hospital_stay_min"]) + (
                 int(round(to_h)) + int(round(back)) if to_h is not None and back is not None else 0)
     return DayInstance(service_date=service_date, workers=workers, requests=requests, travel=travel)
+
+
+def apply_worker_settings(workers: list[dict], service_date: str, profiles: dict, shifts: dict) -> list[dict]:
+    """담당자가 고친 인력 설정을 그날 입력에 적용한다(PRD W04).
+
+    - profiles[wid]: {skills: [{code, valid_from?, valid_to?}], shift_start_min, shift_end_min, break_start_min,
+      break_minutes, max_work_minutes, active}. 활동 중지면 그날 인력에서 뺀다.
+      자격은 유효기간 안인 것만 쓴다(만료되면 후보 제외). 적힌 자격만 쓴다 — 동행 가능을 가사 가능으로 넓히지 않는다.
+    - shifts[wid]: 그날 근무 {off} 또는 {start_min, end_min, break_start_min, break_minutes}. 휴무면 뺀다.
+    - 출발지(base_node)는 바꾸지 않는다(이동시간 행렬이 그 위치로 계산되어 있다).
+    """
+    out = []
+    for w in workers:
+        w = dict(w)
+        wid = w["worker_id"]
+        prof = profiles.get(wid)
+        if prof is not None:
+            if not prof.get("active", True):
+                continue
+            w["skills"] = [sk["code"] for sk in prof.get("skills", [])
+                           if (not sk.get("valid_from") or sk["valid_from"] <= service_date)
+                           and (not sk.get("valid_to") or service_date <= sk["valid_to"])]
+            for k in ("shift_start_min", "shift_end_min", "break_start_min", "break_minutes", "max_work_minutes"):
+                if prof.get(k) is not None:
+                    w[k] = int(prof[k])
+        sh = shifts.get(wid)
+        if sh is not None:
+            if sh.get("off"):
+                continue
+            w["shift_start_min"], w["shift_end_min"] = int(sh["start_min"]), int(sh["end_min"])
+            w["break_start_min"], w["break_minutes"] = int(sh["break_start_min"]), int(sh["break_minutes"])
+        out.append(w)
+    return out
 
 
 def _workers(data_dir: Path) -> list[dict]:

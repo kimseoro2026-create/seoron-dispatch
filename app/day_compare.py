@@ -60,8 +60,8 @@ def _load_travel(stamp: str):  # stamp 는 캐시 키 역할, 실제로 사용�
 
 
 @st.cache_data(show_spinner="배정 계산 중…")
-def _run(date: str, algo: str, stamp: str, cards_json: str = "[]", exclude_json: str = "[]"):
-    # cards_json: 담당자가 확인한 요청 카드(요청 카드 검토 화면). 캐시 키가 되도록 JSON 문자열로 받는다.
+def _run(date: str, algo: str, stamp: str, inputs_json: str = "{}"):
+    # inputs_json: 저장소 값(확인된 추가 요청·취소·인력 설정·그날 근무, Store.day_inputs). 캐시 키가 되도록 JSON 문자열로 받는다.
     import json
     from planner.data import load_day
     from planner.optimize import optimize
@@ -69,8 +69,7 @@ def _run(date: str, algo: str, stamp: str, cards_json: str = "[]", exclude_json:
 
     # travel=None 으로 두면 load_day 가 그날 필요한 노드만으로 행렬을 만든다.
     # 전체 519,120구간 대신 70개 노드(~4,900구간)만 계산하므로 훨씬 빠르다.
-    inst = load_day(ROOT / "data" / "processed", date, travel=None, extra_requests=json.loads(cards_json),
-                    exclude_ids=json.loads(exclude_json))
+    inst = load_day(ROOT / "data" / "processed", date, travel=None, **json.loads(inputs_json))
     instance = inst.as_instance()
 
     if algo == "신청순":
@@ -204,8 +203,7 @@ for a in selected:
     with st.spinner(f"{a} 계산 중…"):
         try:
             inst, assignments, unassigned, timelines, rep, meta = _run(
-                date, _algo_key(a), stamp, json.dumps(day_cards, ensure_ascii=False, sort_keys=True),
-                json.dumps(sorted(_store.cancelled_ids(date)), ensure_ascii=False))
+                date, _algo_key(a), stamp, json.dumps(_store.day_inputs(date), ensure_ascii=False, sort_keys=True))
             # 실행 기록(FR-23): 입력 스냅샷 해시·엔진 버전·설정. 같은 입력이면 같은 실행 ID.
             run_id = _store.record_run(
                 date, a, inst.as_instance(), config=meta["config"], status=meta["status"],

@@ -81,6 +81,12 @@ CREATE TABLE IF NOT EXISTS service_events(
   occurred_min INTEGER NOT NULL, received_min INTEGER NOT NULL, minutes INTEGER NOT NULL,
   reason_code TEXT NOT NULL, actor TEXT NOT NULL, result_json TEXT NOT NULL, received_at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS ix_events_date ON service_events(service_date);
+CREATE TABLE IF NOT EXISTS worker_profiles(
+  worker_id TEXT PRIMARY KEY, payload_json TEXT NOT NULL, version INTEGER NOT NULL,
+  updated_at TEXT NOT NULL, actor TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS worker_shifts(
+  worker_id TEXT NOT NULL, service_date TEXT NOT NULL, payload_json TEXT NOT NULL, source TEXT NOT NULL,
+  updated_at TEXT NOT NULL, actor TEXT NOT NULL, PRIMARY KEY(worker_id, service_date));
 CREATE TABLE IF NOT EXISTS audit_logs(
   id INTEGER PRIMARY KEY AUTOINCREMENT, actor TEXT NOT NULL, action TEXT NOT NULL,
   entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, service_date TEXT,
@@ -448,6 +454,125 @@ class Store:
                     self._end_active(con, rid, "cancelled" if status == "cancelled" else "superseded", actor, reason)
                 n += 1
         return n
+
+    # ── 인력·근무 (W04, FR-16·17) ──────────────────────────────────────────
+    @staticmethod
+    def _check_times(start, end, brk, brk_len, what: str) -> None:
+        if not (0 <= int(start) < int(end) <= 24 * 60):
+            raise ValueError(f"{what}: 근무 시작이 끝보다 빨라야 합니다")
+        if int(brk_len) < 0 or not (int(start) <= int(brk) and int(brk) + int(brk_len) <= int(end)):
+            raise ValueError(f"{what}: 휴게가 근무시간 안에 있어야 합니다")
+
+    def save_worker_profile(self, worker_id: str, profile: dict, *, actor: str) -> None:
+        """인력 설정을 저장한다(기본 자료 위에 덮어씀). 출발지는 받지 않는다."""
+        if not actor.strip():
+            raise ValueError("처리자가 필요합니다")
+        self._check_times(profile["shift_start_min"], profile["shift_end_min"], profile["break_start_min"],
+                          profile["break_minutes"], worker_id)
+        if profile.get("active", True) and not profile.get("skills"):
+            raise ValueError(f"{worker_id}: 활동 중인 인력은 수행 서비스가 하나 이상 있어야 합니다")
+        if int(profile.get("max_work_minutes") or 0) <= 0:
+            raise ValueError(f"{worker_id}: 하루 최대 근무(분)는 1분 이상이어야 합니다")
+        now = _now()
+        with self._tx(immediate=True) as con:
+            old = con.execute("SELECT payload_json, version FROM worker_profiles WHERE worker_id=?",
+                              (worker_id,)).fetchone()
+            if old is None:
+                con.execute("INSERT INTO worker_profiles(worker_id, payload_json, version, updated_at, actor)"
+                            " VALUES (?,?,1,?,?)", (worker_id, _dumps(profile), now, actor))
+                before, after = 0, 1
+            else:
+                before, after = int(old["version"]), int(old["version"]) + 1
+                con.execute("UPDATE worker_profiles SET payload_json=?, version=?, updated_at=?, actor=?"
+                            " WHERE worker_id=?", (_dumps(profile), after, now, actor, worker_id))
+            self._audit(con, actor, "worker:profile", "worker", worker_id, None, before, after,
+                        {"before": json.loads(old["payload_json"]) if old else None, "after": profile})
+
+    def worker_profiles(self) -> dict[str, dict]:
+        con = self._connect()
+        try:
+            rows = con.execute("SELECT * FROM worker_profiles").fetchall()
+        finally:
+            con.close()
+        return {r["worker_id"]: {**json.loads(r["payload_json"]), "_version": r["version"],
+                                 "_updated_at": r["updated_at"], "_actor": r["actor"]} for r in rows}
+
+    def upsert_shifts(self, rows: list[dict], *, actor: str, source: str) -> dict:
+        """날짜별 근무(휴무·근무 변경)를 넣거나 바꾼다. → {new, changed, unchanged}"""
+        if not actor.strip():
+            raise ValueError("처리자가 필요합니다")
+        for r in rows:
+            if not r.get("off"):
+                self._check_times(r["start_min"], r["end_min"], r["break_start_min"], r["break_minutes"],
+                                  f"{r['worker_id']} {r['service_date']}")
+        out = {"new": 0, "changed": 0, "unchanged": 0}
+        now = _now()
+        with self._tx(immediate=True) as con:
+            for r in rows:
+                payload = {"off": bool(r.get("off"))}
+                if not payload["off"]:
+                    payload.update({k: int(r[k]) for k in ("start_min", "end_min", "break_start_min", "break_minutes")})
+                old = con.execute("SELECT payload_json FROM worker_shifts WHERE worker_id=? AND service_date=?",
+                                  (r["worker_id"], r["service_date"])).fetchone()
+                if old and json.loads(old["payload_json"]) == payload:
+                    out["unchanged"] += 1
+                    continue
+                out["changed" if old else "new"] += 1
+                con.execute("INSERT INTO worker_shifts(worker_id, service_date, payload_json, source, updated_at, actor)"
+                            " VALUES (?,?,?,?,?,?) ON CONFLICT(worker_id, service_date) DO UPDATE SET"
+                            " payload_json=excluded.payload_json, source=excluded.source,"
+                            " updated_at=excluded.updated_at, actor=excluded.actor",
+                            (r["worker_id"], r["service_date"], _dumps(payload), source, now, actor))
+                self._audit(con, actor, "worker:shift", "worker", r["worker_id"], r["service_date"],
+                            detail={"before": json.loads(old["payload_json"]) if old else None,
+                                    "after": payload, "source": source})
+        return out
+
+    def delete_shift(self, worker_id: str, service_date: str, *, actor: str) -> None:
+        with self._tx(immediate=True) as con:
+            con.execute("DELETE FROM worker_shifts WHERE worker_id=? AND service_date=?", (worker_id, service_date))
+            self._audit(con, actor, "worker:shift_delete", "worker", worker_id, service_date)
+
+    def day_shifts(self, service_date: str) -> dict[str, dict]:
+        con = self._connect()
+        try:
+            rows = con.execute("SELECT * FROM worker_shifts WHERE service_date=?", (service_date,)).fetchall()
+        finally:
+            con.close()
+        return {r["worker_id"]: {**json.loads(r["payload_json"]), "_source": r["source"], "_actor": r["actor"],
+                                 "_updated_at": r["updated_at"]} for r in rows}
+
+    def all_shifts(self) -> list[dict]:
+        con = self._connect()
+        try:
+            rows = con.execute("SELECT * FROM worker_shifts ORDER BY service_date, worker_id").fetchall()
+        finally:
+            con.close()
+        return [{"worker_id": r["worker_id"], "service_date": r["service_date"], **json.loads(r["payload_json"]),
+                 "source": r["source"], "actor": r["actor"]} for r in rows]
+
+    def day_inputs(self, service_date: str) -> dict:
+        """planner.data.load_day 에 넘길 저장소 값(확인된 추가 요청·취소·인력 설정·그날 근무)."""
+        profiles = {k: {kk: vv for kk, vv in v.items() if not kk.startswith("_")}
+                    for k, v in self.worker_profiles().items()}
+        shifts = {k: {kk: vv for kk, vv in v.items() if not kk.startswith("_")}
+                  for k, v in self.day_shifts(service_date).items()}
+        return {"extra_requests": self.ready_requests(service_date),
+                "exclude_ids": sorted(self.cancelled_ids(service_date)),
+                "worker_profiles": profiles, "day_shifts": shifts}
+
+    def confirmed_dates(self, worker_id: str | None = None) -> list[str]:
+        con = self._connect()
+        try:
+            if worker_id:
+                rows = con.execute("SELECT DISTINCT service_date FROM assignments WHERE status='confirmed' AND worker_id=?"
+                                   " ORDER BY service_date", (worker_id,)).fetchall()
+            else:
+                rows = con.execute("SELECT DISTINCT service_date FROM assignments WHERE status='confirmed'"
+                                   " ORDER BY service_date").fetchall()
+        finally:
+            con.close()
+        return [r["service_date"] for r in rows]
 
     # ── 취소·지연 이벤트 (W07, FR-29·30, AT-09) ────────────────────────────
     def cancelled_ids(self, service_date: str) -> list[str]:

@@ -101,6 +101,15 @@ else:
     st.caption(f"기준 배정안: {algorithm} · 계산 실행 ID `{run['run_id']}` · 계산 시각 "
                f"{run['created_at'][:16].replace('T', ' ')}")
 
+# 확정 일정 점검: 인력 설정·근무가 바뀐 뒤 확정과 맞지 않는 건(자동으로 바꾸지 않음)
+from store.impact import confirmed_conflicts  # noqa: E402
+
+_bad = confirmed_conflicts(store, DATA, [date])
+if _bad:
+    st.warning(f"확정 일정 {len(_bad)}건이 지금 인력·근무 조건과 맞지 않습니다: "
+               + ", ".join(sorted({b['request_id'] or '-' for b in _bad}))
+               + ". '취소·지연 대응' 또는 '하루 배정 비교'의 확정 해제로 처리해 주세요.")
+
 # FR-02 상태별 집계 (표에 보이는 행으로 센다 → 아래 표와 숫자가 같다)
 cols = st.columns(3) + st.columns(3)        # 6칸 한 줄은 이름이 잘려 3칸 두 줄로
 for col, s in zip(cols, (STATUS_NEEDS_REVIEW, STATUS_NOT_RUN, STATUS_PROPOSED, STATUS_UNASSIGNED,

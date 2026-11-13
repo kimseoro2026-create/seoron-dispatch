@@ -58,7 +58,7 @@ def _dates() -> list[str]:
 
 def _instance(date: str):
     from planner.data import load_day
-    return load_day(DATA, date, extra_requests=store.ready_requests(date), exclude_ids=store.cancelled_ids(date))
+    return load_day(DATA, date, **store.day_inputs(date))
 
 
 dates = _dates()

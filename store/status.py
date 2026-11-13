@@ -39,8 +39,7 @@ def day_status(store, data_dir: str | Path, service_date: str, *, algorithm: str
     """
     from planner.data import load_day
 
-    inst = load_day(data_dir, service_date, extra_requests=store.ready_requests(service_date),
-                    exclude_ids=store.cancelled_ids(service_date))
+    inst = load_day(data_dir, service_date, **store.day_inputs(service_date))
     run = store.find_run(service_date, algorithm, inst.as_instance())
     confirmed = {c["request_id"]: c for c in store.confirmed(service_date)}
     proposed = {a["request_id"]: a for a in (run["assignments"] if run else [])}
