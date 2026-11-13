@@ -47,7 +47,7 @@ st.title("효과 검증 실험실")
 st.caption("같은 요청·같은 인력에서 배정 방식만 바꿨을 때의 차이를 여러 날·여러 시드로 확인합니다. "
            "결과와 함께 실험 가정을 저장해, 같은 조건으로 다시 돌릴 수 있게 합니다.")
 
-tab1, tab2, tab3 = st.tabs(["저장된 실험 결과", "새 실험 돌리기", "다음 주 필요한 서비스 시간"])
+tab1, tab2, tab3, tab4 = st.tabs(["저장된 실험 결과", "새 실험 돌리기", "다음 주 필요한 서비스 시간", "공동 동행 실험(조건부)"])
 
 
 @st.cache_data(show_spinner=False)
@@ -198,3 +198,65 @@ with tab3:
                      hide_index=True, width="stretch")
     st.caption("퇴원 예정 의뢰는 요청 시간이 정해지지 않아 필요 시간을 지어내지 않습니다(건수만). "
                "아직 접수되지 않은 수요의 예측은 하지 않습니다.")
+
+# ── 공동 동행 실험(EXP) ──────────────────────────────────────────────────
+with tab4:
+    from simulator.joint import JointConfig, run_joint_experiment
+    st.warning("**조건부 실험입니다.** 기본 운영은 1:1 전담이며, 이 결과는 1:1 성과에 더하지 않습니다. "
+               "운영·보험·정산 조건은 확인되지 않았고, 실제 여러 분 동행을 허용한다는 뜻이 아닙니다.")
+    st.caption("같은 병원·비슷한 예약 시각의 병원동행 두 건을 한 인력이 함께 모신다고 가정합니다. 같은 요청으로 1:1과 공동 동행을 "
+               "각각 계산해 나란히 비교합니다. 인력 시간은 한 번만 세고, 어르신별 추가 기다림(돌아가는 길·병원 대기)은 따로 봅니다.")
+    base = JointConfig.from_config()
+    j1, j2 = st.columns(2)
+    mode = j1.radio("방식", ["simultaneous", "ride_share"], horizontal=True, key="joint_mode",
+                    format_func=lambda m: {"simultaneous": "병원 내 동시 지원", "ride_share": "이동만 함께(병원에서는 한 분씩)"}[m])
+    consent = j2.checkbox("동의가 확인된 분만(권장)", value=base.require_consent, key="joint_consent",
+                          help="끄면 동의를 가정한 '가능성' 계산이 됩니다. 결과에 가정으로 표시됩니다.")
+    mob = st.multiselect("함께 모실 수 있는 이동조건", ["independent", "walker", "wheelchair"], default=base.allowed_mobility,
+                         format_func=lambda m: {"independent": "자립 보행", "walker": "보행기", "wheelchair": "휠체어"}[m],
+                         key="joint_mob")
+    k1, k2, k3, k4, k5 = st.columns(5)
+    gap = k1.number_input("예약 시각 차이 상한(분)", 0, 180, base.max_appointment_gap_min, step=10, key="joint_gap")
+    detour = k2.number_input("더 타는 시간 상한(분)", 0, 90, base.max_detour_min, step=5, key="joint_detour")
+    wait = k3.number_input("병원 대기 상한(분)", 0, 240, base.max_wait_min, step=10, key="joint_wait")
+    jdays = k4.number_input("날짜 수", 1, 30, 10, key="joint_days")
+    jalgo = k5.selectbox("방식(배정)", ["nearest", "request_order", "optimize"], key="joint_algo",
+                         format_func=lambda a: ALGO_KO[a])
+    jactor = st.text_input("처리자", key="joint_actor", placeholder="담당자 이름")
+    if st.button("공동 동행 실험 돌리기", type="primary"):
+        if not jactor.strip():
+            st.error("처리자를 입력해 주세요.")
+        elif not mob:
+            st.error("이동조건을 하나 이상 고르세요.")
+        else:
+            cfg = JointConfig(enabled=True, mode=mode, require_consent=consent, allowed_mobility=list(mob),
+                              max_appointment_gap_min=int(gap), max_detour_min=int(detour), max_wait_min=int(wait))
+            with st.spinner("계산 중…"):
+                jout = run_joint_experiment(DATA, cfg, n_days=int(jdays), algorithm=jalgo, out_dir=EXP, store=store,
+                                            actor=jactor.strip())
+            st.session_state["joint_last"] = {"raw_path": str(jout["raw_path"]), "meta": jout["meta"]}
+    jl = st.session_state.get("joint_last")
+    if jl and Path(jl["raw_path"]).exists():
+        jdf = pd.read_csv(jl["raw_path"], encoding="utf-8-sig")
+        cfgj = jl["meta"]["config"]
+        if not cfgj.get("require_consent", True):
+            st.warning("동의를 가정한 계산입니다(동의 확인 없음).")
+        agg = jdf.groupby("mode").agg(**{
+            "날짜 수": ("service_date", "nunique"), "모신 어르신(하루 평균)": ("unique_beneficiaries", "mean"),
+            "병원동행 모심(하루 평균)": ("escort_served", "mean"), "인력 근무(분, 하루 합)": ("worker_minutes", "mean"),
+            "짝 지음(하루 평균)": ("pairs_formed", "mean"), "짝 배정(하루 평균)": ("pairs_assigned", "mean"),
+            "규칙 위반": ("violations", "sum")}).round(2).reset_index().rename(columns={"mode": "방식"})
+        st.dataframe(agg, hide_index=True, width="stretch")
+        jj = jdf[jdf["mode"] == "공동 동행"]
+        ex = {c: pd.to_numeric(jj[c], errors="coerce").mean() for c in
+              ("excluded_consent_mobility", "excluded_no_partner", "excluded_time_route")}
+        st.markdown(f"**짝에서 빠진 병원동행(하루 평균)**: 동의·이동조건 {ex['excluded_consent_mobility']:.1f}건 · "
+                    f"같은 병원 짝 없음 {ex['excluded_no_partner']:.1f}건 · 시간·경로 조건 {ex['excluded_time_route']:.1f}건")
+        waits = pd.to_numeric(jj["avg_extra_wait_min"], errors="coerce").dropna()
+        st.caption(("공동 동행한 어르신의 추가 기다림 평균 " + f"{waits.mean():.1f}분" if len(waits) else
+                    "배정된 공동 동행이 없어 기다림을 계산할 수 없습니다.")
+                   + " 짝이 거의 없으면 효과도 없습니다 — 그 결과도 그대로 보고합니다.")
+        st.download_button("공동 동행 실험 CSV", jdf.to_csv(index=False).encode("utf-8-sig"), Path(jl["raw_path"]).name,
+                           "text/csv", key="joint_dl")
+        st.download_button("가정 JSON", json.dumps(jl["meta"], ensure_ascii=False, indent=2).encode("utf-8"),
+                           Path(jl["raw_path"]).stem + "-assumptions.json", "application/json", key="joint_dl2")

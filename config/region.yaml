@@ -53,3 +53,15 @@ cost:
   paid_time: shift_minus_break   # 유급시간 가정: 근무시간 - 휴게(무급). 계약 확인 전 가정
   monthly_salary_krw: null       # 고정급(월급) 모델 단가. 미확정
   transport_krw_per_min: null    # 이동 1분당 교통비. 미확정
+
+# 공동 동행 실험(EXP, PRD 12장). 기본 꺼짐 — 1:1 전담이 기본이다. 실제 다인 동행 허용을 확정하지 않는다.
+# 조건이 맞지 않거나 확인되지 않으면 짝에서 뺀다. 결과는 1:1 기본 성과에 합산하지 않는다.
+joint_escort:
+  enabled: false
+  mode: simultaneous              # simultaneous(병원 내 동시 지원) / ride_share(이동만 함께, 병원에서는 한 분씩)
+  require_consent: true           # 두 분 모두 공동 동행 동의(가상 자료 joint_escort_ok)
+  allowed_mobility: [independent] # 동시 도움이 필요 없는 이동조건
+  max_appointment_gap_min: 30     # 같은 병원 예약 시각 차이 상한(가정)
+  max_detour_min: 20              # 먼저 탄 분이 더 타는 시간 상한(가는 길·돌아가는 길 각각, 가정)
+  max_wait_min: 60                # 병원에서 다른 분을 기다리는 시간 상한(가정)
+  insurance_settlement: 미확정     # 운영·보험·정산 조건 — 확인 전이라 결과는 조건부 실험으로만 표시

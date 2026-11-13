@@ -43,3 +43,19 @@ def test_sources_page():
     assert not at.exception, [e.message for e in at.exception]
     names = set(at.dataframe[0].value["자원"])
     assert {"병원 위치", "차량 이동시간", "AI(요청 카드)"} <= names
+
+
+def test_joint_tab(tmp_path, monkeypatch, _temp_store):
+    from streamlit.testing.v1 import AppTest
+    monkeypatch.setenv("SEORON_EXP_DIR", str(tmp_path))
+    at = AppTest.from_file(str(ROOT / "app" / "lab.py"), default_timeout=300)
+    at.run()
+    assert any("조건부 실험" in w.value for w in at.warning)
+    next(n for n in at.number_input if n.key == "joint_days").set_value(1).run()
+    next(t for t in at.text_input if t.key == "joint_actor").input("테스트").run()
+    next(b for b in at.button if b.label == "공동 동행 실험 돌리기").click().run()
+    assert not at.exception, [e.message for e in at.exception]
+    assert any("짝에서 빠진 병원동행" in m.value for m in at.markdown)
+    assert list(tmp_path.glob("joint-*-assumptions.json"))
+    from store import Store
+    assert Store(_temp_store).experiments()[0]["config"]["experiment"] == "joint_escort"
