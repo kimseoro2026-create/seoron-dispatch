@@ -178,18 +178,18 @@ with st.sidebar:
         st.caption(f"{_label}: **{_text}**")
     st.caption("어르신·인력·요청은 모두 가상으로 만든 데이터입니다.")
 
-    # 요청 카드 검토에서 '확인 완료'한 카드(앱 저장소 — 새로고침해도 유지)
+    # 담당자가 '확인 완료'한 추가 요청: 요청 카드 검토(카드-) + 자료 불러오기(가져옴-). 앱 저장소에서 읽는다.
     _all_cards = _store.ready_requests()
     day_cards = sorted((c for c in _all_cards if c["service_date"] == date), key=lambda c: c["request_id"])
     if _all_cards:
         st.divider()
-        st.markdown("**확인된 요청 카드**")
+        st.markdown("**확인된 추가 요청** (요청 카드·가져온 자료)")
         if day_cards:
             st.caption(f"이 날짜에 **{len(day_cards)}건**을 배정 계산에 넣었습니다: "
                        + ", ".join(c["request_id"] for c in day_cards))
         other = sorted({c["service_date"] for c in _all_cards} - {date})
         if other:
-            st.caption("다른 날짜의 카드: " + ", ".join(other) + " (위 '날짜'에서 고르세요)")
+            st.caption("다른 날짜의 요청: " + ", ".join(other) + " (위 '날짜'에서 고르세요)")
 
 
 # ── 각 방식 계산 ──────────────────────────────────────────────────────────
@@ -257,8 +257,9 @@ if results:
 
     st.subheader(f"{date} 결과")
     if day_cards:
-        st.info(f"요청 카드 검토에서 확인한 요청 **{len(day_cards)}건**을 넣어 계산했습니다. "
-                "번호가 '카드-'로 시작하는 요청입니다. 같은 어르신·같은 서비스 요청이 원래 목록에 있으면 카드 값으로 바꿨습니다.")
+        st.info(f"담당자가 확인한 요청 **{len(day_cards)}건**을 넣어 계산했습니다. "
+                "번호가 '카드-'(요청 카드 검토) 또는 '가져옴-'(자료 불러오기)으로 시작하는 요청입니다. "
+                "같은 어르신·같은 서비스 요청이 원래 목록에 있으면 새로 확인한 값으로 바꿨습니다.")
     cols = st.columns(len(results))
     base = "신청순" if "신청순" in served_n else None
     for col, a in zip(cols, results):

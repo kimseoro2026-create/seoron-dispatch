@@ -67,6 +67,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_assign_active ON assignments(request_id) WH
 CREATE INDEX IF NOT EXISTS ix_assign_date ON assignments(service_date, status);
 CREATE TABLE IF NOT EXISTS schedule_versions(service_date TEXT PRIMARY KEY, version INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS idempotency(key TEXT PRIMARY KEY, result_json TEXT NOT NULL, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS imports(
+  import_id TEXT PRIMARY KEY, file_hash TEXT NOT NULL, file_name TEXT NOT NULL, kind TEXT NOT NULL,
+  status TEXT NOT NULL, n_rows INTEGER NOT NULL, n_new INTEGER NOT NULL, n_unchanged INTEGER NOT NULL,
+  n_changed INTEGER NOT NULL, n_error INTEGER NOT NULL, errors_json TEXT NOT NULL, mapping_json TEXT NOT NULL,
+  actor TEXT NOT NULL, created_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS ix_imports_hash ON imports(file_hash);
+CREATE TABLE IF NOT EXISTS import_changes(
+  import_id TEXT NOT NULL, request_id TEXT NOT NULL, new_payload_json TEXT NOT NULL,
+  applied INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(import_id, request_id));
 CREATE TABLE IF NOT EXISTS audit_logs(
   id INTEGER PRIMARY KEY AUTOINCREMENT, actor TEXT NOT NULL, action TEXT NOT NULL,
   entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, service_date TEXT,
@@ -287,6 +296,148 @@ class Store:
         finally:
             con.close()
         return row["status"] if row else None
+
+    # ── 자료 불러오기 (W02, FR-08·09) ──────────────────────────────────────
+    def find_import_by_hash(self, file_hash: str) -> dict | None:
+        """같은 파일을 전에 가져온 기록(가장 최근). 없으면 None."""
+        con = self._connect()
+        try:
+            r = con.execute("SELECT * FROM imports WHERE file_hash=? ORDER BY created_at DESC LIMIT 1",
+                            (file_hash,)).fetchone()
+        finally:
+            con.close()
+        return self._import_row(r) if r else None
+
+    @staticmethod
+    def _import_row(r) -> dict:
+        d = dict(r)
+        d["errors"] = json.loads(d.pop("errors_json"))
+        d["mapping"] = json.loads(d.pop("mapping_json"))
+        return d
+
+    def imports(self, limit: int = 50) -> list[dict]:
+        con = self._connect()
+        try:
+            rows = con.execute("SELECT * FROM imports ORDER BY created_at DESC, rowid DESC LIMIT ?",
+                               (limit,)).fetchall()
+        finally:
+            con.close()
+        return [self._import_row(r) for r in rows]
+
+    def import_requests(self, *, file_hash: str, file_name: str, kind: str, actor: str,
+                        mapping: dict, rows: list[dict]) -> dict:
+        """변환된 행을 draft 요청으로 넣는다. 파일 원문은 받지 않는다.
+
+        rows: [{line, external_id, request|None, errors, warnings}]
+        - 새 요청 → draft 로 추가
+        - 같은 ID·같은 내용 → 그대로(중복 없음, AT-01)
+        - 같은 ID·다른 내용 → 바로 덮어쓰지 않고 '변경 대기'로 남긴다(담당자 확인 뒤 apply_import_changes)
+        - 다른 출처(요청 카드 등)의 같은 ID → 오류
+        """
+        import_id = "imp-" + uuid.uuid4().hex[:12]
+        now = _now()
+        new, unchanged, changed, errors = [], [], [], []
+        with self._tx(immediate=True) as con:
+            for row in rows:
+                req = row.get("request")
+                if req is None:
+                    errors.append({"line": row["line"], "external_id": row.get("external_id", ""),
+                                   "errors": list(row.get("errors", []))})
+                    continue
+                rid = req["request_id"]
+                old = con.execute("SELECT * FROM requests WHERE request_id=?", (rid,)).fetchone()
+                if old is None:
+                    con.execute("INSERT INTO requests(request_id, service_date, source, status, payload_json,"
+                                " version, created_at, updated_at) VALUES (?,?,?,'draft',?,1,?,?)",
+                                (rid, req["service_date"], "import", _dumps(req), now, now))
+                    new.append(rid)
+                elif old["source"] != "import":
+                    errors.append({"line": row["line"], "external_id": row.get("external_id", ""),
+                                   "errors": [f"요청번호 {rid}: 다른 경로(요청 카드 등)로 이미 있는 요청이라 덮어쓰지 않았습니다"]})
+                else:
+                    old_p = {k: v for k, v in json.loads(old["payload_json"]).items() if k not in _NOT_CONDITION}
+                    new_p = {k: v for k, v in json.loads(_dumps(req)).items() if k not in _NOT_CONDITION}
+                    if old_p == new_p:
+                        unchanged.append(rid)
+                    else:
+                        con.execute("INSERT OR REPLACE INTO import_changes(import_id, request_id, new_payload_json,"
+                                    " applied) VALUES (?,?,?,0)", (import_id, rid, _dumps(req)))
+                        diff = sorted(k for k in set(old_p) | set(new_p) if old_p.get(k) != new_p.get(k))
+                        changed.append({"request_id": rid, "fields": diff, "status": old["status"]})
+            n_ok = len(new) + len(unchanged) + len(changed)
+            status = "failed" if n_ok == 0 else ("partial" if errors else "succeeded")
+            con.execute("INSERT INTO imports(import_id, file_hash, file_name, kind, status, n_rows, n_new,"
+                        " n_unchanged, n_changed, n_error, errors_json, mapping_json, actor, created_at)"
+                        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        (import_id, file_hash, file_name, kind, status, len(rows), len(new), len(unchanged),
+                         len(changed), len(errors), _dumps(errors), _dumps(mapping), actor, now))
+            self._audit(con, actor, "import", "import", import_id,
+                        detail={"file_name": file_name, "status": status, "new": len(new),
+                                "unchanged": len(unchanged), "changed": len(changed), "errors": len(errors)})
+        return {"import_id": import_id, "status": status, "n_rows": len(rows), "n_new": len(new),
+                "n_unchanged": len(unchanged), "n_changed": len(changed), "n_error": len(errors),
+                "new": new, "changed": changed, "errors": errors}
+
+    def apply_import_changes(self, import_id: str, request_ids: list[str], *, actor: str) -> int:
+        """담당자가 확인한 변경만 반영한다. 반영된 요청은 다시 draft(재검토), 관련 확정은 무효화."""
+        n = 0
+        with self._tx(immediate=True) as con:
+            for rid in request_ids:
+                ch = con.execute("SELECT * FROM import_changes WHERE import_id=? AND request_id=? AND applied=0",
+                                 (import_id, rid)).fetchone()
+                if ch is None:
+                    continue
+                payload = json.loads(ch["new_payload_json"])
+                con.execute("UPDATE requests SET service_date=?, status='draft', payload_json=?, version=version+1,"
+                            " updated_at=? WHERE request_id=?", (payload["service_date"], ch["new_payload_json"],
+                                                                 _now(), rid))
+                con.execute("UPDATE import_changes SET applied=1 WHERE import_id=? AND request_id=?", (import_id, rid))
+                self._audit(con, actor, "import:apply_change", "request", rid, payload["service_date"],
+                            detail={"import_id": import_id})
+                self._end_active(con, rid, "superseded", actor, "가져온 자료로 요청 내용이 바뀌어 다시 승인이 필요합니다")
+                n += 1
+        return n
+
+    def requests(self, *, status: str | None = None, source: str | None = None) -> list[dict]:
+        q, args = "SELECT * FROM requests WHERE 1=1", []
+        if status:
+            q += " AND status=?"
+            args.append(status)
+        if source:
+            q += " AND source=?"
+            args.append(source)
+        con = self._connect()
+        try:
+            rows = con.execute(q + " ORDER BY service_date, request_id", args).fetchall()
+        finally:
+            con.close()
+        return [{"request_id": r["request_id"], "service_date": r["service_date"], "source": r["source"],
+                 "status": r["status"], "version": r["version"], "updated_at": r["updated_at"],
+                 "payload": json.loads(r["payload_json"])} for r in rows]
+
+    def review_requests(self, request_ids: list[str], action: str, *, actor: str, reason: str = "") -> int:
+        """draft·검토 필요 요청을 확인 완료(ready) / 보류(needs_review) / 취소(cancelled)로 바꾼다."""
+        if action not in CARD_ACTION_STATUS:
+            raise ValueError(f"알 수 없는 처리: {action}")
+        if action != "확인 완료" and not reason.strip():
+            raise ValueError("보류·취소 사유가 필요합니다")
+        if not actor.strip():
+            raise ValueError("처리자가 필요합니다")
+        status = CARD_ACTION_STATUS[action]
+        n = 0
+        with self._tx(immediate=True) as con:
+            for rid in request_ids:
+                old = con.execute("SELECT * FROM requests WHERE request_id=?", (rid,)).fetchone()
+                if old is None or old["status"] == status:
+                    continue
+                con.execute("UPDATE requests SET status=?, version=version+1, updated_at=? WHERE request_id=?",
+                            (status, _now(), rid))
+                self._audit(con, actor, f"request:{action}", "request", rid, old["service_date"],
+                            detail={"from": old["status"], "to": status, "reason": reason})
+                if status != "ready":
+                    self._end_active(con, rid, "cancelled" if status == "cancelled" else "superseded", actor, reason)
+                n += 1
+        return n
 
     # ── 계산 실행 기록 (FR-23) ─────────────────────────────────────────────
     def record_run(self, service_date: str, algorithm: str, instance: dict, *, config: dict,
