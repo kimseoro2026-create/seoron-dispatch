@@ -6,6 +6,7 @@ Streamlit Cloud 의 Main file 은 이 파일(app/main.py)이다. 페이지:
   - 취소·지연 대응 (events.py): 확정 일정에 취소·지연 등록 → 바뀔 일정 제안 → 담당자 적용
   - 자료 불러오기 (import_data.py): CSV → 검토 전 요청 → 담당자 확인
   - 인력·근무 (workers.py): 수행 서비스·자격 기한·근무·휴게, 날짜별 휴무, 근무표 CSV
+  - 인력 일정(읽기 전용) (worker_schedule.py): 인력 한 명의 확정 일정·필요 정보(W08 최소판)
   - 요청 카드 검토 (request_cards.py): 요청 원문 → 요청 카드 자동 정리와 담당자 확인
   - 효과 검증 실험실 (lab.py): 저장된 실험·새 실험·다음 주 수요
   - 데이터 연결·출처 (sources.py): 외부 자원 상태(키 값은 보이지 않음)
@@ -36,6 +37,7 @@ nav = st.navigation([
     st.Page(str(APP_DIR / "events.py"), title="취소·지연 대응", icon="🔁"),
     st.Page(str(APP_DIR / "import_data.py"), title="자료 불러오기", icon="📥"),
     st.Page(str(APP_DIR / "workers.py"), title="인력·근무", icon="👥"),
+    st.Page(str(APP_DIR / "worker_schedule.py"), title="인력 일정(읽기 전용)", icon="🗓️"),
     st.Page(str(APP_DIR / "request_cards.py"), title="요청 카드 검토", icon="📝"),
     st.Page(str(APP_DIR / "shortage_report.py"), title="부족 자원·비용 리포트", icon="📊"),
     st.Page(str(APP_DIR / "lab.py"), title="효과 검증 실험실", icon="🧪"),
