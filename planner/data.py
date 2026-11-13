@@ -104,7 +104,8 @@ def estimate_travel(data_dir: str | Path,
 
 def load_day(data_dir: str | Path, service_date: str,
              travel: dict[tuple[str, str], float] | None = None,
-             extra_requests: list[dict] | None = None) -> DayInstance:
+             extra_requests: list[dict] | None = None,
+             exclude_ids: set[str] | list[str] | None = None) -> DayInstance:
     """하루치 instance 를 만든다.
 
     travel 을 주지 않으면 그날 필요한 노드만으로 추정 행렬을 만든다.
@@ -113,6 +114,7 @@ def load_day(data_dir: str | Path, service_date: str,
 
     extra_requests: 담당자가 확인한 요청 카드(intake.to_request). 그날 것만 더하고,
     같은 대상자·서비스 요청이 이미 있으면 카드 값으로 바꾼다.
+    exclude_ids: 담당자가 취소 처리한 요청(저장소). 계산에서 뺀다.
     """
     d = Path(data_dir)
     req = pd.read_csv(d / "requests.csv", dtype={"request_id": str, "beneficiary_id": str})
@@ -123,6 +125,9 @@ def load_day(data_dir: str | Path, service_date: str,
     if cards:
         from intake.to_request import merge_card_requests
         requests, _ = merge_card_requests(requests, cards)
+    if exclude_ids:
+        ex = set(exclude_ids)
+        requests = [r for r in requests if r["request_id"] not in ex]
     if travel is None:
         node_ids = (
             {w["base_node"] for w in workers}

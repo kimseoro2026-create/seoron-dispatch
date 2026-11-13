@@ -76,6 +76,11 @@ CREATE INDEX IF NOT EXISTS ix_imports_hash ON imports(file_hash);
 CREATE TABLE IF NOT EXISTS import_changes(
   import_id TEXT NOT NULL, request_id TEXT NOT NULL, new_payload_json TEXT NOT NULL,
   applied INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(import_id, request_id));
+CREATE TABLE IF NOT EXISTS service_events(
+  event_id TEXT PRIMARY KEY, service_date TEXT NOT NULL, request_id TEXT NOT NULL, kind TEXT NOT NULL,
+  occurred_min INTEGER NOT NULL, received_min INTEGER NOT NULL, minutes INTEGER NOT NULL,
+  reason_code TEXT NOT NULL, actor TEXT NOT NULL, result_json TEXT NOT NULL, received_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS ix_events_date ON service_events(service_date);
 CREATE TABLE IF NOT EXISTS audit_logs(
   id INTEGER PRIMARY KEY AUTOINCREMENT, actor TEXT NOT NULL, action TEXT NOT NULL,
   entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, service_date TEXT,
@@ -443,6 +448,114 @@ class Store:
                     self._end_active(con, rid, "cancelled" if status == "cancelled" else "superseded", actor, reason)
                 n += 1
         return n
+
+    # ── 취소·지연 이벤트 (W07, FR-29·30, AT-09) ────────────────────────────
+    def cancelled_ids(self, service_date: str) -> list[str]:
+        con = self._connect()
+        try:
+            rows = con.execute("SELECT request_id FROM requests WHERE service_date=? AND status='cancelled'",
+                               (service_date,)).fetchall()
+        finally:
+            con.close()
+        return [r["request_id"] for r in rows]
+
+    def events(self, service_date: str | None = None) -> list[dict]:
+        con = self._connect()
+        try:
+            if service_date:
+                rows = con.execute("SELECT * FROM service_events WHERE service_date=? ORDER BY received_at",
+                                   (service_date,)).fetchall()
+            else:
+                rows = con.execute("SELECT * FROM service_events ORDER BY received_at").fetchall()
+        finally:
+            con.close()
+        out = []
+        for r in rows:
+            d = dict(r)
+            d["result"] = json.loads(d.pop("result_json"))
+            out.append(d)
+        return out
+
+    def apply_event(self, service_date: str, ev: dict, proposal, *, original_requests: dict[str, dict],
+                    expected_version: int, actor: str) -> dict:
+        """담당자가 확인한 취소·지연 대응을 한 트랜잭션으로 반영한다.
+
+        - 같은 이벤트(같은 event_id)는 한 번만 반영한다(AT-09).
+        - 화면에서 본 일정 버전·확정 일정이 지금과 다르면 반영하지 않는다(다시 계산 안내).
+        - 바뀐 일정은 검증기로 다시 확인한다. 위반이 있으면 반영하지 않는다.
+        - 확정 일정 차이만 바꾼다: 빠진 건은 취소/무효화, 새로 들어가거나 바뀐 건은 새 확정으로.
+        - 취소한 요청·지연/연장으로 값이 바뀐 요청은 requests 에 남겨 이후 계산에 쓰인다.
+        original_requests: {요청 ID: 이벤트 전 요청 값} — 취소한 기본 요청을 기록하는 데 쓴다.
+        """
+        from planner.replan import event_id
+        from verifier import verify
+
+        if not actor.strip():
+            raise ValueError("처리자가 필요합니다")
+        if not proposal.ok:
+            return {"status": "blocked", "message": proposal.message}
+        eid = event_id(service_date, ev)
+        now = _now()
+        with self._tx(immediate=True) as con:
+            if con.execute("SELECT 1 FROM service_events WHERE event_id=?", (eid,)).fetchone():
+                return {"status": "duplicate", "event_id": eid, "message": "이미 반영된 이벤트입니다. 다시 반영하지 않았습니다."}
+            current = self._version(con, service_date)
+            cur = sorted((dict(r) for r in con.execute(
+                "SELECT request_id, worker_id, arrive_min FROM assignments WHERE service_date=? AND status='confirmed'",
+                (service_date,)).fetchall()), key=lambda a: (a["worker_id"], a["arrive_min"], a["request_id"]))
+            if expected_version != current or cur != proposal.before:
+                return {"status": "stale", "event_id": eid,
+                        "message": "계산한 뒤에 확정 일정이 바뀌었습니다. 다시 계산해 주세요."}
+            if proposal.after:
+                rep = verify(proposal.instance_after, proposal.after)
+                if rep.violations:
+                    return {"status": "conflict", "event_id": eid,
+                            "message": "바뀐 일정이 규칙 검사를 통과하지 못했습니다. 반영하지 않았습니다."}
+            after = current + 1
+            b_map = {a["request_id"]: a for a in proposal.before}
+            a_map = {a["request_id"]: a for a in proposal.after}
+            for rid, b in b_map.items():
+                a = a_map.get(rid)
+                if a == b:
+                    continue
+                status = "cancelled" if rid in proposal.cancelled else "superseded"
+                con.execute("UPDATE assignments SET status=?, reason=?, updated_at=? WHERE request_id=? AND status='confirmed'",
+                            (status, f"취소·지연 대응 {eid}", now, rid))
+                self._audit(con, actor, "event:" + ("cancel" if status == "cancelled" else "supersede"), "assignment",
+                            rid, service_date, current, after, {"event_id": eid, "worker_id": b["worker_id"]})
+            for rid, a in a_map.items():
+                if b_map.get(rid) == a:
+                    continue
+                con.execute("INSERT INTO assignments(assignment_id, run_id, request_id, worker_id, service_date,"
+                            " arrive_min, status, approval_version, actor, created_at, updated_at)"
+                            " VALUES (?,?,?,?,?,?,'confirmed',?,?,?,?)",
+                            (uuid.uuid4().hex, eid, rid, a["worker_id"], service_date, int(a["arrive_min"]),
+                             after, actor, now, now))
+                self._audit(con, actor, "event:confirm", "assignment", rid, service_date, current, after,
+                            {"event_id": eid, "worker_id": a["worker_id"], "arrive_min": a["arrive_min"]})
+            # 요청 값 남기기: 취소 → cancelled, 지연·연장 → 바뀐 값으로 ready
+            changed_reqs = [(rid, "cancelled", original_requests[rid]) for rid in proposal.cancelled]
+            changed_reqs += [(r["request_id"], "ready", r) for r in proposal.updated_requests]
+            for rid, status, payload in changed_reqs:
+                old = con.execute("SELECT 1 FROM requests WHERE request_id=?", (rid,)).fetchone()
+                if old:
+                    con.execute("UPDATE requests SET status=?, payload_json=?, version=version+1, updated_at=?"
+                                " WHERE request_id=?", (status, _dumps(payload), now, rid))
+                else:
+                    con.execute("INSERT INTO requests(request_id, service_date, source, status, payload_json, version,"
+                                " created_at, updated_at) VALUES (?,?,'event',?,?,1,?,?)",
+                                (rid, service_date, status, _dumps(payload), now, now))
+            result = {"changes": proposal.changes, "refill_reason": proposal.refill_reason, "notes": proposal.notes}
+            con.execute("INSERT INTO service_events(event_id, service_date, request_id, kind, occurred_min, received_min,"
+                        " minutes, reason_code, actor, result_json, received_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                        (eid, service_date, ev["request_id"], ev["kind"], int(ev["occurred_min"]),
+                         int(ev["received_min"]), int(ev.get("minutes") or 0), ev.get("reason_code") or "",
+                         actor, _dumps(result), now))
+            self._audit(con, actor, f"event:{ev['kind']}", "request", ev["request_id"], service_date, current, after,
+                        {"event_id": eid, "reason": ev.get("reason_code") or ""})
+            self._bump(con, service_date)
+        return {"status": "applied", "event_id": eid,
+                "message": f"반영했습니다. 바뀐 일정 {len(proposal.changes)}건(일정 버전 {after})."}
 
     # ── 계산 실행 기록 (FR-23) ─────────────────────────────────────────────
     def record_run(self, service_date: str, algorithm: str, instance: dict, *, config: dict,

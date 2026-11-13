@@ -110,17 +110,24 @@ def _priority(final: dict, days_limit: int) -> tuple[int, str]:
 
 
 def merge_card_requests(base: list[dict], cards: list[dict]) -> tuple[list[dict], dict[str, str]]:
-    """그날 요청 목록에 카드 요청을 더한다.
+    """그날 요청 목록에 카드(담당자가 확인한 요청) 값을 더한다.
 
-    같은 대상자·같은 서비스 요청이 이미 있으면 카드 값으로 바꾼다(같은 요청을 두 번 세지 않기 위해).
+    - 같은 요청 ID 가 이미 있으면 그 요청을 새 값으로 바꾼다(취소·지연 이벤트로 바뀐 기본 요청 등).
+    - 아니면 같은 대상자·같은 서비스 요청을 바꾼다(같은 요청을 두 번 세지 않기 위해).
     반환: (합친 목록, {카드 요청 ID: 바뀐 기존 요청 ID})
     """
     replaced: dict[str, str] = {}
+    base_ids = {r["request_id"] for r in base}
+    exact = {c["request_id"] for c in cards if c["request_id"] in base_ids}
     keys = {}
     for c in cards:
-        keys[(c["beneficiary_id"], c["service_type"])] = c["request_id"]
+        if c["request_id"] not in exact:
+            keys[(c["beneficiary_id"], c["service_type"])] = c["request_id"]
     kept = []
     for r in base:
+        if r["request_id"] in exact:
+            replaced[r["request_id"]] = r["request_id"]
+            continue
         k = (r["beneficiary_id"], r["service_type"])
         if k in keys and keys[k] not in replaced:
             replaced[keys[k]] = r["request_id"]
