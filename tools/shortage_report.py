@@ -132,3 +132,47 @@ def main(argv: list[str] | None = None) -> None:
 
 if __name__ == "__main__":
     main()
+
+
+def to_print_html(r: dict) -> str:
+    """인쇄용 보고 화면(FR-44): 리포트 Markdown 을 인쇄하기 좋은 HTML 한 장으로. 브라우저 인쇄 → PDF 저장.
+    외부 라이브러리 없이 제목·목록·표·인용만 바꾼다. 가정·실험 파일·출처·가상 표시가 Markdown 에 그대로 들어 있다."""
+    import html as _h
+    out, in_table = [], False
+    for line in to_markdown(r).splitlines():
+        esc = _h.escape(line)
+        if line.startswith("|"):
+            cells = [c.strip() for c in line.strip("|").split("|")]
+            if all(set(c) <= set("-: ") for c in cells):
+                continue
+            if not in_table:
+                out.append("<table>")
+                in_table = True
+                out.append("<tr>" + "".join(f"<th>{_h.escape(c)}</th>" for c in cells) + "</tr>")
+            else:
+                out.append("<tr>" + "".join(f"<td>{_h.escape(c)}</td>" for c in cells) + "</tr>")
+            continue
+        if in_table:
+            out.append("</table>")
+            in_table = False
+        if line.startswith("### "):
+            out.append(f"<h3>{_h.escape(line[4:])}</h3>")
+        elif line.startswith("## "):
+            out.append(f"<h2>{_h.escape(line[3:])}</h2>")
+        elif line.startswith("# "):
+            out.append(f"<h1>{_h.escape(line[2:])}</h1>")
+        elif line.startswith("> "):
+            out.append(f"<p class='note'>{_h.escape(line[2:]).replace('**', '')}</p>")
+        elif line.startswith("- "):
+            out.append(f"<li>{_h.escape(line[2:]).replace('`', '')}</li>")
+        elif line.strip():
+            out.append(f"<p>{esc}</p>")
+    if in_table:
+        out.append("</table>")
+    css = ("@page{size:A4;margin:14mm}body{font-family:'Malgun Gothic',sans-serif;font-size:10pt;color:#222}"
+           "h1{font-size:15pt;border-bottom:2px solid #333}h2{font-size:12pt;margin-top:16px}h3{font-size:11pt}"
+           "table{border-collapse:collapse;width:100%;margin:6px 0;page-break-inside:avoid}"
+           "th,td{border:1px solid #999;padding:3px 5px;font-size:9pt}th{background:#eee}"
+           ".note{background:#fff3cd;border:1px solid #e0b000;padding:6px}")
+    return (f"<!doctype html><html lang='ko'><head><meta charset='utf-8'><title>부족 자원·비용 리포트</title>"
+            f"<style>{css}</style></head><body>{''.join(out)}</body></html>")

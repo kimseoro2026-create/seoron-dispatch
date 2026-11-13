@@ -175,5 +175,51 @@ col2.download_button("시나리오 표(CSV)", sc.to_csv(encoding="utf-8-sig").en
 um = pd.concat([x.assign(by=k) for k, x in u.items()], ignore_index=True).assign(source=r["outcomes_path"].name)
 col3.download_button("미배정 집계(CSV)", um.to_csv(index=False, encoding="utf-8-sig").encode("utf-8-sig"),
                      "shortage_unmet.csv", "text/csv")
-st.caption("인쇄용: 브라우저 인쇄(Ctrl+P)에서 'PDF로 저장'을 고르면 이 화면을 PDF로 저장할 수 있습니다. "
-           "모든 내려받기 파일에 실험 파일 이름과 가정이 함께 들어갑니다.")
+from tools.shortage_report import to_print_html  # noqa: E402
+
+st.download_button("인쇄용 보고서(HTML)", to_print_html(r).encode("utf-8"), "shortage_report_print.html", "text/html",
+                   help="파일을 열고 브라우저 인쇄(Ctrl+P) → 'PDF로 저장'. 가정·실험 파일·출처·가상 표시가 함께 들어 있습니다.")
+st.caption("모든 내려받기 파일에 실험 파일 이름과 가정이 함께 들어갑니다. 이 화면도 브라우저 인쇄로 PDF 저장할 수 있습니다.")
+
+# ── 4. 조건을 직접 바꿔 다시 계산 (FR-42) ──────────────────────────────────
+st.subheader("4. 조건을 직접 바꿔 다시 계산하기")
+st.caption("같은 요청에서 인력·휴게·근무 시간만 바꿔 '현재'와 나란히 계산합니다. 추가 인력은 기존 동행 인력의 근무패턴·출발지를 "
+           "복제하고, 근무 연장은 근무 끝과 하루 최대 근무를 함께 늘립니다. 부족 시간을 '몇 명 부족'으로 바꾸지 않습니다.")
+from simulator.report import Scenario, custom_compare  # noqa: E402
+
+q1, q2, q3, q4 = st.columns(4)
+c_add = q1.number_input("동행 인력 추가(명)", 0, 5, 0)
+c_stag = q2.checkbox("휴게 분산", help="휴게 시작을 인력마다 11·12·13·14시로 나눕니다(유급시간 같음).")
+c_scope = q3.selectbox("근무 연장 대상", ["없음", "동행 가능 인력", "모든 인력"])
+c_ext = q4.selectbox("근무 끝 늦추기", [0, 30, 60, 90, 120], format_func=lambda m: f"+{m}분" if m else "0분",
+                     disabled=c_scope == "없음")
+q5, q6 = st.columns(2)
+c_days = q5.number_input("날짜 수", 1, 10, 3)
+c_algo = q6.selectbox("배정 방식", ["nearest", "optimize"], format_func={"nearest": "근거리(빠름)", "optimize": "AI 최적화"}.get)
+st.caption("협약기관 추가 조건은 협약 자료가 없어(후속 단계) 계산하지 않습니다.")
+ext = 0 if c_scope == "없음" else int(c_ext)
+custom = Scenario("custom", "직접 고른 조건: " + " · ".join(
+    x for x in [f"동행 +{c_add}" if c_add else "", "휴게 분산" if c_stag else "",
+                f"{c_scope} 근무 +{ext}분" if ext else ""] if x) or "직접 고른 조건(바꾼 것 없음)",
+    add=int(c_add), staggered=bool(c_stag), extend_end=ext, extend_scope="all" if c_scope == "모든 인력" else "escort")
+if st.button("다시 계산", type="primary", disabled=not (c_add or c_stag or ext)):
+    with st.spinner("같은 요청으로 다시 계산하는 중…"):
+        st.session_state["custom_cmp"] = custom_compare(DATA, custom, n_days=int(c_days), algorithm=c_algo,
+                                                        rho=float(r["rho"][0]) if r["rho"] else 0.9,
+                                                        hourly_krw=c.get("hourly_krw"), paid_time=c["paid_time"])
+cc = st.session_state.get("custom_cmp")
+if cc:
+    tb = cc["table"]
+    st.dataframe(pd.DataFrame({
+        "조건": tb["label"], "고유 인원(하루 평균)": tb["uniq"].round(2), "변화": tb["d_unique"].round(2),
+        "배정(건)": tb["assigned"].round(1), "동행 배정/요청": (tb["escort"].round(1).astype(str) + " / "
+                                                         + tb["requests_escort"].round(1).astype(str)),
+        "고우선 미충족률": (tb["high_unmet_rate"] * 100).round(1).astype(str) + "%",
+        "늘어난 유급시간(분/일)": tb["added_paid_min"], "추가 인건비/일": tb["extra_cost_per_day"].map(won),
+        "늘어난 1명당/일": tb["cost_per_added_person"].map(won), "규칙 위반": tb["violations"]}),
+        hide_index=True, width="stretch")
+    st.caption(f"{len(cc['dates'])}일 × 시드 {cc['seeds']} · 부하율 {cc['rho']} · "
+               f"{ {'nearest': '근거리', 'optimize': 'AI 최적화'}[cc['algorithm']] } 기준. 고유 인원이 늘지 않으면 1명당 비용은 "
+               "'계산 불가'입니다. 근무 연장이 실제 근로 규정상 가능한지는 확인하지 않았습니다.")
+    st.download_button("다시 계산한 결과(CSV)", cc["raw"].to_csv(index=False).encode("utf-8-sig"),
+                       "shortage_custom.csv", "text/csv")
