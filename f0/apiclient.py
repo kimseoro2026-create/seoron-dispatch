@@ -113,7 +113,7 @@ class PlatformClient:
         if "xml" in content_type.lower():
             _root = ET.fromstring(body)
             _code = _root.findtext(".//resultCode") or ""
-            if _code and _code != "00":
+            if _code and _code not in ("00", "0"):  # 행안부 인구 API 는 정상이 "0"
                 _msg = _root.findtext(".//resultMsg") or ""
                 raise RuntimeError(f"API 오류 resultCode={_code}: {_msg}")
         return parse_response(body, spec.get("total_count_field"))

@@ -10,6 +10,11 @@ region:
   agency: {name: "협력기관(가정 위치)", lat: 37.200, lon: 127.075}
   # 병원 조회 반경(미터) — center 기준
   hospital_search_radius_m: 6000
+  # 고령인구 조회(행안부 행정동별 성·연령별 인구). 행정기관코드는 같은 API의 시군구 목록(lv=2)에서 확인한 값
+  population:
+    admm_cd: "4159700000"   # 경기도 화성시 동탄구
+    stats_ym: "202610"      # 통계 기준월(YYYYMM)
+    lv: "3"                 # 읍면동 단위
   # 동행 대상 병원 종별(병원기본목록의 종별명 기준)
   hospital_classes: ["상급종합", "종합병원", "병원", "요양병원", "의원"]
   # 행정동 경계 파일(최신본 GeoJSON). 없으면 --offline 모의 경계를 사용

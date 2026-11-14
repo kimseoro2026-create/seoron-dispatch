@@ -30,18 +30,51 @@ def fetch_hospitals(client: PlatformClient, region: dict) -> pd.DataFrame:
     return df[HOSPITAL_COLUMNS].drop_duplicates("hospital_id").reset_index(drop=True)
 
 
-def fetch_population(client: PlatformClient, **request_values) -> pd.DataFrame:
-    """행정동별 성/연령별 인구 → 행정동별 65세 이상 인구."""
-    rows = client.call_all_pages("population", **request_values)
-    fm = client.config["population"]["field_map"]
-    if str(fm["dong"]).startswith("TODO"):
-        raise ValueError("apis.yaml의 population.field_map을 상세 화면의 응답 항목명으로 채워주세요")
+POPULATION_COLUMNS = ["dong", "admm_cd", "sgg", "stats_ym", "total", "age_60s", "age_70_plus",
+                      "age_65_plus", "age_65_plus_method"]
+AGE65_METHOD = "estimate: 70세 이상 + 60~69세의 절반(연령이 10세 구간이라 65세 경계를 정확히 나눌 수 없음)"
+
+
+def _int(v) -> int:
+    """인구 수 문자열 → 정수. 비어 있거나 숫자가 아니면 오류(0으로 바꾸지 않는다)."""
+    s = str(v if v is not None else "").replace(",", "").strip()
+    if not s:
+        raise ValueError("인구 응답에 빈 값이 있습니다")
+    return int(float(s))
+
+
+def population_rows_to_frame(rows: list[dict], fm: dict) -> pd.DataFrame:
+    """행안부 행정동별 성·연령별 인구 응답 item → 행정동별 고령인구 표.
+
+    70세 이상은 응답 항목을 그대로 더한 값이다. 65세 이상은 60~69세의 절반을 더한 대략값이며
+    age_65_plus_method 에 그렇게 적는다. 행정동명이 비어 있는 행(시군구 합계)은 뺀다.
+    """
     out = []
     for r in rows:
-        total = sum(int(float(r.get(f) or 0)) for f in fm["age_65_plus_fields"])
-        out.append({"dong": r.get(fm["dong"]), "age_65_plus": total})
-    df = pd.DataFrame(out)
-    return df.groupby("dong", as_index=False)["age_65_plus"].sum()
+        dong = str(r.get(fm["dong"]) or "").strip()
+        if not dong:
+            continue
+        a70 = sum(_int(r.get(f)) for f in fm["age_70_plus_fields"])
+        a60 = sum(_int(r.get(f)) for f in fm["age_60s_fields"])
+        out.append({"dong": dong, "admm_cd": str(r.get(fm["admm_cd"]) or ""), "sgg": r.get(fm["sgg"]),
+                    "stats_ym": str(r.get(fm["stats_ym"]) or ""), "total": _int(r.get(fm["total"])),
+                    "age_60s": a60, "age_70_plus": a70, "age_65_plus": a70 + a60 // 2,
+                    "age_65_plus_method": AGE65_METHOD})
+    if not out:
+        return pd.DataFrame(columns=POPULATION_COLUMNS)
+    return pd.DataFrame(out)[POPULATION_COLUMNS].drop_duplicates("admm_cd").reset_index(drop=True)
+
+
+def fetch_population(client: PlatformClient, admm_cd: str, stats_ym: str, lv: str = "3") -> pd.DataFrame:
+    """행정동별 성/연령별 인구(행안부) → 행정동별 고령인구. admm_cd 는 시군구 행정기관코드(10자리)."""
+    fm = client.config["population"]["field_map"]
+    if str(fm.get("dong", "")).startswith("TODO"):
+        raise ValueError("apis.yaml의 population.field_map을 상세 화면의 응답 항목명으로 채워주세요")
+    rows = client.call_all_pages("population", admmCd=str(admm_cd), ym=str(stats_ym), lv=str(lv))
+    df = population_rows_to_frame(rows, fm)
+    if df.empty:
+        raise RuntimeError(f"인구 응답에 행정동이 없습니다(행정기관코드 {admm_cd}, 기준월 {stats_ym})")
+    return df
 
 
 def latest_base_time(now: datetime) -> tuple[str, str]:

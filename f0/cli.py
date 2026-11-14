@@ -57,10 +57,13 @@ def cmd_fetch(args) -> None:
     hosp.to_csv(RAW / "hospitals.csv", index=False, encoding="utf-8-sig")
     print(f"병원 {len(hosp)}곳 저장")
     if not args.skip_population:
-        extra = dict(kv.split("=", 1) for kv in (args.population_param or []))
-        pop = fetch_population(client, **extra)
-        pop.to_csv(RAW / "population.csv", index=False, encoding="utf-8-sig")
-        print(f"행정동 {len(pop)}곳 인구 저장")
+        pc = dict(cfg["region"].get("population") or {})
+        pc.update(dict(kv.split("=", 1) for kv in (args.population_param or [])))
+        pop = fetch_population(client, admm_cd=pc["admm_cd"], stats_ym=pc["stats_ym"], lv=pc.get("lv", "3"))
+        # 실제 인구는 population_api.csv 에 따로 둔다. 가상 권역 생성(population.csv)에 쓰려면
+        # 경계 파일의 행정동명이 같아야 한다(지금 경계가 모의면 이름이 맞지 않아 생성이 실패한다).
+        pop.to_csv(RAW / "population_api.csv", index=False, encoding="utf-8-sig")
+        print(f"행정동 {len(pop)}곳 실제 인구 저장: population_api.csv (기준월 {pc['stats_ym']})")
 
 
 def cmd_generate(_args) -> None:

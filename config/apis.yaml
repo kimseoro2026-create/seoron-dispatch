@@ -32,16 +32,27 @@ hospitals:               # 건강보험심사평가원_병원정보서비스_병
   total_count_field: "totalCount"
 
 population:              # 행정안전부_행정동별(통반단위) 성/연령별 주민등록 인구수
-  url: "TODO: 상세 화면의 호출 URL"
+  # 2026-11-14 플랫폼 상세 화면에서 확인한 값. 응답은 XML(기본값)로 받아 resultCode 를 확인한다.
+  url: "https://api.koreaconnect.kr/01/1/2603101713597416530PDP/DEMRES/1741000/admmSexdAgePpltn/selectAdmmSexdAgePpltn"
   method: "GET"
   params:
+    admmCd: "{admmCd}"     # 행정기관코드(10자리)
+    srchFrYm: "{ym}"       # 조회 시작년월(YYYYMM, 2022.10부터)
+    srchToYm: "{ym}"       # 조회 종료년월(3개월 이내)
+    lv: "{lv}"             # 1 시도, 2 시군구, 3 읍면동, 4 읍면동 통반(기본)
+    regSeCd: "1"           # 등록구분: 1 전체
+    numOfRows: 100         # 최대 100
     pageNo: "{page}"
-    numOfRows: 1000
-    # TODO: 상세 화면의 요청변수(예: 행정기관코드, 조회 기준월)를 그대로 적는다
   field_map:
-    dong: "TODO: 행정동명 항목"
-    # 65세 이상 연령 구간 항목들을 모두 적으면 합산한다
-    age_65_plus_fields: ["TODO: 65~69세 항목", "TODO: 70~74세 항목"]
+    dong: "dongNm"         # 행정동명
+    admm_cd: "admmCd"      # 행정기관코드
+    sgg: "sggNm"           # 시군구명
+    stats_ym: "statsYm"    # 통계년월
+    # 연령이 10세 구간이라 '65세 이상'은 정확히 나눌 수 없다 → 70세 이상을 합산하고 60~69세는 따로 둔다
+    age_70_plus_fields: ["male70AgeNmprCnt", "male80AgeNmprCnt", "male90AgeNmprCnt", "male100AgeNmprCnt",
+                         "feml70AgeNmprCnt", "feml80AgeNmprCnt", "feml90AgeNmprCnt", "feml100AgeNmprCnt"]
+    age_60s_fields: ["male60AgeNmprCnt", "feml60AgeNmprCnt"]
+    total: "totNmprCnt"
   total_count_field: "totalCount"
 
 weather:                 # 기상청_단기예보 조회서비스_단기예보조회

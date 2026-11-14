@@ -63,11 +63,20 @@ def adapter_states(root: str | Path) -> list[dict]:
     except Exception:
         mock = True
     pop_todo = _todo(apis, "population")
+    api_note, period = "", "확인 안 됨"
+    try:
+        pa = pd.read_csv(raw / "population_api.csv", dtype={"stats_ym": str})
+        period = f"{pa['stats_ym'].iloc[0]} 기준"
+        api_note = (f" · 실제 인구는 받아 둠({len(pa)}개 행정동, {period}, population_api.csv) — "
+                    "행정동 경계가 모의라 아직 분포에 쓰지 않음")
+    except Exception:
+        pass
     rows.append({"name": "고령인구", "provider": "디지털융합플랫폼 · 행안부 행정동별 성·연령별 인구",
                  "state": "mock" if mock else "verified",
-                 "evidence": ("모의 인구(요청변수 미확인: config/apis.yaml 에 TODO)" if pop_todo else "모의 인구") if mock
-                 else "API로 받은 행정동 인구", "key": _env("KOREACONNECT_API_USER_KEY_ID"),
-                 "last_update": _mtime(raw / "population.csv"), "period": "확인 안 됨", "used_for": "가상 어르신 분포"})
+                 "evidence": (("모의 인구(요청변수 미확인: config/apis.yaml 에 TODO)" if pop_todo else "모의 인구")
+                              + api_note) if mock else "API로 받은 행정동 인구",
+                 "key": _env("KOREACONNECT_API_USER_KEY_ID"),
+                 "last_update": _mtime(raw / "population.csv"), "period": period, "used_for": "가상 어르신 분포"})
 
     # 날씨·대중교통 — 승인됐지만 아직 쓰지 않음
     for name, key, prov, use in (("날씨", "weather", "디지털융합플랫폼 · 기상청 단기예보", "아직 쓰지 않음(이동 지연 가정 후보)"),
