@@ -107,7 +107,9 @@ def run_lab(cfg: LabConfig, data_dir: str | Path, *, out_dir: str | Path, store=
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    raw_path = out / f"lab-{stamp}.csv"
+    # 이름표(label)가 있으면 파일 이름에 넣는다 — 여러 실험을 동시에 돌려도 이름이 겹치지 않게
+    tag = f"lab-{cfg.label}-{stamp}" if cfg.label else f"lab-{stamp}"
+    raw_path = out / f"{tag}.csv"
     raw.to_csv(raw_path, index=False, encoding="utf-8-sig")
     input_hash = hashlib.sha256(b"".join((d / n).read_bytes() for n in ("requests.csv", "workers.csv"))).hexdigest()[:16]
     meta = {"config": asdict(cfg), "dates": dates, "input_hash": input_hash, "engine_version": engine_version(),
@@ -116,7 +118,7 @@ def run_lab(cfg: LabConfig, data_dir: str | Path, *, out_dir: str | Path, store=
                       f"취소율을 바꾸면 통보 시각은 {list(NOTICE_CHOICES)}분 전 중 하나로 정한다(가정)." if cfg.cancel_rate
                       is not None else "취소는 가상 자료에 있는 그대로 쓴다.",
                       "인력 추가 효과는 이 실험에 섞지 않는다."]}
-    assumptions_path = out / f"lab-{stamp}-assumptions.json"
+    assumptions_path = out / f"{tag}-assumptions.json"
     assumptions_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     if store is not None:
         store.record_experiment(config=asdict(cfg), input_hash=input_hash, result_path=str(raw_path),
