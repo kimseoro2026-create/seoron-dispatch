@@ -95,7 +95,7 @@ def to_markdown(r: dict) -> str:
     L.append("\n### 희망 시작 시간대별\n\n| 시작 시각 | 요청/일 | 미배정/일 | 미충족률 |\n|---|---|---|---|")
     for _, x in u["start_hour"].iterrows():
         L.append(f"| {int(x.start_hour)}시 | {x.requests_per_day:.1f} | {x.unmet_per_day:.1f} | {x.unmet_rate*100:.1f}% |")
-    L.append("\n### 권역(가상 행정동)별\n\n| 권역 | 요청/일 | 미배정/일 | 미충족률 |\n|---|---|---|---|")
+    L.append("\n### 행정동별\n\n| 행정동 | 요청/일 | 미배정/일 | 미충족률 |\n|---|---|---|---|")
     for _, x in u["area"].iterrows():
         L.append(f"| {x.area} | {x.requests_per_day:.1f} | {x.unmet_per_day:.1f} | {x.unmet_rate*100:.1f}% |")
     L.append("\n### 미배정 사유\n\n| 사유 | 확실성 | 미배정/일 | 비중 |\n|---|---|---|---|")

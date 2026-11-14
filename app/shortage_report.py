@@ -155,7 +155,7 @@ with tabs[1]:
 with tabs[2]:
     st.dataframe(_rate_table(u["start_hour"], "start_hour", "희망 시작", lambda v: f"{int(v)}시"), hide_index=True)
 with tabs[3]:
-    st.dataframe(_rate_table(u["area"], "area", "권역(가상 행정동)"), hide_index=True)
+    st.dataframe(_rate_table(u["area"], "area", "행정동"), hide_index=True)
     st.caption("가까운 곳만 배정되는지 확인하려는 표입니다. 권역 이름은 가상입니다.")
 with tabs[4]:
     rs = u["reason"]
