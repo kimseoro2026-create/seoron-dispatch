@@ -1,14 +1,21 @@
 {
-  "generated_at": "2026-11-10T08:56:26",
+  "generated_at": "2026-11-14T19:19:15",
   "seed": 42,
   "assumption_note": "simulation 파라미터는 초기 가정값입니다(config/region.yaml).",
   "beneficiaries": 300,
   "workers": 20,
-  "hospitals": 400,
+  "hospitals": 486,
   "service_days": 30,
-  "requests": 1810,
-  "requests_per_day_avg": 60.3,
-  "escort_share": 0.399,
-  "cancel_rate": 0.101,
-  "discharge_share": 0.196
+  "requests": 1797,
+  "requests_per_day_avg": 59.9,
+  "escort_share": 0.405,
+  "cancel_rate": 0.1,
+  "discharge_share": 0.185,
+  "sources": {
+    "hospitals": "디지털융합플랫폼 · 심평원 병원기본목록(API)",
+    "population": "디지털융합플랫폼 · 행안부 행정동별 성·연령별 인구(API), 기준월 202610",
+    "age_65_plus": "estimate: 70세 이상 + 60~69세의 절반(연령이 10세 구간이라 65세 경계를 정확히 나눌 수 없음)",
+    "boundaries": "통계청 SGIS 행정동 경계(공공누리 제1유형), 가공: vuski/admdongkor ver20261001 (CC BY 4.0) — 화성시 동탄구 9개 행정동만 추출",
+    "beneficiaries_workers_requests": "가상(합성) — 실제 개인정보 아님"
+  }
 }

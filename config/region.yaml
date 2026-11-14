@@ -2,14 +2,15 @@
 # simulation 아래 값은 모두 '초기 가정'이다. 현장 인터뷰로 실측치가 나오면 교체한다.
 
 region:
-  name: "동탄 권역(가상 구)"
-  # 데이터 수집·좌표 생성 범위 (위도·경도)
-  bbox: {min_lat: 37.16, max_lat: 37.24, min_lon: 127.03, max_lon: 127.13}
-  center: {lat: 37.200, lon: 127.075}
+  name: "동탄 권역(화성시 동탄구 실제 행정동 9곳, 가상 인력·어르신)"
+  # 데이터 수집 범위(위도·경도) — 동탄구 실제 경계(127.049~127.161, 37.142~37.226)에 약 1km 여유
+  # (2026-11-14 실제 경계로 바꾸며 넓힘. 이전: 37.16~37.24, 127.03~127.13 — 동탄 동쪽·남쪽이 빠져 있었음)
+  bbox: {min_lat: 37.13, max_lat: 37.24, min_lon: 127.035, max_lon: 127.175}
+  center: {lat: 37.189, lon: 127.108}
   # 협력기관 위치: 실제 주소가 아니라 권역 중심 근처의 가정 위치
-  agency: {name: "협력기관(가정 위치)", lat: 37.200, lon: 127.075}
-  # 병원 조회 반경(미터) — center 기준
-  hospital_search_radius_m: 6000
+  agency: {name: "협력기관(가정 위치)", lat: 37.189, lon: 127.108}
+  # 병원 조회 반경(미터) — center 기준, bbox 모서리까지 닿게
+  hospital_search_radius_m: 9000
   # 고령인구 조회(행안부 행정동별 성·연령별 인구). 행정기관코드는 같은 API의 시군구 목록(lv=2)에서 확인한 값
   population:
     admm_cd: "4159700000"   # 경기도 화성시 동탄구
@@ -18,6 +19,7 @@ region:
   # 동행 대상 병원 종별(병원기본목록의 종별명 기준)
   hospital_classes: ["상급종합", "종합병원", "병원", "요양병원", "의원"]
   # 행정동 경계 파일(최신본 GeoJSON). 없으면 --offline 모의 경계를 사용
+  # 현재: 통계청 SGIS 행정동 경계(공공누리 제1유형), 가공 vuski/admdongkor ver20261001(CC BY 4.0) — 동탄구 9개 동만 추출
   boundaries_file: "data/raw/boundaries.geojson"
   dong_name_field: "adm_nm"
 

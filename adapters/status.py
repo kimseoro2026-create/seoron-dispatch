@@ -57,6 +57,7 @@ def adapter_states(root: str | Path) -> list[dict]:
                  "used_for": "병원 위치(동행 목적지)"})
 
     # 고령인구 — 행안부
+    p = pd.DataFrame()
     try:
         p = pd.read_csv(raw / "population.csv")
         mock = p["dong"].astype(str).str.startswith("가상동").any()
@@ -74,7 +75,9 @@ def adapter_states(root: str | Path) -> list[dict]:
     rows.append({"name": "고령인구", "provider": "디지털융합플랫폼 · 행안부 행정동별 성·연령별 인구",
                  "state": "mock" if mock else "verified",
                  "evidence": (("모의 인구(요청변수 미확인: config/apis.yaml 에 TODO)" if pop_todo else "모의 인구")
-                              + api_note) if mock else "API로 받은 행정동 인구",
+                              + api_note) if mock else
+                 ("API로 받은 행정동 인구" + (" · 65세 이상은 대략값(70세 이상 + 60대 절반)"
+                                           if "age_65_plus_method" in p.columns else "")),
                  "key": _env("KOREACONNECT_API_USER_KEY_ID"),
                  "last_update": _mtime(raw / "population.csv"), "period": period, "used_for": "가상 어르신 분포"})
 

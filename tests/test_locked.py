@@ -70,7 +70,11 @@ def test_real_day_locked_subset_survives_all_methods():
     from planner.data import load_day
     inst = load_day(DATA, "2026-11-04").as_instance()
     base = nearest(inst).assignments
-    locked = sorted(base, key=lambda a: a["request_id"])[::4][:8]
+    # 확정 일정은 그 자체로 가능한 일정이어야 한다 — 인력 몇 명의 하루 일정을 통째로 잠근다
+    # (중간 일정만 골라 잠그면 앞 일정이 빠져 출발지가 바뀌고, 잠금 자체가 휴게 위반이 될 수 있다)
+    wids = sorted({a["worker_id"] for a in base})[::5][:3]
+    locked = [a for a in base if a["worker_id"] in wids]
+    assert locked and not verify(inst, locked).violations
     for strategy in ("request_order", "nearest"):
         res = plan_with_locks(inst, locked, strategy)
         got = {a["request_id"]: a for a in res.assignments}

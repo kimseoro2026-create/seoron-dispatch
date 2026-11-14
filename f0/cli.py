@@ -64,6 +64,33 @@ def cmd_fetch(args) -> None:
         # 경계 파일의 행정동명이 같아야 한다(지금 경계가 모의면 이름이 맞지 않아 생성이 실패한다).
         pop.to_csv(RAW / "population_api.csv", index=False, encoding="utf-8-sig")
         print(f"행정동 {len(pop)}곳 실제 인구 저장: population_api.csv (기준월 {pc['stats_ym']})")
+        from .geo import load_boundaries
+        names = set(load_boundaries(ROOT / cfg["region"]["boundaries_file"], cfg["region"]["dong_name_field"]))
+        if set(pop["dong"]) <= names:
+            pop.to_csv(RAW / "population.csv", index=False, encoding="utf-8-sig")
+            print("경계 파일의 행정동명과 일치 → 생성용 population.csv 도 실제 인구로 바꿈")
+        else:
+            print("경계 파일의 행정동명과 맞지 않아 population.csv 는 그대로 둠: "
+                  + ", ".join(sorted(set(pop["dong"]) - names)))
+
+
+def _sources(region: dict, hospitals: pd.DataFrame, population: pd.DataFrame) -> dict:
+    """summary.json 에 남길 데이터 출처. 모의 여부는 자료 자체(MOCK-·가상동)로 판정한다."""
+    try:
+        bnd = json.loads((ROOT / region["boundaries_file"]).read_text(encoding="utf-8")).get("source", "")
+    except Exception:
+        bnd = ""
+    pop_mock = population["dong"].astype(str).str.startswith("가상동").any()
+    return {
+        "hospitals": "mock" if hospitals["hospital_id"].astype(str).str.startswith("MOCK").any()
+        else "디지털융합플랫폼 · 심평원 병원기본목록(API)",
+        "population": "mock" if pop_mock else
+        ("디지털융합플랫폼 · 행안부 행정동별 성·연령별 인구(API), 기준월 "
+         + ",".join(sorted(population["stats_ym"].astype(str).unique())) if "stats_ym" in population else "API"),
+        "age_65_plus": "mock" if pop_mock else str(population.get("age_65_plus_method", pd.Series(["API"])).iloc[0]),
+        "boundaries": "mock" if pop_mock or not bnd else bnd,
+        "beneficiaries_workers_requests": "가상(합성) — 실제 개인정보 아님",
+    }
 
 
 def cmd_generate(_args) -> None:
@@ -73,7 +100,7 @@ def cmd_generate(_args) -> None:
     region, sim = cfg["region"], cfg["simulation"]
     boundaries = load_boundaries(ROOT / region["boundaries_file"], region["dong_name_field"])
     hospitals = pd.read_csv(RAW / "hospitals.csv", dtype={"hospital_id": str})
-    population = pd.read_csv(RAW / "population.csv")
+    population = pd.read_csv(RAW / "population.csv", dtype={"stats_ym": str})
     world = generate_world(sim, hospitals, population, boundaries, _seed())
     OUT.mkdir(parents=True, exist_ok=True)
     for name in ("beneficiaries", "workers", "hospitals", "requests"):
@@ -90,6 +117,7 @@ def cmd_generate(_args) -> None:
         "escort_share": round(float((req["service"] == "hospital_escort").mean()), 3),
         "cancel_rate": round(float(req["cancelled_same_day"].mean()), 3),
         "discharge_share": round(float(req["discharge_case"].mean()), 3),
+        "sources": _sources(region, hospitals, population),
     }
     (OUT / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(summary, ensure_ascii=False, indent=2))
