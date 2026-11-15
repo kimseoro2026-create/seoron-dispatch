@@ -1,8 +1,8 @@
 """날씨 — 기상청 단기예보조회(플랫폼 A10). PRD 10장: 일정 화면 주의 표시용. 배정 숫자에는 쓰지 않는다.
 
 - 요청변수·출력 항목은 2026-11-15 플랫폼 상세 화면에서 확인한 이름만 쓴다(config/apis.yaml weather).
-- category 코드의 뜻은 상세 화면 '하단 코드값 정보'에 있다. 확인한 코드만 CATEGORY_KO 에 적고,
-  나머지는 코드 그대로 보여준다(지어내지 않음).
+- category 코드의 뜻은 플랫폼 화면에 없어 기상청 활용가이드(공공데이터포털 참고문서)에서 옮겼다.
+  가이드에 없는 코드는 코드 그대로 보여준다(지어내지 않음).
 - 실패는 빈 표나 0으로 바꾸지 않는다. 예외(ApiCallError/ApiNotConfigured)를 그대로 올린다.
 """
 from __future__ import annotations
@@ -17,10 +17,22 @@ import pandas as pd
 KST = ZoneInfo("Asia/Seoul")
 CACHE_NAME = "weather_forecast.csv"
 
-# 확인된 코드 설명만 적는다. 빈 사전이면 화면은 코드를 그대로 보여준다.
-CATEGORY_KO: dict[str, str] = {}
+# 출처: 기상청 「단기예보 조회서비스 API 활용가이드」(261019, 공공데이터포털 참고문서) '코드값 정보'.
+# 항목명(단위). 가이드에 적힌 것만 옮겼다.
+CATEGORY_KO: dict[str, str] = {
+    "POP": "강수확률(%)", "PTY": "강수형태", "PCP": "1시간 강수량", "REH": "습도(%)", "SNO": "1시간 신적설",
+    "SKY": "하늘상태", "TMP": "1시간 기온(℃)", "TMN": "일 최저기온(℃)", "TMX": "일 최고기온(℃)",
+    "UUU": "풍속 동서성분(m/s)", "VVV": "풍속 남북성분(m/s)", "WAV": "파고(M)", "VEC": "풍향(deg)", "WSD": "풍속(m/s)",
+}
+# 같은 가이드 '특정 요소의 코드값'(단기예보). PCP·SNO 는 기상청이 문자열('강수없음', '1mm 미만' 등)로 보내 그대로 쓴다.
+VALUE_KO: dict[str, dict[str, str]] = {
+    "SKY": {"1": "맑음", "3": "구름많음", "4": "흐림"},
+    "PTY": {"0": "없음", "1": "비", "2": "비/눈", "3": "눈", "4": "소나기"},
+}
+# 담당자 화면에 보일 항목(바람 성분·풍향·파고는 일정 주의 표시에 쓰지 않아 뺀다)
+DISPLAY = ("TMP", "TMN", "TMX", "SKY", "PTY", "POP", "PCP", "SNO", "REH", "WSD")
 
-# 단기예보 발표시각(하루 8회). 발표 직후에는 아직 자료가 없을 수 있어 10분 뒤부터 쓴다.
+# 단기예보 발표시각(하루 8회)과 API 제공 시각(발표 10분 뒤) — 같은 가이드 '예보 발표시각'.
 ISSUE_HOURS = (2, 5, 8, 11, 14, 17, 20, 23)
 ISSUE_DELAY_MIN = 10
 
@@ -108,8 +120,14 @@ def load_cache(raw_dir: str | Path) -> pd.DataFrame | None:
     return pd.read_csv(p, dtype=str)
 
 
-def by_time(df: pd.DataFrame) -> pd.DataFrame:
-    """예보 시각 × category 표(값은 원문 그대로). 열 이름은 확인된 코드만 한국어로."""
+def by_time(df: pd.DataFrame, display_only: bool = True) -> pd.DataFrame:
+    """예보 시각 × 항목 표. 하늘상태·강수형태 코드는 가이드의 말로, 나머지 값은 기상청이 보낸 그대로."""
+    df = df.copy()
+    for cat, m in VALUE_KO.items():
+        sel = df["category"] == cat
+        df.loc[sel, "value"] = df.loc[sel, "value"].map(lambda v: m.get(str(v), f"코드 {v}"))
+    if display_only:
+        df = df[df["category"].isin(DISPLAY)]
     t = df.pivot_table(index=["fcst_date", "fcst_time"], columns="category", values="value", aggfunc="first")
     t = t.reset_index()
     t.insert(0, "예보 시각", pd.to_datetime(t["fcst_date"] + t["fcst_time"], format="%Y%m%d%H%M")
@@ -117,4 +135,6 @@ def by_time(df: pd.DataFrame) -> pd.DataFrame:
     t = t.drop(columns=["fcst_date", "fcst_time"])
     t.columns.name = None
     t = t.fillna("")                      # 그 시각에 없는 코드(예: 하루 한 번 나오는 값)는 빈칸
-    return t.rename(columns={k: f"{v}({k})" for k, v in CATEGORY_KO.items()})
+    order = ["예보 시각"] + [c for c in DISPLAY if c in t.columns] + [c for c in t.columns
+                                                                    if c != "예보 시각" and c not in DISPLAY]
+    return t[order].rename(columns=CATEGORY_KO)

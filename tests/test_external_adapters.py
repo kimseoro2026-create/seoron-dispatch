@@ -31,12 +31,20 @@ def _item(t, cat, v):
             "category": cat, "fcstValue": v, "nx": "62", "ny": "119"}
 
 
-def test_items_to_frame_and_pivot_keep_raw_codes():
+def test_pivot_uses_guide_names_and_codes():
     df = weather.items_to_frame([_item("0900", "TMP", "8"), _item("0900", "POP", "20"),
-                                 _item("1000", "TMP", "9")], "2026-11-15T21:00:00+09:00")
+                                 _item("0900", "SKY", "4"), _item("0900", "PTY", "9"),
+                                 _item("0900", "PCP", "강수없음"), _item("0900", "UUU", "0.3"),
+                                 _item("1000", "TMP", "9"), _item("0900", "ZZZ", "1")],
+                                "2026-11-15T21:00:00+09:00")
     t = weather.by_time(df)
     assert list(t["예보 시각"]) == ["11-16 09:00", "11-16 10:00"]
-    assert "TMP" in t.columns and t.loc[0, "TMP"] == "8"          # 코드 뜻 확인 전에는 코드 그대로
+    assert t.loc[0, "1시간 기온(℃)"] == "8" and t.loc[1, "강수확률(%)"] == ""
+    assert t.loc[0, "하늘상태"] == "흐림" and t.loc[0, "강수형태"] == "코드 9"   # 가이드에 없는 값은 지어내지 않음
+    assert t.loc[0, "1시간 강수량"] == "강수없음"
+    assert "풍속 동서성분(m/s)" not in t.columns and "ZZZ" not in t.columns   # 담당자 화면에서는 뺀다
+    full = weather.by_time(df, display_only=False)
+    assert "풍속 동서성분(m/s)" in full.columns and "ZZZ" in full.columns       # 모르는 코드는 코드 그대로
 
 
 def test_missing_field_is_invalid_response():

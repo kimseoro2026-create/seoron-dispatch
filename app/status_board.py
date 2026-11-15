@@ -140,7 +140,7 @@ with st.expander("날씨 예보 (기상청 단기예보, 참고)"):
                        "가상 서비스일은 미래 날짜라 실제 예보와 맞지 않습니다. 아래는 가장 가까운 실제 예보입니다.")
             _day = _wf[_wf["fcst_date"] == _lo]
         st.dataframe(_weather.by_time(_day), width="stretch", hide_index=True)
-        st.caption("값은 기상청이 보낸 그대로입니다. 열 이름은 기상청 자료구분 코드이며, 코드 설명은 확인 중이라 아직 바꾸지 않았습니다. "
+        st.caption("값은 기상청이 보낸 그대로이고, 하늘상태·강수형태만 기상청 활용가이드의 코드표대로 말로 바꿨습니다. "
                    "날씨는 주의 표시용이며 배정 계산·일정 변경에 쓰지 않습니다.")
 
 st.subheader("먼저 볼 것")
