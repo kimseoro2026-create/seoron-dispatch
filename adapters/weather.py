@@ -69,6 +69,49 @@ def latest_base(now: dt.datetime) -> tuple[str, str]:
     return prev.strftime("%Y%m%d"), f"{ISSUE_HOURS[-1]:02d}00"
 
 
+def _kst(d: str, t: str) -> dt.datetime:
+    return dt.datetime.strptime(f"{d}{str(t).zfill(4)}", "%Y%m%d%H%M").replace(tzinfo=KST)
+
+
+def freshness(df: pd.DataFrame, now: dt.datetime | None = None) -> dict:
+    """저장된 예보가 지금 기준으로 얼마나 오래됐는지.
+
+    state: current(지금 쓸 최신 발표) / stale(더 새 발표가 이미 나옴) / expired(예보 시각이 모두 지남) /
+    unknown(발표 시각을 읽을 수 없음). age_hours 는 발표 시각부터 지금까지(시간). 지어내지 않고, 읽을 수 없으면 unknown.
+    """
+    now = (now or dt.datetime.now(KST)).astimezone(KST)
+    try:
+        base = _kst(str(df["base_date"].iloc[0]), str(df["base_time"].iloc[0]))
+        last = max(_kst(str(d), str(t)) for d, t in zip(df["fcst_date"], df["fcst_time"]))
+    except (ValueError, KeyError, IndexError):
+        return {"state": "unknown", "age_hours": None, "newer_base": None}
+    age = round((now - base).total_seconds() / 3600, 2)
+    newest = latest_base(now)
+    newer = newest if _kst(*newest) > base else None
+    if last < now:
+        state = "expired"
+    elif newer is not None:
+        state = "stale"
+    else:
+        state = "current"
+    return {"state": state, "age_hours": age, "newer_base": newer}
+
+
+def freshness_words(f: dict) -> str | None:
+    """화면 경고 문구. 최신이면 None."""
+    st, age, nb = f["state"], f["age_hours"], f["newer_base"]
+    if st == "current":
+        return None
+    if st == "unknown":
+        return "예보 발표 시각을 확인할 수 없어 최신인지 알 수 없습니다."
+    when = f"{nb[0][4:6]}/{nb[0][6:]} {nb[1][:2]}시" if nb else ""
+    if st == "expired":
+        return (f"지난 예보입니다. 예보 시각이 모두 지났습니다(발표 후 {age:.0f}시간). "
+                "`python -m adapters.fetch weather` 로 새로 받아야 합니다.")
+    return (f"발표 후 {age:.0f}시간 지난 예보입니다. 기상청 새 발표({when})가 이미 나왔습니다. "
+            "`python -m adapters.fetch weather` 로 새로 받으면 바뀝니다.")
+
+
 def region_center(data_dir: str | Path) -> tuple[float, float]:
     """가상 권역 어르신 좌표의 평균(실제 행정동 경계 안)."""
     b = pd.read_csv(Path(data_dir) / "beneficiaries.csv")

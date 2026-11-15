@@ -134,6 +134,9 @@ with st.expander("날씨 예보 (기상청 단기예보, 참고)"):
         _lo, _hi = _wf["fcst_date"].min(), _wf["fcst_date"].max()
         st.caption(f"발표 {_wf['base_date'].iloc[0]} {_wf['base_time'].iloc[0]} · 격자 {_wf['nx'].iloc[0]},"
                    f"{_wf['ny'].iloc[0]}(가상 권역 중심, 동탄구) · 받은 시각 {str(_wf['fetched_at'].iloc[0])[:16].replace('T', ' ')}")
+        _fresh = _weather.freshness_words(_weather.freshness(_wf))
+        if _fresh:
+            st.warning(_fresh)
         _day = _wf[_wf["fcst_date"] == _key]
         if _day.empty:
             st.warning(f"고른 날짜 {date}는 예보 범위({_lo}~{_hi}) 밖이라 날씨를 보여줄 수 없습니다. "

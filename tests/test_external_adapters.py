@@ -143,3 +143,44 @@ def test_display_falls_back_to_car_time_and_says_so():
     assert m == 9 and "자동차 시간으로 대체" in why                    # AT-06
     m, why = transit.display_minutes(fail, None)
     assert m is None and "확인 불가" in why                             # 0분으로 바꾸지 않음
+
+
+# ── 오래된 예보 표시 ─────────────────────────────────────────────────────────
+def _wf(base_date, base_time, fcst):
+    import pandas as pd
+    return pd.DataFrame({"base_date": base_date, "base_time": base_time,
+                         "fcst_date": [d for d, _ in fcst], "fcst_time": [t for _, t in fcst],
+                         "category": "TMP", "value": "5", "nx": "62", "ny": "120",
+                         "fetched_at": "2026-11-16T05:20:00+09:00"})
+
+
+def test_freshness_current_when_no_newer_issue():
+    df = _wf("20261116", "0500", [("20261116", "0600"), ("20261117", "0600")])
+    f = weather.freshness(df, dt.datetime(2026, 11, 16, 7, 0, tzinfo=weather.KST))
+    assert f["state"] == "current" and f["newer_base"] is None
+    assert f["age_hours"] == pytest.approx(2.0)
+
+
+def test_freshness_stale_when_newer_issue_exists():
+    df = _wf("20261116", "0500", [("20261116", "0600"), ("20261117", "0600")])
+    f = weather.freshness(df, dt.datetime(2026, 11, 16, 14, 30, tzinfo=weather.KST))
+    assert f["state"] == "stale" and f["newer_base"] == ("20261116", "1400")
+    assert f["age_hours"] == pytest.approx(9.5)
+
+
+def test_freshness_expired_when_all_times_passed():
+    df = _wf("20261110", "0500", [("20261110", "0600"), ("20261111", "2300")])
+    f = weather.freshness(df, dt.datetime(2026, 11, 16, 7, 0, tzinfo=weather.KST))
+    assert f["state"] == "expired"
+
+
+def test_freshness_unknown_on_bad_base():
+    df = _wf("2026-11-16", "abc", [("20261116", "0600")])
+    assert weather.freshness(df, dt.datetime(2026, 11, 16, 7, 0, tzinfo=weather.KST))["state"] == "unknown"
+
+
+def test_freshness_words():
+    assert weather.freshness_words({"state": "current", "age_hours": 1.0, "newer_base": None}) is None
+    assert "새 발표" in weather.freshness_words({"state": "stale", "age_hours": 9.5, "newer_base": ("20261116", "1400")})
+    assert "지난" in weather.freshness_words({"state": "expired", "age_hours": 146.0, "newer_base": ("20261116", "0500")})
+    assert "확인할 수 없" in weather.freshness_words({"state": "unknown", "age_hours": None, "newer_base": None})
