@@ -18,7 +18,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from simulator.report import BY_KEY, area_distance, corr_words
+from simulator.report import BY_KEY, area_corr_lines, area_distance
 from tools.shortage_report import ALGO_KO, CERT, NA, REASON, SERVICE, build, latest_pair, to_markdown
 
 EXP = Path(os.environ.get("SEORON_EXP_DIR") or ROOT / "data" / "experiments")  # 테스트용 덮어쓰기
@@ -171,16 +171,17 @@ with tabs[3]:
     else:
         st.markdown("**인력에서 먼 동일수록 더 못 맡는가?** (현재 조건, 같은 요청·같은 인력)")
         at = ad["table"]
-        show = pd.DataFrame({"행정동": at["area"], "가장 가까운 인력까지(자동차 분, 중앙값)": at["near_worker_min"].round(1)})
+        show = pd.DataFrame({"행정동": at["area"], "가장 가까운 인력까지(자동차 분, 중앙값)": at["near_worker_min"].round(1),
+                             "요청/일": at["requests_per_day"].round(1)})
         for algo in ad["corr"]:
             show[f"미충족률 · {ALGO_KO.get(algo, algo)}"] = (at[f"unmet_rate_{algo}"] * 100).round(1).astype(str) + "%"
         st.dataframe(show, hide_index=True)
         src = {"osrm": "OSRM 도로 경로", "estimate": "직선거리 추정(estimate)"}.get(ad["source"], ad["source"])
-        lines = [f"- {ALGO_KO.get(a, a)}: 순위 상관 {'계산 불가' if v is None else f'{v:+.2f}'} → {corr_words(v)}"
-                 for a, v in ad["corr"].items()]
-        st.markdown("\n".join(lines))
+        st.markdown("\n".join(f"- {line}" for line in area_corr_lines(ad, ALGO_KO)))
         st.caption(f"행정동 {ad['n_areas']}곳으로 계산한 참고값입니다(원인 증명 아님). 거리: 인력 출발지 → 어르신 집, {src}. "
-                   "순위 상관은 +1에 가까우면 '멀수록 많이 못 맡음', 0 근처면 관계 없음입니다.")
+                   "순위 상관은 +1에 가까우면 '멀수록 많이 못 맡음', 0 근처면 관계 없음입니다. "
+                   "요청이 많은 동은 같은 시간대 경쟁도 커지므로, 거리와 요청 수 가운데 하나를 같게 놓고 "
+                   "다른 하나의 관계가 남는지(편상관)도 함께 봅니다.")
 with tabs[4]:
     rs = u["reason"]
     st.dataframe(pd.DataFrame({"사유": rs["reason"].map(lambda v: REASON.get(v, v)),

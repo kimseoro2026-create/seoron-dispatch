@@ -38,6 +38,7 @@ def test_page_renders(exp_dir, monkeypatch):
     assert any("부족 자원" in t.value for t in at.title)
     assert len(at.dataframe) >= 2
     assert any("순위 상관" in m.value for m in at.markdown)          # 행정동 × 가까운 인력 거리
+    assert any("요청 수를 같게 본 거리" in m.value for m in at.markdown)   # 요청량 분리
 
 
 def test_page_without_results(tmp_path, monkeypatch):

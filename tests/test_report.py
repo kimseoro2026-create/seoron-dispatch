@@ -141,3 +141,40 @@ def test_area_distance_table(tmp_path):
     assert r["corr"]["nearest"] == pytest.approx(0.866, abs=1e-3)
     assert r["corr"]["optimize"] == pytest.approx(0.866, abs=1e-3)
     assert r["n_areas"] == 3 and r["source"] == "osrm"
+
+
+def test_partial_rank_corr_removes_shared_volume():
+    # 미충족이 요청량만 따라가고, 거리는 요청량과 함께 움직이는 경우 → 요청량을 고정하면 거리 관계가 사라져야
+    vol = [1, 2, 3, 4, 5, 6, 7, 8]
+    dist = [2, 1, 3, 5, 4, 6, 8, 7]
+    unmet = [1, 3, 2, 4, 6, 5, 7, 8]
+    assert rp.rank_corr(dist, unmet) > 0.8
+    assert rp.partial_rank_corr(dist, unmet, vol) < 0.3          # 요청량을 고정하면 '멀수록 많음'이 사라짐
+    assert rp.partial_rank_corr([1, 2], [1, 2], [1, 2]) is None          # 3곳 미만
+    assert rp.partial_rank_corr([1, 2, 3, 4], [1, 3, 2, 4], [1, 2, 3, 4]) is None   # 거리=요청량 순위 → 나눌 수 없음
+
+
+def test_area_distance_reports_volume(tmp_path):
+    d = _access_dir(tmp_path, [
+        ("WORKER:W1", "BENEFICIARY:B1", 4, "osrm"), ("WORKER:W1", "BENEFICIARY:B2", 6, "osrm"),
+        ("WORKER:W1", "BENEFICIARY:B3", 12, "osrm"), ("WORKER:W1", "BENEFICIARY:B4", 20, "osrm")])
+    o = pd.DataFrame({
+        "scenario": "base", "service_date": "2026-12-01", "seed": 42, "algorithm": "optimize",
+        "area": ["가동"] * 3 + ["나동"] * 1 + ["다동"] * 2,
+        "assigned": [True, False, False, True, True, False]})
+    r = rp.area_distance(o, d)
+    t = r["table"].set_index("area")
+    assert t.loc["가동", "requests_per_day"] == 3.0 and t.loc["나동", "requests_per_day"] == 1.0
+    assert set(r["corr_volume"]) == set(r["partial"]) == set(r["partial_volume"]) == {"optimize"}
+    assert r["corr_volume"]["optimize"] == pytest.approx(rp.rank_corr([3, 1, 2], [2 / 3, 0, 0.5]))
+    assert "dist_volume" in r
+
+
+def test_separation_words_never_picks_a_side_without_evidence():
+    assert "나눠 볼 수 없음" in rp.separation_words(None, 0.2, 0.5, 0.5)
+    assert "거리 관계가 남음" in rp.separation_words(0.5, 0.1, 0.6, 0.4)
+    assert "요청 수 관계가 남음" in rp.separation_words(0.1, 0.5, 0.4, 0.6)
+    assert "모두 따로" in rp.separation_words(0.4, 0.4, 0.6, 0.6)
+    # 실제 권역처럼 거리·요청 수가 함께 움직이고 둘 다 고정하면 약해지는 경우 → 단정하지 않음
+    assert "나눌 수 없음" in rp.separation_words(0.16, 0.19, 0.49, 0.50)
+    assert "뚜렷한 관계 없음" in rp.separation_words(0.1, 0.1, 0.2, 0.1)

@@ -240,21 +240,52 @@ def rank_corr(x, y) -> float | None:
     return float(s["x"].rank().corr(s["y"].rank()))
 
 
+def partial_rank_corr(x, y, z) -> float | None:
+    """z(요청량)를 고정했을 때 x(거리)와 y(미충족률)의 순위 편상관.
+
+    세 값이 모두 있는 행정동만 쓴다. 3곳 미만이거나, 어느 한 쌍의 순위가 완전히 같이 움직여(|r|=1)
+    둘을 나눌 수 없으면 None.
+    """
+    s = pd.DataFrame({"x": list(x), "y": list(y), "z": list(z)}).apply(pd.to_numeric, errors="coerce").dropna()
+    if len(s) < 3:
+        return None
+    rxy, rxz, ryz = rank_corr(s["x"], s["y"]), rank_corr(s["x"], s["z"]), rank_corr(s["y"], s["z"])
+    if None in (rxy, rxz, ryz):
+        return None
+    den = (1 - rxz ** 2) * (1 - ryz ** 2)
+    if den <= 1e-12:
+        return None
+    return float(max(-1.0, min(1.0, (rxy - rxz * ryz) / den ** 0.5)))
+
+
 def area_distance(outcomes: pd.DataFrame, data_dir: str | Path, scenario: str = "base") -> dict:
     """방식별 행정동 미충족률과 가까운 인력까지 거리를 한 표로, 방식별 순위 상관을 함께.
 
-    양(+)이면 인력에서 먼 동일수록 미충족이 많다는 뜻. 행정동 수가 적어 참고용이다(원인 증명 아님).
+    양(+)이면 인력에서 먼 동일수록 미충족이 많다는 뜻. 요청이 많은 동은 같은 시간대에 경쟁이 몰려 미충족이
+    늘 수 있으므로, 동별 하루 요청 수(requests_per_day)와 미충족률의 상관(corr_volume), 요청 수를 고정한
+    거리 편상관(partial), 거리를 고정한 요청 수 편상관(partial_volume), 거리와 요청 수의 상관(dist_volume)을
+    함께 낸다. 행정동 수가 적어 참고용이다(원인 증명 아님).
     """
     acc = nearest_worker_minutes(data_dir)
     t = acc["by_area"][["area", "near_worker_min"]].copy()
-    corr = {}
-    for algo in sorted(outcomes.loc[outcomes["scenario"] == scenario, "algorithm"].unique()):
+    corr, corr_volume, partial, partial_volume = {}, {}, {}, {}
+    algos = sorted(outcomes.loc[outcomes["scenario"] == scenario, "algorithm"].unique())
+    for algo in algos:
         u = unmet_breakdown(outcomes, "area", scenario=scenario, algorithm=algo)
+        if "requests_per_day" not in t.columns:     # 요청은 방식과 무관하게 같다 → 첫 방식에서 한 번만
+            t = t.merge(u[["area", "requests_per_day"]], on="area", how="outer")
         t = t.merge(u[["area", "unmet_rate"]].rename(columns={"unmet_rate": f"unmet_rate_{algo}"}),
                     on="area", how="outer")
-        corr[algo] = rank_corr(t["near_worker_min"], t[f"unmet_rate_{algo}"])
+        y = t[f"unmet_rate_{algo}"]
+        corr[algo] = rank_corr(t["near_worker_min"], y)
+        corr_volume[algo] = rank_corr(t["requests_per_day"], y)
+        partial[algo] = partial_rank_corr(t["near_worker_min"], y, t["requests_per_day"])
+        partial_volume[algo] = partial_rank_corr(t["requests_per_day"], y, t["near_worker_min"])
+    dist_volume = rank_corr(t["near_worker_min"], t["requests_per_day"]) if algos else None
     t = t.sort_values("near_worker_min", na_position="last").reset_index(drop=True)
-    return {"table": t, "corr": corr, "n_areas": int(t["near_worker_min"].notna().sum()), "source": acc["source"]}
+    return {"table": t, "corr": corr, "corr_volume": corr_volume, "partial": partial, "partial_volume": partial_volume,
+            "dist_volume": dist_volume,
+            "n_areas": int(t["near_worker_min"].notna().sum()), "source": acc["source"]}
 
 
 def corr_words(r: float | None) -> str:
@@ -266,6 +297,50 @@ def corr_words(r: float | None) -> str:
         return "뚜렷한 관계 없음"
     strength = "뚜렷하게" if a >= 0.6 else "약하게"
     return f"인력에서 먼 동일수록 미충족이 {strength} 많음" if r > 0 else f"인력에서 가까운 동일수록 미충족이 {strength} 많음"
+
+
+def volume_words(r: float | None) -> str:
+    """요청량과 미충족률의 순위 상관을 쉬운 말로."""
+    if r is None:
+        return "계산할 수 없음"
+    a = abs(r)
+    if a < 0.3:
+        return "요청 수와 뚜렷한 관계 없음"
+    strength = "뚜렷하게" if a >= 0.6 else "약하게"
+    return f"요청이 많은 동일수록 미충족이 {strength} 많음" if r > 0 else f"요청이 적은 동일수록 미충족이 {strength} 많음"
+
+
+def separation_words(p_dist: float | None, p_vol: float | None,
+                     raw_dist: float | None, raw_vol: float | None) -> str:
+    """거리·요청 수 가운데 하나를 같게 봤을 때 다른 하나의 관계가 남는지. 남는 쪽이 없으면 나눌 수 없다고 말한다
+    (한쪽으로 단정하지 않음)."""
+    if p_dist is None or p_vol is None:
+        return "거리와 요청 수가 완전히 함께 움직여 나눠 볼 수 없음"
+    d, v = abs(p_dist) >= 0.3, abs(p_vol) >= 0.3
+    if d and not v:
+        return "요청 수를 같게 봐도 거리 관계가 남음 → " + corr_words(p_dist)
+    if v and not d:
+        return "거리를 같게 보면 거리 관계는 사라지고 요청 수 관계가 남음 → " + volume_words(p_vol)
+    if d and v:
+        return "거리와 요청 수 모두 따로 관계가 남음"
+    if (raw_dist is not None and abs(raw_dist) >= 0.3) or (raw_vol is not None and abs(raw_vol) >= 0.3):
+        return "거리와 요청 수가 함께 움직여, 이 행정동 수로는 어느 쪽 때문인지 나눌 수 없음"
+    return "거리·요청 수 모두 뚜렷한 관계 없음"
+
+
+def area_corr_lines(ad: dict, algo_names: dict | None = None) -> list[str]:
+    """area_distance 결과를 리포트·화면 공통 문장으로. 수치는 모두 계산값."""
+    names = algo_names or {"request_order": "신청순", "nearest": "근거리", "optimize": "AI 최적화"}
+    f = lambda v: "계산 불가" if v is None else f"{v:+.2f}"
+    out = []
+    dv = ad.get("dist_volume")
+    out.append(f"거리와 요청 수의 순위 상관 {f(dv)}" + (" (먼 동일수록 요청도 많음)" if dv is not None and dv >= 0.6 else ""))
+    for a in ad["corr"]:
+        n = names.get(a, a)
+        out.append(f"{n}: 거리 상관 {f(ad['corr'][a])}, 요청 수 상관 {f(ad['corr_volume'][a])} · "
+                   f"요청 수를 같게 본 거리 {f(ad['partial'][a])}, 거리를 같게 본 요청 수 {f(ad['partial_volume'][a])} → "
+                   + separation_words(ad["partial"][a], ad["partial_volume"][a], ad["corr"][a], ad["corr_volume"][a]))
+    return out
 
 
 # ── 이동 감소의 의미 (AT-15) ─────────────────────────────────────────────────

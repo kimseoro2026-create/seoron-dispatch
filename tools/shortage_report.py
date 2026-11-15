@@ -105,20 +105,20 @@ def to_markdown(r: dict) -> str:
         L.append(f"| {x.area} | {x.requests_per_day:.1f} | {x.unmet_per_day:.1f} | {x.unmet_rate*100:.1f}% |")
     ad = r.get("area_distance")
     if ad:
-        from simulator.report import corr_words
+        from simulator.report import area_corr_lines
         algos = list(ad["corr"])
         L.append("\n### 인력에서 먼 동일수록 더 못 맡는가\n")
         L.append(f"가장 가까운 인력 출발지 → 어르신 집 자동차 분(동별 중앙값, {ad['source']})과 방식별 미충족률(현재 조건). "
                  f"행정동 {ad['n_areas']}곳 참고값이며 원인 증명이 아니다.\n")
-        L.append("| 행정동 | 가까운 인력까지(분) | " + " | ".join(f"미충족률 {ALGO_KO.get(a, a)}" for a in algos) + " |")
-        L.append("|---|---|" + "---|" * len(algos))
+        L.append("| 행정동 | 가까운 인력까지(분) | 요청/일 | " + " | ".join(f"미충족률 {ALGO_KO.get(a, a)}" for a in algos) + " |")
+        L.append("|---|---|---|" + "---|" * len(algos))
         for _, x in ad["table"].iterrows():
             near = "확인 불가" if pd.isna(x.near_worker_min) else f"{x.near_worker_min:.1f}"
-            L.append(f"| {x.area} | {near} | " + " | ".join(
+            L.append(f"| {x.area} | {near} | {x.requests_per_day:.1f} | " + " | ".join(
                 f"{x[f'unmet_rate_{a}'] * 100:.1f}%" for a in algos) + " |")
         L.append("")
-        for a, v in ad["corr"].items():
-            L.append(f"- {ALGO_KO.get(a, a)}: 순위 상관 {'계산 불가' if v is None else f'{v:+.2f}'} → {corr_words(v)}")
+        for line in area_corr_lines(ad, ALGO_KO):
+            L.append(f"- {line}")
     L.append("\n### 미배정 사유\n\n| 사유 | 확실성 | 미배정/일 | 비중 |\n|---|---|---|---|")
     for _, x in u["reason"].iterrows():
         L.append(f"| {REASON.get(x.reason, x.reason)} | {CERT.get(x.certainty, x.certainty)} | {x.unmet_per_day:.1f} | {x.share*100:.1f}% |")
