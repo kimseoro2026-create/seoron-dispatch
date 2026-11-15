@@ -52,7 +52,12 @@ def build(exp: Path, data_dir: Path) -> dict:
     unmet_algo = "optimize" if "optimize" in set(outcomes["algorithm"]) else "nearest"
     unmet = {by: unmet_breakdown(outcomes, by, algorithm=unmet_algo)
              for by in ("service_type", "start_hour", "priority", "area", "reason", "idle_check")}
-    return dict(unmet_algo=unmet_algo, days_path=d_path, outcomes_path=o_path, days=days, cost=cost, tables=tables, unmet=unmet,
+    try:
+        from simulator.report import area_distance
+        area_dist = area_distance(outcomes, data_dir)
+    except (FileNotFoundError, KeyError, ValueError):
+        area_dist = None                      # 행렬·어르신 파일이 없으면 이 표만 뺀다(0으로 채우지 않음)
+    return dict(unmet_algo=unmet_algo, area_distance=area_dist, days_path=d_path, outcomes_path=o_path, days=days, cost=cost, tables=tables, unmet=unmet,
                 seeds=sorted(days["seed"].unique().tolist()), n_dates=days["service_date"].nunique(),
                 rho=sorted(days["target_rho"].unique().tolist()))
 
@@ -98,6 +103,22 @@ def to_markdown(r: dict) -> str:
     L.append("\n### 행정동별\n\n| 행정동 | 요청/일 | 미배정/일 | 미충족률 |\n|---|---|---|---|")
     for _, x in u["area"].iterrows():
         L.append(f"| {x.area} | {x.requests_per_day:.1f} | {x.unmet_per_day:.1f} | {x.unmet_rate*100:.1f}% |")
+    ad = r.get("area_distance")
+    if ad:
+        from simulator.report import corr_words
+        algos = list(ad["corr"])
+        L.append("\n### 인력에서 먼 동일수록 더 못 맡는가\n")
+        L.append(f"가장 가까운 인력 출발지 → 어르신 집 자동차 분(동별 중앙값, {ad['source']})과 방식별 미충족률(현재 조건). "
+                 f"행정동 {ad['n_areas']}곳 참고값이며 원인 증명이 아니다.\n")
+        L.append("| 행정동 | 가까운 인력까지(분) | " + " | ".join(f"미충족률 {ALGO_KO.get(a, a)}" for a in algos) + " |")
+        L.append("|---|---|" + "---|" * len(algos))
+        for _, x in ad["table"].iterrows():
+            near = "확인 불가" if pd.isna(x.near_worker_min) else f"{x.near_worker_min:.1f}"
+            L.append(f"| {x.area} | {near} | " + " | ".join(
+                f"{x[f'unmet_rate_{a}'] * 100:.1f}%" for a in algos) + " |")
+        L.append("")
+        for a, v in ad["corr"].items():
+            L.append(f"- {ALGO_KO.get(a, a)}: 순위 상관 {'계산 불가' if v is None else f'{v:+.2f}'} → {corr_words(v)}")
     L.append("\n### 미배정 사유\n\n| 사유 | 확실성 | 미배정/일 | 비중 |\n|---|---|---|---|")
     for _, x in u["reason"].iterrows():
         L.append(f"| {REASON.get(x.reason, x.reason)} | {CERT.get(x.certainty, x.certainty)} | {x.unmet_per_day:.1f} | {x.share*100:.1f}% |")

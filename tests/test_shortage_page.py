@@ -23,6 +23,7 @@ def test_report_markdown(exp_dir, tmp_path):
     main(["--exp-dir", str(exp_dir), "--out-dir", str(tmp_path)])
     md = (tmp_path / "shortage_report.md").read_text(encoding="utf-8")
     assert "가상 입력 기반 추정" in md and "근거리(참고)" in md and "미배정 진단" in md
+    assert "인력에서 먼 동일수록 더 못 맡는가" in md and "순위 상관" in md
     assert (tmp_path / "shortage_scenarios.csv").exists() and (tmp_path / "shortage_unmet.csv").exists()
 
 
@@ -36,6 +37,7 @@ def test_page_renders(exp_dir, monkeypatch):
     assert not at.exception
     assert any("부족 자원" in t.value for t in at.title)
     assert len(at.dataframe) >= 2
+    assert any("순위 상관" in m.value for m in at.markdown)          # 행정동 × 가까운 인력 거리
 
 
 def test_page_without_results(tmp_path, monkeypatch):

@@ -18,7 +18,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from simulator.report import BY_KEY
+from simulator.report import BY_KEY, area_distance, corr_words
 from tools.shortage_report import ALGO_KO, CERT, NA, REASON, SERVICE, build, latest_pair, to_markdown
 
 EXP = Path(os.environ.get("SEORON_EXP_DIR") or ROOT / "data" / "experiments")  # 테스트용 덮어쓰기
@@ -50,6 +50,14 @@ def _report(name: str) -> dict:  # name 은 캐시 키(새 실험 파일이면 �
 
 
 r = _report(d_path.name)
+
+
+@st.cache_data(show_spinner="행정동별 거리를 계산하는 중...")
+def _area_distance(name: str) -> dict | None:  # name 은 캐시 키
+    try:
+        return area_distance(pd.read_csv(latest_pair(EXP)[1]), DATA)
+    except (FileNotFoundError, KeyError, ValueError):
+        return None
 c = r["cost"]
 
 
@@ -156,7 +164,23 @@ with tabs[2]:
     st.dataframe(_rate_table(u["start_hour"], "start_hour", "희망 시작", lambda v: f"{int(v)}시"), hide_index=True)
 with tabs[3]:
     st.dataframe(_rate_table(u["area"], "area", "행정동"), hide_index=True)
-    st.caption("가까운 곳만 배정되는지 확인하려는 표입니다. 권역 이름은 가상입니다.")
+    st.caption("가까운 곳만 배정되는지 확인하려는 표입니다. 행정동은 실제 경계, 그 안의 어르신·요청은 가상입니다.")
+    ad = _area_distance(d_path.name)
+    if ad is None:
+        st.info("인력에서 먼 동인지 비교하려면 이동시간 행렬과 어르신·인력 파일이 필요합니다.")
+    else:
+        st.markdown("**인력에서 먼 동일수록 더 못 맡는가?** (현재 조건, 같은 요청·같은 인력)")
+        at = ad["table"]
+        show = pd.DataFrame({"행정동": at["area"], "가장 가까운 인력까지(자동차 분, 중앙값)": at["near_worker_min"].round(1)})
+        for algo in ad["corr"]:
+            show[f"미충족률 · {ALGO_KO.get(algo, algo)}"] = (at[f"unmet_rate_{algo}"] * 100).round(1).astype(str) + "%"
+        st.dataframe(show, hide_index=True)
+        src = {"osrm": "OSRM 도로 경로", "estimate": "직선거리 추정(estimate)"}.get(ad["source"], ad["source"])
+        lines = [f"- {ALGO_KO.get(a, a)}: 순위 상관 {'계산 불가' if v is None else f'{v:+.2f}'} → {corr_words(v)}"
+                 for a, v in ad["corr"].items()]
+        st.markdown("\n".join(lines))
+        st.caption(f"행정동 {ad['n_areas']}곳으로 계산한 참고값입니다(원인 증명 아님). 거리: 인력 출발지 → 어르신 집, {src}. "
+                   "순위 상관은 +1에 가까우면 '멀수록 많이 못 맡음', 0 근처면 관계 없음입니다.")
 with tabs[4]:
     rs = u["reason"]
     st.dataframe(pd.DataFrame({"사유": rs["reason"].map(lambda v: REASON.get(v, v)),

@@ -90,3 +90,54 @@ def test_cost_config_reads_assumptions():
     c = rp.load_cost_config(root)
     assert c["paid_time"] == "shift_minus_break"
     assert "monthly_salary_krw" in c and "hourly_krw" in c
+
+
+# ── 행정동별 미충족률 × 가까운 인력까지 거리 (PRD 6장: 가까운 사람만 배정되는지) ──
+def _access_dir(tmp_path, rows):
+    pd.DataFrame({"beneficiary_id": ["B1", "B2", "B3", "B4"], "dong": ["가동", "가동", "나동", "다동"]}).to_csv(
+        tmp_path / "beneficiaries.csv", index=False)
+    pd.DataFrame({"worker_id": ["W1", "W2"]}).to_csv(tmp_path / "workers.csv", index=False)
+    pd.DataFrame(rows, columns=["from_node", "to_node", "minutes", "source"]).to_csv(
+        tmp_path / "travel_matrix.csv", index=False)
+    return tmp_path
+
+
+def test_nearest_worker_minutes_per_dong(tmp_path):
+    d = _access_dir(tmp_path, [
+        ("WORKER:W1", "BENEFICIARY:B1", 4, "osrm"), ("WORKER:W2", "BENEFICIARY:B1", 9, "osrm"),
+        ("WORKER:W1", "BENEFICIARY:B2", 8, "osrm"), ("WORKER:W2", "BENEFICIARY:B2", 6, "osrm"),
+        ("WORKER:W1", "BENEFICIARY:B3", 12, "osrm"), ("WORKER:W2", "BENEFICIARY:B3", 15, "osrm"),
+        ("BENEFICIARY:B4", "WORKER:W1", 3, "osrm")])        # 방향이 반대인 구간만 있음 → 경로 없음
+    a = rp.nearest_worker_minutes(d)
+    assert a["source"] == "osrm"
+    t = a["by_area"].set_index("area")
+    assert t.loc["가동", "near_worker_min"] == 5.0          # B1 4분, B2 6분 → 중앙값 5
+    assert t.loc["나동", "near_worker_min"] == 12.0
+    assert pd.isna(t.loc["다동", "near_worker_min"])          # 0분으로 채우지 않음
+    assert t.loc["다동", "no_route"] == 1
+
+
+def test_rank_correlation():
+    assert rp.rank_corr([1, 2, 3, 4], [10, 20, 30, 40]) == pytest.approx(1.0)
+    assert rp.rank_corr([1, 2, 3, 4], [4, 3, 2, 1]) == pytest.approx(-1.0)
+    assert rp.rank_corr([1, 2], [1, 2]) is None              # 3곳 미만이면 계산하지 않음
+    assert rp.rank_corr([1, 2, 3], [5, 5, 5]) is None         # 한쪽이 모두 같으면 계산 불가
+    assert rp.rank_corr([1, 2, None, 4], [1, 2, 3, 4]) == pytest.approx(1.0)   # 빈 값은 빼고
+
+
+def test_area_distance_table(tmp_path):
+    d = _access_dir(tmp_path, [
+        ("WORKER:W1", "BENEFICIARY:B1", 4, "osrm"), ("WORKER:W1", "BENEFICIARY:B2", 6, "osrm"),
+        ("WORKER:W1", "BENEFICIARY:B3", 12, "osrm"), ("WORKER:W1", "BENEFICIARY:B4", 20, "osrm")])
+    o = pd.DataFrame({
+        "scenario": "base", "service_date": "2026-12-01", "seed": 42,
+        "algorithm": ["nearest"] * 3 + ["optimize"] * 3,
+        "area": ["가동", "나동", "다동"] * 2,
+        "assigned": [True, False, False, True, True, False]})
+    r = rp.area_distance(o, d)
+    t = r["table"].set_index("area")
+    assert t.loc["다동", "near_worker_min"] == 20.0
+    assert t.loc["다동", "unmet_rate_nearest"] == 1.0 and t.loc["가동", "unmet_rate_optimize"] == 0.0
+    assert r["corr"]["nearest"] == pytest.approx(0.866, abs=1e-3)
+    assert r["corr"]["optimize"] == pytest.approx(0.866, abs=1e-3)
+    assert r["n_areas"] == 3 and r["source"] == "osrm"

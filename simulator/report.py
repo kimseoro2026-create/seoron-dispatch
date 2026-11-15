@@ -197,3 +197,72 @@ def custom_compare(data_dir: str | Path, scenario: Scenario, *, n_days: int = 3,
     g["cost_per_added_person"] = [None if (c is None or du <= 0) else c / du
                                   for c, du in zip(g["extra_cost_per_day"], g["d_unique"])]
     return {"table": g, "raw": raw, "dates": dates, "seeds": seeds, "rho": rho, "algorithm": algorithm}
+
+
+# ── 행정동별 미충족률 × 가까운 인력까지 거리 (PRD 6장: 가까운 경증 대상자만 반복 배정되는지 탐지) ──
+def nearest_worker_minutes(data_dir: str | Path) -> dict:
+    """행정동마다 '어르신 집에서 가장 가까운 인력 출발지까지 자동차 분'의 중앙값.
+
+    인력 출발지 → 어르신 집 방향 구간을 쓴다(배정 엔진이 출발할 때와 같은 방향). 구간이 없는 어르신은
+    0분으로 채우지 않고 빼며 no_route 로 센다. 행렬이 없으면 추정 행렬(estimate)을 쓰고 source 에 남긴다.
+    → {by_area: DataFrame[area, near_worker_min, beneficiaries, no_route], source}
+    """
+    from planner.data import BENEFICIARY_PREFIX, WORKER_PREFIX, load_travel, matrix_path
+    d = Path(data_dir)
+    ben = pd.read_csv(d / "beneficiaries.csv", usecols=["beneficiary_id", "dong"], dtype=str, encoding="utf-8-sig")
+    wk = pd.read_csv(d / "workers.csv", usecols=["worker_id"], dtype=str, encoding="utf-8-sig")
+    bases = [f"{WORKER_PREFIX}{w}" for w in wk["worker_id"]]
+    homes = {f"{BENEFICIARY_PREFIX}{b}": b for b in ben["beneficiary_id"]}
+    mp = matrix_path(d)
+    source = "estimate"
+    if mp is not None:
+        try:
+            source = str(pd.read_csv(mp, nrows=1)["source"].iloc[0])
+        except Exception:
+            source = "unknown"
+    travel = load_travel(d, set(bases) | set(homes))
+    near = {}
+    for node, bid in homes.items():
+        mins = [travel[(w, node)] for w in bases if (w, node) in travel]
+        near[bid] = min(mins) if mins else None
+    ben["near"] = ben["beneficiary_id"].map(near)
+    g = ben.groupby("dong")
+    t = pd.DataFrame({"near_worker_min": g["near"].median(), "beneficiaries": g.size(),
+                      "no_route": g["near"].apply(lambda s: int(s.isna().sum()))}).reset_index()
+    return {"by_area": t.rename(columns={"dong": "area"}), "source": source}
+
+
+def rank_corr(x, y) -> float | None:
+    """순위 상관(스피어만, 동률은 평균 순위). 빈 값 쌍은 빼고, 3곳 미만이거나 한쪽이 모두 같으면 None."""
+    s = pd.DataFrame({"x": list(x), "y": list(y)}).apply(pd.to_numeric, errors="coerce").dropna()
+    if len(s) < 3 or s["x"].nunique() < 2 or s["y"].nunique() < 2:
+        return None
+    return float(s["x"].rank().corr(s["y"].rank()))
+
+
+def area_distance(outcomes: pd.DataFrame, data_dir: str | Path, scenario: str = "base") -> dict:
+    """방식별 행정동 미충족률과 가까운 인력까지 거리를 한 표로, 방식별 순위 상관을 함께.
+
+    양(+)이면 인력에서 먼 동일수록 미충족이 많다는 뜻. 행정동 수가 적어 참고용이다(원인 증명 아님).
+    """
+    acc = nearest_worker_minutes(data_dir)
+    t = acc["by_area"][["area", "near_worker_min"]].copy()
+    corr = {}
+    for algo in sorted(outcomes.loc[outcomes["scenario"] == scenario, "algorithm"].unique()):
+        u = unmet_breakdown(outcomes, "area", scenario=scenario, algorithm=algo)
+        t = t.merge(u[["area", "unmet_rate"]].rename(columns={"unmet_rate": f"unmet_rate_{algo}"}),
+                    on="area", how="outer")
+        corr[algo] = rank_corr(t["near_worker_min"], t[f"unmet_rate_{algo}"])
+    t = t.sort_values("near_worker_min", na_position="last").reset_index(drop=True)
+    return {"table": t, "corr": corr, "n_areas": int(t["near_worker_min"].notna().sum()), "source": acc["source"]}
+
+
+def corr_words(r: float | None) -> str:
+    """담당자용 쉬운 말. 기준(|r|<0.3 뚜렷하지 않음, 0.3~0.6 약한, ≥0.6 뚜렷한)은 해석 편의용 관례다."""
+    if r is None:
+        return "계산할 수 없음"
+    a = abs(r)
+    if a < 0.3:
+        return "뚜렷한 관계 없음"
+    strength = "뚜렷하게" if a >= 0.6 else "약하게"
+    return f"인력에서 먼 동일수록 미충족이 {strength} 많음" if r > 0 else f"인력에서 가까운 동일수록 미충족이 {strength} 많음"
