@@ -67,6 +67,15 @@ def map_status(raw: int) -> str:
     return STATUS_ERROR
 
 
+def plan_usable(status: str, assignments: list) -> bool:
+    """이 계산 결과를 배정안으로 쓸 수 있는가(FR-24, AT-16).
+
+    시간 초과·해 없음·오류이면서 배정이 하나도 없으면 쓰지 않는다. 그런 결과를 '미배정 0건'이나 빈 일정으로
+    보이게 하거나 확정 일정을 바꾸는 데 쓰지 않는다. 시간 초과라도 해를 찾았으면(배정이 있으면) 검증을 거쳐 쓸 수 있다.
+    """
+    return not (status in (STATUS_TIMEOUT, STATUS_INFEASIBLE, STATUS_ERROR) and not assignments)
+
+
 def drop_penalty(priority: int) -> int:
     """요청을 버릴 때의 벌점. 우선순위 2 는 일반 요청 10건을 버리는 것과 같다."""
     return PRIORITY_PENALTY_BASE * PRIORITY_PENALTY_STEP ** max(int(priority) - 1, 0)

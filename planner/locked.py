@@ -47,7 +47,7 @@ def _travel_sum(worker: dict, jobs: list[dict], by_id: dict, travel: dict) -> fl
     prev, total = worker["base_node"], 0.0
     for j in jobs:
         node = by_id[j["request_id"]]["home_node"]
-        total += float(travel.get((prev, node), 0.0))
+        total += float(travel[(prev, node)])     # _sequence 가 구간 존재를 확인했다. 없으면 0분 대신 오류
         prev = node
     return total
 

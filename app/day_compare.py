@@ -90,7 +90,9 @@ def _run(date: str, algo: str, stamp: str, inputs_json: str = "{}", locked_json:
         assignments = r.assignments
         unassigned  = r.unassigned
         meta = {"status": r.status, "solve_seconds": r.solve_seconds,
-                "config": {"time_limit_sec": 8, "lock_confirmed": bool(locked)}}
+                # AT-20: Routing 은 단일 스레드지만 시간 제한으로 멈추므로 컴퓨터 속도에 따라 결과가 달라질 수 있다
+                "config": {"time_limit_sec": 8, "lock_confirmed": bool(locked), "seed": 42, "search_threads": 1,
+                           "stop_rule": "time_limit", "may_vary_by_machine_speed": True}}
 
     rep = verify(instance, assignments)
     timelines = [t.__dict__ for t in rep.timelines]
@@ -239,7 +241,8 @@ def _compute(day: str, a: str, plan_exclude: list[str] | tuple = ()) -> dict:
         assignments=None if rep.violations else assignments,
         unassigned=None if rep.violations else unassigned)
     # FR-24: 해를 찾지 못한 계산(시간 초과·해 없음·오류)은 배정안으로 쓰지 않는다. '미배정 0건'으로 보이지 않게 한다.
-    usable = not (meta["status"] in ("timeout", "infeasible", "error") and not assignments)
+    from planner.optimize import plan_usable
+    usable = plan_usable(meta["status"], assignments)
     return dict(inst=inst, assignments=assignments, unassigned=unassigned,
                 timelines=timelines, rep=rep, run_id=run_id, meta=meta, usable=usable)
 
@@ -271,7 +274,7 @@ REASON_KO = {
 CERT_KO = {"verified": "확인됨", "diagnostic": "추정", "unknown": "미상"}
 
 if results:
-    rows, served_n = [], {}
+    rows, served_n, travel_n = [], {}, {}
     for a, d in results.items():
         tl = d["timelines"]
         assigned = len(d["assignments"])
@@ -282,6 +285,7 @@ if results:
         all_people = {r["beneficiary_id"] for r in d["inst"].requests}
         served_n[a] = (len(served), len(all_people))
         travel_sum = sum(t.get("travel_min", 0) for t in tl)
+        travel_n[a] = travel_sum
         work_sum = sum(d["rep"].work_minutes.values()) if d["rep"].work_minutes else 0
         cap_sum = sum(max(0, w["shift_end_min"] - w["shift_start_min"] - w["break_minutes"])
                       for w in d["inst"].workers)
@@ -326,6 +330,12 @@ if results:
         else:
             st.warning(f"이 날은 AI 최적화가 신청순보다 {-diff}명 적습니다. "
                        "높은 우선순위(퇴원 직후 등) 요청을 먼저 배정한 결과일 수 있습니다.")
+
+    if base and "AI 최적화" in travel_n and results["AI 최적화"]["usable"]:
+        from simulator.report import load_cost_config, travel_saving_text
+        _ts = travel_saving_text(travel_n[base] - travel_n["AI 최적화"], load_cost_config(ROOT), "AI 최적화가 신청순")
+        if _ts:
+            st.caption(_ts)
 
     with st.expander("방식별 자세히 보기", expanded=False):
         st.dataframe(pd.DataFrame(rows).set_index("방식"), width="stretch")

@@ -91,11 +91,18 @@ def test_ok_uses_seconds_and_lon_lat_order():
     assert c.calls[0][1] == {"sx": 127.07, "sy": 37.20, "ex": 127.08, "ey": 37.21}   # X=경도, Y=위도
 
 
-@pytest.mark.parametrize("body", [json.dumps({"result": {"path": []}}),
-                                  json.dumps({"result": {"path": [{"info": {"totalTime": 0}}]}})])
-def test_no_route_never_zero(body):
-    r = transit.estimate(FakeClient(body), "a", A, "b", B, NOW)
+def test_no_route_never_zero():
+    r = transit.estimate(FakeClient(json.dumps({"result": {"path": []}})), "a", A, "b", B, NOW)
     assert r["status"] == "no_route" and r["duration_seconds"] is None
+
+
+@pytest.mark.parametrize("t", [0, -5, "NaN", None, "12분"])
+def test_abnormal_time_is_invalid_response(t):
+    """AT-25: 음수·0·NaN·숫자 아닌 소요시간 → invalid_response. 정상 경로가 함께 있어도 그 응답 전체를 쓰지 않는다."""
+    body = json.dumps({"result": {"path": [{"info": {"totalTime": 20}}, {"info": {"totalTime": t}}]}})
+    body = body.replace('"NaN"', "NaN")                        # JSON 표준 밖 NaN 도 들어올 수 있다
+    r = transit.estimate(FakeClient(body), "a", A, "b", B, NOW)
+    assert r["status"] == "invalid_response" and r["duration_seconds"] is None
 
 
 @pytest.mark.parametrize("exc, status", [

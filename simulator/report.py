@@ -266,3 +266,28 @@ def corr_words(r: float | None) -> str:
         return "뚜렷한 관계 없음"
     strength = "뚜렷하게" if a >= 0.6 else "약하게"
     return f"인력에서 먼 동일수록 미충족이 {strength} 많음" if r > 0 else f"인력에서 가까운 동일수록 미충족이 {strength} 많음"
+
+
+# ── 이동 감소의 의미 (AT-15) ─────────────────────────────────────────────────
+def travel_saving(minutes_saved: float, cost: dict) -> dict:
+    """이동이 줄어든 만큼을 '돌봄에 쓸 수 있는 시간'으로 바꾼다. 인건비 절감으로 세지 않는다.
+
+    인력은 근무시간 기준으로 급여를 받는다(시급×유급시간 또는 월급). 이동이 줄어도 근무시간은 그대로라
+    인건비는 줄지 않는다(labor_saving_krw = 0). 교통비는 1분당 단가가 있을 때만 계산하고, 없으면 None(계산 불가).
+    """
+    m = max(0.0, float(minutes_saved))
+    rate = cost.get("transport_krw_per_min")
+    return {"freed_minutes": m, "labor_saving_krw": 0,
+            "transport_saving_krw": None if rate is None else m * float(rate)}
+
+
+def travel_saving_text(minutes_saved: float, cost: dict, versus: str) -> str | None:
+    """담당자용 한 줄. 이동이 줄지 않았으면 None(아무 말도 하지 않는다)."""
+    if minutes_saved <= 0:
+        return None
+    s = travel_saving(minutes_saved, cost)
+    m = int(round(s["freed_minutes"]))
+    tr = ("교통비 절감은 1분당 단가가 정해지지 않아 계산하지 않았습니다" if s["transport_saving_krw"] is None
+          else f"교통비는 약 {s['transport_saving_krw']:,.0f}원 줄어듭니다(가정 단가)")
+    return (f"{versus} 대비 인력 이동이 {m // 60}시간 {m % 60}분 줄었습니다. 이 시간은 다른 어르신을 돌볼 수 있는 여력입니다. "
+            f"인력은 근무시간으로 급여를 받으므로 인건비는 줄지 않습니다. {tr}.")

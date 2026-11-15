@@ -3,6 +3,7 @@
 PRD 11.3 경로 계약:
 - 내부 시간은 duration_seconds 로 통일한다(ODsay totalTime 은 분 → ×60, AT-21).
 - 성공일 때만 양수 duration_seconds. 실패면 시간·거리는 None(0분으로 바꾸지 않음).
+- 소요시간이 0·음수·NaN·숫자 아님이면 invalid_response(AT-25). 경로 목록이 비면 no_route.
 - 출발 시각을 받는 요청변수가 없어 time_basis 는 provider_unspecified(AT-26).
 - 실패하면 화면은 자동차 시간(OSRM)으로 대체하고 그 사실을 표시한다(AT-06). 둘 다 없으면 '확인 불가'.
 응답 항목은 2026-11-15 상세 화면의 출력결과 표 이름만 쓴다: result.path[].pathType, path[].info.totalTime,
@@ -12,6 +13,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import math
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -43,8 +45,9 @@ def parse_paths(body: str) -> dict:
     for p in paths:
         info = p.get("info") or {}
         t = info.get("totalTime")
-        if not isinstance(t, (int, float)) or t <= 0:
-            continue
+        # AT-25: 0·음수·NaN·숫자 아닌 값이 하나라도 있으면 응답 전체를 믿지 않는다(→ invalid_response)
+        if isinstance(t, bool) or not isinstance(t, (int, float)) or not math.isfinite(t) or t <= 0:
+            raise ValueError(f"비정상 소요시간: {t!r}")
         if best is None or t < best["minutes"]:
             best = {"minutes": int(t), "distance_m": info.get("totalDistance"), "walk_m": info.get("totalWalk"),
                     "path_type": p.get("pathType")}
@@ -69,7 +72,7 @@ def estimate(client, from_id: str, frm: tuple[float, float], to_id: str, to: tup
         return r
     except (ValueError, AttributeError) as e:
         r.update(status="invalid_response", error_kind="invalid_response",
-                 message=f"경로 응답을 읽을 수 없습니다: {type(e).__name__}")
+                 message=f"경로 응답을 읽을 수 없거나 값이 비정상입니다: {type(e).__name__}")
         return r
     if best is None:
         r.update(status="no_route", message="대중교통 경로가 없습니다")

@@ -24,6 +24,7 @@ import json
 import os
 import sqlite3
 import uuid
+import zlib
 from contextlib import contextmanager
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -128,17 +129,21 @@ def engine_version() -> str:
     return _ENGINE_VERSION
 
 
-def snapshot_hash(instance: dict) -> str:
-    """입력 스냅샷 해시. 이동시간은 dict((from,to)→분)·list 어느 형태든 같은 값이 나오게 정리한다."""
+def _snapshot_body(instance: dict) -> dict:
+    """해시·저장에 함께 쓰는 정리된 입력. 이동시간은 dict((from,to)→분)·list 어느 형태든 같은 값이 나오게 한다."""
     travel = instance.get("travel") or {}
     if isinstance(travel, dict):
         tl = sorted([str(a), str(b), float(m)] for (a, b), m in travel.items())
     else:
         tl = sorted([str(t["from_node"]), str(t["to_node"]), float(t["minutes"])] for t in travel)
-    body = {"workers": sorted(instance.get("workers", []), key=lambda w: str(w.get("worker_id"))),
+    return {"workers": sorted(instance.get("workers", []), key=lambda w: str(w.get("worker_id"))),
             "requests": sorted(instance.get("requests", []), key=lambda r: str(r.get("request_id"))),
             "travel": tl}
-    return hashlib.sha256(_dumps(body).encode("utf-8")).hexdigest()
+
+
+def snapshot_hash(instance: dict) -> str:
+    """입력 스냅샷 해시."""
+    return hashlib.sha256(_dumps(_snapshot_body(instance)).encode("utf-8")).hexdigest()
 
 
 class Store:
@@ -157,6 +162,8 @@ class Store:
             for c in ("assignments_json", "unassigned_json"):
                 if c not in cols:
                     con.execute(f"ALTER TABLE planning_runs ADD COLUMN {c} TEXT")
+            if "snapshot_gz" not in cols:          # AT-20: 입력 스냅샷 자체(압축)를 남겨 다시 계산할 수 있게
+                con.execute("ALTER TABLE planning_runs ADD COLUMN snapshot_gz BLOB")
         finally:
             con.close()
 
@@ -707,20 +714,23 @@ class Store:
 
         assignments·unassigned 는 '오늘의 현황'에서 제안·미배정을 보여주려고 함께 남긴다(검증을 통과한 결과만 넣을 것).
         """
-        snap = snapshot_hash(instance)
+        body = _snapshot_body(instance)
+        snap = hashlib.sha256(_dumps(body).encode("utf-8")).hexdigest()
+        snap_gz = zlib.compress(_dumps(dict(body, service_date=service_date)).encode("utf-8"), 6)
         eng = engine_version()
         run_id = "run-" + hashlib.sha256(_dumps([service_date, algorithm, snap, eng, config]).encode()).hexdigest()[:16]
         with self._tx() as con:
             con.execute("INSERT INTO planning_runs(run_id, service_date, algorithm, snapshot_hash,"
                         " engine_version, config_json, status, solve_seconds, metrics_json, created_at,"
-                        " assignments_json, unassigned_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
+                        " assignments_json, unassigned_json, snapshot_gz) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"
                         " ON CONFLICT(run_id) DO UPDATE SET"
                         " assignments_json=COALESCE(planning_runs.assignments_json, excluded.assignments_json),"
-                        " unassigned_json=COALESCE(planning_runs.unassigned_json, excluded.unassigned_json)",
+                        " unassigned_json=COALESCE(planning_runs.unassigned_json, excluded.unassigned_json),"
+                        " snapshot_gz=COALESCE(planning_runs.snapshot_gz, excluded.snapshot_gz)",
                         (run_id, service_date, algorithm, snap, eng, _dumps(config), status,
                          solve_seconds, _dumps(metrics), _now(),
                          None if assignments is None else _dumps(assignments),
-                         None if unassigned is None else _dumps(unassigned)))
+                         None if unassigned is None else _dumps(unassigned), snap_gz))
         return run_id
 
     def find_run(self, service_date: str, algorithm: str, instance: dict) -> dict | None:
@@ -782,6 +792,28 @@ class Store:
         finally:
             con.close()
 
+    def run_snapshot(self, run_id: str) -> dict | None:
+        """그 실행에 들어간 입력(요청·인력·이동시간)을 계산할 수 있는 형태로 돌려준다(AT-20).
+
+        저장된 해시와 다시 계산한 해시가 다르면 손상된 것으로 보고 ValueError(다른 입력으로 재현했다고 보이지 않게).
+        예전 버전으로 기록돼 스냅샷이 없으면 None.
+        """
+        con = self._connect()
+        try:
+            r = con.execute("SELECT snapshot_hash, snapshot_gz FROM planning_runs WHERE run_id=?",
+                            (run_id,)).fetchone()
+        finally:
+            con.close()
+        if r is None or r["snapshot_gz"] is None:
+            return None
+        body = json.loads(zlib.decompress(r["snapshot_gz"]).decode("utf-8"))
+        inst = {"service_date": body.pop("service_date", None), "workers": body["workers"],
+                "requests": body["requests"],
+                "travel": [{"from_node": a, "to_node": b, "minutes": m} for a, b, m in body["travel"]]}
+        if snapshot_hash(inst) != r["snapshot_hash"]:
+            raise ValueError(f"실행 {run_id} 의 저장된 입력이 해시와 맞지 않습니다")
+        return inst
+
     def run(self, run_id: str) -> dict | None:
         con = self._connect()
         try:
@@ -791,6 +823,7 @@ class Store:
         if r is None:
             return None
         d = dict(r)
+        d.pop("snapshot_gz", None)              # 큰 입력은 run_snapshot() 으로 따로 꺼낸다
         d["config"] = json.loads(d.pop("config_json"))
         d["metrics"] = json.loads(d.pop("metrics_json"))
         a, u = d.pop("assignments_json", None), d.pop("unassigned_json", None)

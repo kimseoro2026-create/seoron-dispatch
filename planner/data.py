@@ -17,6 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 # f0 가 만든 노드 접두어 (f0/matrix.py build_nodes 와 같아야 한다)
@@ -63,6 +64,13 @@ def load_travel(data_dir: str | Path, node_ids: set[str] | None = None) -> dict[
     df = pd.read_csv(path, usecols=["from_node", "to_node", "minutes"])
     if node_ids is not None:
         df = df[df["from_node"].isin(node_ids) & df["to_node"].isin(node_ids)]
+    # AT-25: 음수·NaN·무한대 구간은 배정 입력에서 뺀다. 빠진 구간은 엔진이 '경로 확인 불가'로 다룬다(0분 대체 금지).
+    m = pd.to_numeric(df["minutes"], errors="coerce")
+    bad = ~(m.notna() & np.isfinite(m) & (m >= 0))
+    if bad.any():
+        import warnings
+        warnings.warn(f"이동시간 행렬에서 비정상 구간 {int(bad.sum())}개를 뺐습니다(음수·NaN·무한대)", UserWarning)
+    df = df[~bad]
     return {(r.from_node, r.to_node): float(r.minutes) for r in df.itertuples()}
 
 
