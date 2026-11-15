@@ -115,3 +115,12 @@ def test_next_week_demand_separates_received_and_referrals(tmp_path):
     assert out["days"][0]["service_date"] >= "2026-11-02" and len(out["days"]) <= 7
     assert out["referrals"] == [{"card_id": "E99", "beneficiary_id": "B0001", "planned_discharge_date": "2026-11-05",
                                  "service_type": "hospital_escort"}]
+
+
+def test_connection_stage_key_alone_is_not_verified():
+    from adapters.status import connection_stage
+    assert connection_stage({"name": "날씨", "state": "disabled", "key": "설정됨"}) == "키 설정"
+    assert connection_stage({"name": "날씨", "state": "configured", "key": "없음"}) == "승인"
+    assert connection_stage({"name": "병원 위치", "state": "verified", "key": "설정됨"}) == "호출 검증"
+    assert connection_stage({"name": "주소→좌표", "state": "disabled", "key": "없음"}) == "신청 전"
+    assert connection_stage({"name": "주소→좌표", "state": "configured", "key": "설정됨"}) == "키 설정"

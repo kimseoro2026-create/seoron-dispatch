@@ -1417,3 +1417,16 @@ claude-haiku 비교, 확인 완료 카드 → 배정 입력 연결.
   시연 대본의 '새로고침하면 카드가 사라짐' 안내도 고침.
 - 시연 카드 E05: 새 데이터에서도 변환되고 12/08 세 방식 모두 배정(신청순 32 / 근거리 33 / AI 33건, 위반 0. 이날은 AI=근거리).
 - 남은 일: 행정동별 미충족률(31.7~42.7%)과 협력기관 거리 관계는 분석 안 함. 배포본은 push 후 새 결과 표시.
+
+## 2026-11-15 — 외부 호출 실패 구분(FR-52, AT-22~25·29·30)과 연결 단계(FR-51)
+
+- `f0/apiclient.py`: `ApiCallError(kind)` — auth(401)·forbidden(403)·rate_limited(429)·timeout·network·server(5xx)·redirect·
+  http_error·provider_error(HTTP 200인데 오류 본문: XML/JSON resultCode, ODsay `error`, 공공데이터 returnReasonCode)·invalid_response(빈 본문·깨진 본문).
+  401/403 은 다시 시도하지 않음. 429 는 Retry-After 를 따르되 상한(`retry_max_wait_sec`, 기본 60초) 안에서. **리다이렉트는 따라가지 않음**
+  (인증 헤더 `api_user_key_id` 가 다른 곳으로 가지 않게). 오류 메시지에 키·원문 없음. `ApiCallError` 는 RuntimeError 하위라 기존 호출부 그대로.
+- `adapters/status.py` `connection_stage`: 신청 전 → 승인 → 키 설정 → 호출 검증. 키만 있으면 '키 설정'이지 '호출 검증'이 아님.
+  데이터 연결·출처 화면에 '연결 단계' 열. 현재: 병원·인구·OSRM·AI 호출 검증, 날씨·대중교통 승인(호출 설정 미완료), 카카오 신청 전.
+- 실제 호출 재확인 시도(11/15 새벽): 플랫폼이 HTTP 503(Service Temporarily Unavailable)을 돌려줌. 직접 requests 로 불러도 같음 → 플랫폼 쪽 일시 장애.
+  새 클라이언트는 6회 시도 후 `[server]` 로 멈춤(0이나 빈 값으로 바꾸지 않음).
+- 테스트 405개 통과(+15: 호출 실패 구분, 연결 단계).
+- 남은 일: 날씨(기상청 단기예보)·대중교통(ODsay) 호출 URL·요청변수·응답 항목 — 사용자 상세 화면 캡처 필요.

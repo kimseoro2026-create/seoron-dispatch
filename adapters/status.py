@@ -31,6 +31,24 @@ def _todo(cfg: dict, key: str) -> bool:
     return "TODO" in json.dumps(cfg.get(key, {}), ensure_ascii=False)
 
 
+# 사용 승인 단계(FR-51). 승인 여부는 CLAUDE.md 8절 표에 기록된 사실만 적는다.
+APPROVAL = {"병원 위치": "승인", "고령인구": "승인", "날씨": "승인", "대중교통": "승인",
+            "주소→좌표": "신청 전", "차량 이동시간": "자체 서버(승인 불필요)", "AI(요청 카드)": "승인"}
+STAGES = ("신청 전", "승인", "키 설정", "호출 검증")
+
+
+def connection_stage(row: dict) -> str:
+    """문서확인/신청중/승인/키설정/호출검증 중 지금 단계. 키 설정만으로 '호출 검증'이 되지 않는다(FR-51, AT-22)."""
+    approval = APPROVAL.get(row["name"], "신청 전")
+    if row["state"] == "verified":
+        return "호출 검증"
+    if str(row.get("key", "")).endswith("설정됨") and approval != "자체 서버(승인 불필요)":
+        return "키 설정"                 # 키를 받았다면 승인된 것
+    if approval == "신청 전":
+        return "신청 전"
+    return approval if approval in STAGES else "승인"
+
+
 def adapter_states(root: str | Path) -> list[dict]:
     root = Path(root)
     proc, raw = root / "data" / "processed", root / "data" / "raw"
@@ -131,10 +149,12 @@ def adapter_states(root: str | Path) -> list[dict]:
     for r in rows:
         r["terms"] = "확인 필요"     # 이용조건 검토 상태: 아직 기록이 없다(지어내지 않음)
         r["quota"] = "확인 안 됨"
+        r["stage"] = connection_stage(r)
     if summary:
         rows.append({"name": "가상 권역", "provider": "f0 생성기(이 앱)", "state": "mock",
                      "evidence": f"어르신 {summary.get('beneficiaries')}명·인력 {summary.get('workers')}명·"
                                  f"요청 {summary.get('requests')}건(모두 가상)", "key": "-",
                      "last_update": str(summary.get("generated_at", ""))[:16].replace("T", " "), "period": "평일 30일",
-                     "used_for": "모든 화면의 어르신·인력·요청", "terms": "해당 없음", "quota": "-"})
+                     "used_for": "모든 화면의 어르신·인력·요청", "terms": "해당 없음", "quota": "-",
+                     "stage": "해당 없음"})
     return rows

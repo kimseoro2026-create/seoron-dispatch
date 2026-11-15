@@ -40,7 +40,7 @@ for col, s in zip(cols, ("verified", "configured", "mock", "degraded", "disabled
     col.metric(STATE_KO[s], f"{int(counts.get(s, 0))}개")
 
 st.dataframe(pd.DataFrame([{
-    "자원": r["name"], "상태": STATE_KO[r["state"]], "근거": r["evidence"], "제공처": r["provider"],
+    "자원": r["name"], "상태": STATE_KO[r["state"]], "연결 단계": r["stage"], "근거": r["evidence"], "제공처": r["provider"],
     "쓰는 곳": r["used_for"], "인증키": r["key"], "마지막 갱신": r["last_update"] or "-",
     "적용 기간": r["period"], "쿼터": r["quota"], "이용조건 검토": r["terms"],
 } for r in rows]), hide_index=True, width="stretch")
@@ -52,6 +52,9 @@ st.markdown("""
 - 🧪 **모의 데이터**: 가상으로 만든 값을 씁니다.
 - ⚠️ **대체값 사용**: 받으려던 값 대신 대략값(예: 직선거리 추정 이동시간)을 씁니다. 화면에도 그렇게 표시합니다.
 - ⏸ **사용 안 함**: 아직 쓰지 않습니다.
+
+**연결 단계**: 신청 전 → 승인 → 키 설정 → 호출 검증. 키를 넣기만 해서는 '호출 검증'이 되지 않습니다.
+실제로 받은 값이 이 앱 데이터에 들어 있어야 '호출 검증'입니다.
 """)
 st.caption("쿼터와 이용조건 검토는 아직 기록이 없어 '확인 안 됨·확인 필요'로 둡니다. 실패한 호출을 0분이나 빈 값, '정상 연결'로 "
            "바꾸지 않습니다. 키는 서버의 .env(저장소 제외)에만 둡니다.")
