@@ -122,6 +122,27 @@ p3.metric("보이는 요청", f"{c['total']}건")
 st.caption("승인 대기(협약기관·인력 수락), 진행, 완료: 해당 없음 — 협약기관 수락과 인력용 앱은 후속 단계 기능입니다.")
 
 # FR-03 먼저 볼 것
+# 날씨(기상청 단기예보, 참고) — 저장된 실제 호출 결과만 읽는다. 화면을 열 때 외부로 호출하지 않는다.
+from adapters import weather as _weather  # noqa: E402
+
+with st.expander("날씨 예보 (기상청 단기예보, 참고)"):
+    _wf = _weather.load_cache(ROOT / "data" / "raw")
+    if _wf is None or _wf.empty:
+        st.info("저장된 예보가 없습니다. `python -m adapters.fetch weather` 로 받으면 여기에 보입니다.")
+    else:
+        _key = date.replace("-", "")
+        _lo, _hi = _wf["fcst_date"].min(), _wf["fcst_date"].max()
+        st.caption(f"발표 {_wf['base_date'].iloc[0]} {_wf['base_time'].iloc[0]} · 격자 {_wf['nx'].iloc[0]},"
+                   f"{_wf['ny'].iloc[0]}(가상 권역 중심, 동탄구) · 받은 시각 {str(_wf['fetched_at'].iloc[0])[:16].replace('T', ' ')}")
+        _day = _wf[_wf["fcst_date"] == _key]
+        if _day.empty:
+            st.warning(f"고른 날짜 {date}는 예보 범위({_lo}~{_hi}) 밖이라 날씨를 보여줄 수 없습니다. "
+                       "가상 서비스일은 미래 날짜라 실제 예보와 맞지 않습니다. 아래는 가장 가까운 실제 예보입니다.")
+            _day = _wf[_wf["fcst_date"] == _lo]
+        st.dataframe(_weather.by_time(_day), width="stretch", hide_index=True)
+        st.caption("값은 기상청이 보낸 그대로입니다. 열 이름은 기상청 자료구분 코드이며, 코드 설명은 확인 중이라 아직 바꾸지 않았습니다. "
+                   "날씨는 주의 표시용이며 배정 계산·일정 변경에 쓰지 않습니다.")
+
 st.subheader("먼저 볼 것")
 order = {"시간 지남": 0, "임박": 1}
 first = [r for r in rows if r["urgent"] or r["status"] == STATUS_CANCELLED

@@ -196,7 +196,7 @@ with st.sidebar:
     src = _matrix_source(stamp)
     src_label = {"osrm": "OSRM 도로", "estimate": "직선거리 대략값", "kakao": "카카오 길찾기"}.get(src, src)
     st.markdown("**데이터 출처**")
-    st.caption(f"이동시간: **{src_label}**")
+    st.caption(f"이동시간: **자동차 · {src_label}** (출발 시각·교통 상황 반영 안 함)")
     for _label, _text in _raw_sources().items():
         st.caption(f"{_label}: **{_text}**")
     st.caption("어르신·인력·요청은 모두 가상으로 만든 데이터입니다.")
@@ -519,6 +519,40 @@ if tab_names:
                 st.error("**규칙 위반 — 이 배정안은 사용할 수 없습니다.**")
                 vdf = pd.DataFrame([v.as_dict() for v in d["rep"].violations])
                 st.dataframe(vdf, width="stretch", hide_index=True)
+
+
+# ── 병원동행 대중교통 참고 시간(FR-49, AT-06·21·26) ─────────────────────────
+@st.cache_data(show_spinner=False)
+def _transit_rows(stamp: str) -> list[dict]:
+    from adapters import transit
+    from planner.data import load_travel
+    t = transit.load_cache(ROOT / "data" / "raw")
+    if t is None or t.empty:
+        return []
+    travel = load_travel(ROOT / "data" / "processed", set(t["from_id"]) | set(t["to_id"]))
+    rows = []
+    for r in t.to_dict("records"):
+        r = {k: (None if isinstance(v, float) and pd.isna(v) else v) for k, v in r.items()}
+        car = travel.get((r["from_id"], r["to_id"]))
+        m, why = transit.display_minutes(r, car)
+        rows.append({"요청": r.get("request_id"), "병원까지 자동차(분)": round(car) if car else None,
+                     "대중교통(분)": round(r["duration_seconds"] / 60) if r.get("duration_seconds") else None,
+                     "화면에 쓸 시간(분)": round(m) if m else None, "설명": why,
+                     "조회 시각": str(r.get("fetched_at", ""))[:16].replace("T", " ")})
+    return rows
+
+
+with st.expander("병원동행: 대중교통으로 가면? (참고, ODsay 표본)"):
+    _tf = ROOT / "data" / "raw" / "transit_sample.csv"
+    _tr = _transit_rows(_data_stamp() + (str(_tf.stat().st_mtime) if _tf.exists() else ""))
+    if not _tr:
+        st.info("저장된 대중교통 조회가 없습니다. `python -m adapters.fetch transit` 로 표본을 받으면 여기에 보입니다.")
+    else:
+        st.dataframe(pd.DataFrame(_tr), width="stretch", hide_index=True)
+        st.caption("배정 계산은 모든 인력이 **자동차**로 이동한다고 보고 OSRM 도로 시간을 씁니다. 이 표는 어르신 집에서 병원까지 "
+                   "대중교통이면 얼마나 걸리는지 보여주는 참고값이며 배정 숫자에 쓰지 않습니다. ODsay는 출발 시각을 받지 않아 "
+                   "'시간 기준 미지정'이고, 미래 서비스일의 확정 시간이 아닙니다. 대중교통 조회가 실패하면(가까워서 경로 없음 등) "
+                   "0분으로 두지 않고 자동차 시간으로 대체해 그렇게 적습니다.")
 
 
 # ── 담당자 승인 ───────────────────────────────────────────────────────────

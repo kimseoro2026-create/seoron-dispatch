@@ -141,6 +141,14 @@ class PlatformClient:
         self.session.max_redirects = 0
 
     def call(self, api_name: str, **values) -> tuple[list[dict], int | None]:
+        body = self.fetch_body(api_name, **values)
+        try:
+            return parse_response(body, self.config[api_name].get("total_count_field"))
+        except (ValueError, ET.ParseError) as e:
+            raise ApiCallError("invalid_response", f"{api_name} 응답을 읽을 수 없습니다: {type(e).__name__}") from None
+
+    def fetch_body(self, api_name: str, **values) -> str:
+        """호출 → 공급자 오류 검사까지 마친 응답 본문(문자열). 'item' 목록이 아닌 응답(ODsay 등)은 이것을 쓴다."""
         spec = self.config[api_name]
         url = spec.get("url", "")
         if not url or url.startswith("TODO"):
@@ -162,11 +170,10 @@ class PlatformClient:
             body = resp.text
         err = _provider_error(body, content_type)
         if err:
-            raise ApiCallError("provider_error", f"{api_name} 공급자 오류 코드={err[0]}: {err[1]}")
-        try:
-            return parse_response(body, spec.get("total_count_field"))
-        except (ValueError, ET.ParseError) as e:
-            raise ApiCallError("invalid_response", f"{api_name} 응답을 읽을 수 없습니다: {type(e).__name__}") from None
+            e = ApiCallError("provider_error", f"{api_name} 공급자 오류 코드={err[0]}: {err[1]}")
+            e.provider_code = err[0]
+            raise e
+        return body
 
     def _request_with_retry(self, spec: dict, url: str, params: dict,
                             headers: dict, timeout: int) -> requests.Response:

@@ -99,13 +99,36 @@ def adapter_states(root: str | Path) -> list[dict]:
                  "key": _env("KOREACONNECT_API_USER_KEY_ID"),
                  "last_update": _mtime(raw / "population.csv"), "period": period, "used_for": "가상 어르신 분포"})
 
-    # 날씨·대중교통 — 승인됐지만 아직 쓰지 않음
-    for name, key, prov, use in (("날씨", "weather", "디지털융합플랫폼 · 기상청 단기예보", "아직 쓰지 않음(이동 지연 가정 후보)"),
-                                 ("대중교통", "transit", "디지털융합플랫폼 · ODsay 대중교통 길찾기",
-                                  "아직 쓰지 않음(모든 인력 자동차 이동으로 계산)")):
-        rows.append({"name": name, "provider": prov, "state": "disabled",
-                     "evidence": "호출 설정 미완료(TODO)" if _todo(apis, key) else "호출 코드 없음",
-                     "key": _env("KOREACONNECT_API_USER_KEY_ID"), "last_update": None, "period": "-", "used_for": use})
+    # 날씨 — 기상청 단기예보(저장된 실제 호출 결과로 판단)
+    wf = raw / "weather_forecast.csv"
+    try:
+        w = pd.read_csv(wf, dtype=str)
+        st_, ev = "verified", (f"API로 받은 예보 {len(w)}행(발표 {w['base_date'].iloc[0]} {w['base_time'].iloc[0]}, "
+                               f"격자 {w['nx'].iloc[0]},{w['ny'].iloc[0]})")
+        period = f"{w['fcst_date'].min()}~{w['fcst_date'].max()} 예보"
+    except Exception:
+        st_, ev, period = "disabled", ("호출 설정 미완료(TODO)" if _todo(apis, "weather")
+                                       else "저장된 예보 없음(python -m adapters.fetch weather)"), "-"
+    rows.append({"name": "날씨", "provider": "디지털융합플랫폼 · 기상청 단기예보", "state": st_, "evidence": ev,
+                 "key": _env("KOREACONNECT_API_USER_KEY_ID"), "last_update": _mtime(wf), "period": period,
+                 "used_for": "오늘의 돌봄 현황의 날씨 참고(배정 계산에는 쓰지 않음)"})
+
+    # 대중교통 — ODsay(표본 조회 결과로 판단)
+    tf = raw / "transit_sample.csv"
+    try:
+        t = pd.read_csv(tf)
+        ok = int((t["status"] == "ok").sum())
+        fails = t.loc[t["status"] != "ok", "status"].value_counts().to_dict()
+        fail_txt = (" · 실패 " + ", ".join(f"{k} {v}건" for k, v in fails.items())) if fails else ""
+        st_ = "verified" if ok else "degraded"
+        ev = f"표본 {len(t)}건 중 성공 {ok}건{fail_txt}"
+    except Exception:
+        st_, ev = "disabled", ("호출 설정 미완료(TODO)" if _todo(apis, "transit")
+                               else "저장된 조회 없음(python -m adapters.fetch transit)")
+    rows.append({"name": "대중교통", "provider": "디지털융합플랫폼 · ODsay 대중교통 길찾기", "state": st_,
+                 "evidence": ev, "key": _env("KOREACONNECT_API_USER_KEY_ID"), "last_update": _mtime(tf),
+                 "period": "출발 시각 지정 불가(시간 기준 미지정)",
+                 "used_for": "병원동행 대중교통 참고 시간(배정 계산은 자동차 이동)"})
 
     # 차량 이동시간 — OSRM 행렬
     from planner.data import matrix_path

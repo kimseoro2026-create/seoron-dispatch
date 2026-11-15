@@ -98,7 +98,26 @@ def test_adapter_states_reflect_data_evidence():
     h = pd.read_csv(DATA / "hospitals.csv")
     expect = "mock" if h["hospital_id"].astype(str).str.startswith("MOCK").any() else "verified"
     assert rows["병원 위치"]["state"] == expect
-    assert rows["날씨"]["state"] == "disabled"           # 아직 쓰지 않는 자원은 '연결됨'으로 보이지 않는다
+    # 날씨·대중교통은 저장된 실제 호출 결과가 있을 때만 '확인됨'
+    wf = ROOT / "data" / "raw" / "weather_forecast.csv"
+    assert rows["날씨"]["state"] == ("verified" if wf.exists() else "disabled")
+
+
+def test_transit_state_follows_saved_results(tmp_path):
+    """표본이 모두 실패면 degraded, 하나라도 성공이면 verified, 파일이 없으면 disabled."""
+    import shutil
+    from adapters.status import adapter_states
+    (tmp_path / "config").mkdir()
+    shutil.copy(ROOT / "config" / "apis.yaml", tmp_path / "config" / "apis.yaml")
+    (tmp_path / "data" / "raw").mkdir(parents=True)
+    (tmp_path / "data" / "processed").mkdir(parents=True)
+    get = lambda: next(r for r in adapter_states(tmp_path) if r["name"] == "대중교통")  # noqa: E731
+    assert get()["state"] == "disabled"
+    f = tmp_path / "data" / "raw" / "transit_sample.csv"
+    pd.DataFrame({"status": ["provider_error", "timeout"]}).to_csv(f, index=False)
+    assert get()["state"] == "degraded" and "성공 0건" in get()["evidence"]
+    pd.DataFrame({"status": ["ok", "provider_error"]}).to_csv(f, index=False)
+    assert get()["state"] == "verified" and get()["stage"] == "호출 검증"
 
 
 # ── 다음 주 수요(FR-39) ───────────────────────────────────────────────────

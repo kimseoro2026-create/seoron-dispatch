@@ -1430,3 +1430,21 @@ claude-haiku 비교, 확인 완료 카드 → 배정 입력 연결.
   새 클라이언트는 6회 시도 후 `[server]` 로 멈춤(0이나 빈 값으로 바꾸지 않음).
 - 테스트 405개 통과(+15: 호출 실패 구분, 연결 단계).
 - 남은 일: 날씨(기상청 단기예보)·대중교통(ODsay) 호출 URL·요청변수·응답 항목 — 사용자 상세 화면 캡처 필요.
+
+## 2026-11-15 — 날씨(기상청 단기예보)·대중교통(ODsay) 연결
+
+- 사용자 상세 화면 캡처로 `config/apis.yaml` weather·transit 채움(호출 URL, 요청변수, 출력 항목). 지어낸 항목 없음.
+- `adapters/weather.py`: 위경도→기상청 격자 변환(서울시청 60,127 확인), 최근 발표시각 계산, 전 페이지 수집, 저장(`data/raw/weather_forecast.csv`).
+  실제 호출 성공: 발표 20261115 2000, 격자 62,119(가상 권역 중심), 1,016행(11/15~11/19). 0건이면 실패로 멈춤.
+  category 코드 뜻(TMP·POP·SKY 등)은 상세 화면 '하단 코드값 정보'를 아직 못 봐서 **코드 그대로** 보여줌(`CATEGORY_KO` 비어 있음).
+- `adapters/transit.py`: ODsay 한 방향 조회 → PRD 11.3 계약(duration_seconds=분×60, time_basis=provider_unspecified, status ok/no_route/
+  missing_key/auth_failed/access_denied/rate_limited/timeout/provider_error/invalid_response). 실패면 시간·거리 None.
+  화면 표시는 실패 시 자동차(OSRM) 시간으로 대체하고 그렇게 적음, 둘 다 없으면 '확인 불가'(AT-06). 0분 없음.
+  `PlatformClient.fetch_body` 분리(목록이 아닌 응답용), 공급자 오류 코드를 `provider_code` 로 남김.
+- 실제 표본 5건(`python -m adapters.fetch transit`): 성공 4건(21~30분), 1건은 ODsay -98 '출, 도착지가 700m 이내' → 자동차 2분으로 대체 표시.
+  같은 구간 자동차는 4~9분이라 대중교통이 3~7배 걸림(병원동행에 인력 차량이 필요한 근거 후보, 표본 4건뿐).
+- 화면: 오늘의 현황에 '날씨 예보(참고)' 펼침(고른 날짜가 예보 범위 밖이면 그렇게 알림), 하루 배정 비교에 '병원동행: 대중교통으로 가면?' 표,
+  사이드바 이동시간 출처를 '자동차 · OSRM 도로(출발 시각·교통 상황 반영 안 함)'로(FR-49). 데이터 연결 화면: 날씨·대중교통 호출 검증.
+  날씨·대중교통은 배정 계산에 쓰지 않음.
+- 테스트 427개 통과(+22).
+- 남은 일: 기상청 category 코드 설명 캡처 받으면 열 이름 한국어로. 배포본에는 키가 없어 저장된 결과만 보임(화면은 외부 호출 안 함).

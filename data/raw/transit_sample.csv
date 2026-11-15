@@ -1,0 +1,6 @@
+﻿provider,mode,from_id,to_id,duration_seconds,distance_m,walk_m,path_type,time_basis,requested_departure_at,fetched_at,data_mode,status,provider_result_code,error_kind,message,request_id
+odsay,transit,BENEFICIARY:B0085,HOSP:JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxMTkxIzExIyQyIyQzIyQwMCQ0NjEwMDIjNzEjJDEjJDgjJDgz,1800.0,8635.0,400.0,3.0,provider_unspecified,,2026-11-15T21:00:29+09:00,live,ok,,,,R00003
+odsay,transit,BENEFICIARY:B0237,HOSP:JDU4MTI3MSM1MSMkMiMkNCMkMDAkMzgxMzUxIzIxIyQxIyQxIyQ3MiQ0NjE0ODEjNzEjJDEjJDgjJDgz,,,,,provider_unspecified,,2026-11-15T21:00:30+09:00,live,provider_error,-98.0,provider_error,"[provider_error] transit 공급자 오류 코드=-98: 출, 도착지가 700m이내입니다.",R00004
+odsay,transit,BENEFICIARY:B0132,HOSP:JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzUxIyQxIyQ1IyQxMyQyNjE4MzIjNjEjJDEjJDAjJDgz,1500.0,3987.0,700.0,2.0,provider_unspecified,,2026-11-15T21:00:30+09:00,live,ok,,,,R00006
+odsay,transit,BENEFICIARY:B0053,HOSP:JDQ4MTYyMiM1MSMkMSMkMCMkOTkkMzgxOTYxIzIxIyQxIyQxIyQ2MiQzNjE4MzIjNjEjJDEjJDgjJDgz,1680.0,7199.0,284.0,3.0,provider_unspecified,,2026-11-15T21:00:30+09:00,live,ok,,,,R00007
+odsay,transit,BENEFICIARY:B0229,HOSP:JDU4MTI3MSM1MSMkMiMkMCMkMDAkNDgxNzAyIzMxIyQxIyQzIyQ2MiQyNjE4MzIjNTEjJDEjJDIjJDgz,1260.0,2902.0,569.0,2.0,provider_unspecified,,2026-11-15T21:00:30+09:00,live,ok,,,,R00010

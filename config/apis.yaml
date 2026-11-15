@@ -55,23 +55,32 @@ population:              # 행정안전부_행정동별(통반단위) 성/연령
     total: "totNmprCnt"
   total_count_field: "totalCount"
 
-weather:                 # 기상청_단기예보 조회서비스_단기예보조회
-  url: "TODO: 상세 화면의 호출 URL"
+weather:                 # 기상청_단기예보 조회서비스_단기예보조회 (A10)
+  # 2026-11-15 플랫폼 상세 화면에서 확인한 값. 응답 형식은 JSON 으로 요청한다(기본 XML).
+  url: "https://api.koreaconnect.kr/01/1/2603101713597416530PDP/ENVIRO/1360000/VilageFcstInfoService_2.0/getVilageFcst"
   method: "GET"
   params:
-    pageNo: 1
-    numOfRows: 1000
+    pageNo: "{page}"
+    numOfRows: 1000            # 5일치가 1000행을 넘어 페이지를 나눠 받는다
     dataType: "JSON"
-    base_date: "{base_date}"
-    base_time: "{base_time}"
-    nx: "{nx}"
-    ny: "{ny}"
+    base_date: "{base_date}"   # 발표일자 YYYYMMDD
+    base_time: "{base_time}"   # 발표시각 HHMM
+    nx: "{nx}"                 # 예보지점 X 좌표(격자)
+    ny: "{ny}"                 # 예보지점 Y 좌표(격자)
+  # 출력결과 항목(상세 화면): baseDate, baseTime, fcstDate, fcstTime, category, fcstValue, nx, ny
+  # category 코드의 뜻은 상세 화면 '하단 코드값 정보'에 있다 — 확인 전에는 코드를 그대로 보여준다.
+  total_count_field: "totalCount"
 
-transit:                 # 대중교통 길찾기 (ODsay)
-  url: "TODO: 상세 화면의 호출 URL"
+transit:                 # ODsay 대중교통 길찾기 searchPubTransPathT (A03)
+  # 2026-11-15 플랫폼 상세 화면에서 확인한 값. 응답은 JSON(기본값).
+  url: "https://api.koreaconnect.kr/01/1/2604071749001710344ODS/LOGIS/v1/api/searchPubTransPathT"
   method: "GET"
   params:
-    SX: "{sx}"           # 출발 경도
-    SY: "{sy}"           # 출발 위도
-    EX: "{ex}"           # 도착 경도
-    EY: "{ey}"           # 도착 위도
+    SX: "{sx}"           # 출발지 X좌표(경도)
+    SY: "{sy}"           # 출발지 Y좌표(위도)
+    EX: "{ex}"           # 도착지 X좌표(경도)
+    EY: "{ey}"           # 도착지 Y좌표(위도)
+    output: "json"
+  # 출력결과: result.path[].info.totalTime(총 소요시간, 분), info.totalDistance(총거리), info.totalWalk(총 도보),
+  #           path[].pathType(1 지하철, 2 버스, 3 버스+지하철). 오류는 최상위 error{code, message}.
+  # 출발 시각을 받는 요청변수가 없다 → 시간 기준은 provider_unspecified 로 기록한다(AT-26).
