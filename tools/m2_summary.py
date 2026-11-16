@@ -29,6 +29,18 @@ def load(job: str) -> pd.DataFrame | None:
     return None if p is None else pd.read_csv(p, encoding="utf-8-sig").assign(_file=p.name)
 
 
+def escort_label(jobs: list[str]) -> str:
+    """결과 파일의 escort_mode 열로 병원동행 이동 가정을 밝힌다. 열이 없으면 2026-11-16 이전 실행 = 자동차."""
+    modes = set()
+    for j in jobs:
+        d = load(j)
+        if d is not None:
+            modes |= set(d["escort_mode"].astype(str)) if "escort_mode" in d else {"car_old"}
+    words = {"car_old": "자동차(OSRM) — 대중교통 반영 전(2026-11-16 이전) 실행",
+             "car": "자동차(OSRM)", "transit": "대중교통(ODsay)"}
+    return " / ".join(words.get(m, m) for m in sorted(modes)) or "결과 없음"
+
+
 def failed(d: pd.DataFrame) -> pd.Series:
     return (d["violations"] > 0) | (~d["status"].astype(str).isin(["ok", "optimal", "feasible"])) | \
            ((d["assigned"] == 0) & (d["requests"] > 0))
@@ -51,6 +63,71 @@ def paired(d: pd.DataFrame, a: str, b: str, col: str = "unique_beneficiaries") -
             "win": int((diff > 0).sum()), "lose": int((diff < 0).sum()), "tie": int((diff == 0).sum()), "n": len(diff)}
 
 
+SCEN = {"car": "자동차 가정", "transit": "대중교통 기본", "fixed": "수요 고정"}
+
+
+def escort_scenarios() -> list[str]:
+    """병원동행 집↔병원 이동 가정 두 시나리오(docs/travel_modes_plan.md 4장)."""
+    L = ["## 4. 이동 가정 — 병원동행 집↔병원을 자동차로 보느냐, 대중교통으로 보느냐\n",
+         "- 바꾸는 것은 병원동행의 집→병원·병원→집 이동뿐이다. 인력이 다음 집으로 가는 이동은 세 시나리오 모두 자동차(OSRM)다.",
+         "- 대중교통: ODsay 대중교통 길찾기(출발 시각 기준 없음), 700m 이내는 OSRM 도보 거리 ÷ 시속 3km(가정값).",
+         "- '대중교통 기본'은 부하율도 대중교통 시간으로 잰다. 같은 ρ라도 동행 1건이 무거워 요청 수가 적다.",
+         "- '수요 고정'은 자동차 기준 ρ로 고른 같은 요청을 대중교통 시간으로 배정한다(같은 요청에서 이동 가정만의 영향).\n"]
+    data = {(sc, r): load(f"{sc}_r{r}") for sc in SCEN for r in ("0.6", "0.9", "1.1")}
+    have = {k: d for k, d in data.items() if d is not None}
+    if not have:
+        return L + ["(결과 없음 — `python -m tools.run_m2_experiments car_r0.9 transit_r0.9 fixed_r0.9` 등으로 만든다)\n"]
+    allm = pd.concat(have.values())
+    L.append("- 파일: " + ", ".join(f"`{d['_file'].iloc[0]}`" for d in have.values()))
+    L.append(f"- 30일 × 시드 10개(42~51), AI 10초 · 하드 제약 위반 합계 **{int(allm['violations'].sum())}** · "
+             f"실패 **{int(failed(allm).sum())}** · "
+             f"AI 계산 상태: {allm[allm['algorithm']=='optimize']['status'].value_counts().to_dict()}\n")
+    L.append("| 부하율 | 시나리오 | 요청/일 | 실제 ρ | 방식 | 고유 인원/일 | 적기율 | 동행 배정/요청 | 이동(분/일) |")
+    L.append("|---|---|---|---|---|---|---|---|---|")
+    for r in ("0.6", "0.9", "1.1"):
+        for sc in SCEN:
+            d = have.get((sc, r))
+            if d is None:
+                continue
+            for algo in ("request_order", "nearest", "optimize"):
+                s = d[d["algorithm"] == algo]
+                L.append(f"| {r} | {SCEN[sc]} | {s['requests'].mean():.1f} | {s['actual_rho'].mean():.2f} | {ALGO[algo]} | "
+                         f"{s['unique_beneficiaries'].mean():.1f} | {s['on_time_rate'].mean()*100:.1f}% | "
+                         f"{s['assigned_escort'].mean():.1f} / {s['requests_escort'].mean():.1f} | "
+                         f"{s['travel_minutes'].mean():.0f} |")
+    L.append("\n### 시나리오마다 방식 차이 (같은 날·같은 시드, 고유 인원 명/일)\n")
+    L.append("| 부하율 | 시나리오 | AI − 근거리 (이김/짐/같음) | AI − 신청순 (이김/짐/같음) | 근거리 − 신청순 |")
+    L.append("|---|---|---|---|---|")
+    for r in ("0.6", "0.9", "1.1"):
+        for sc in SCEN:
+            d = have.get((sc, r))
+            if d is None:
+                continue
+            a = paired(d, "optimize", "nearest")
+            b = paired(d, "optimize", "request_order")
+            c = paired(d, "nearest", "request_order")
+            L.append(f"| {r} | {SCEN[sc]} | {a['mean']:+.2f} ({a['win']}/{a['lose']}/{a['tie']}) | "
+                     f"{b['mean']:+.2f} ({b['win']}/{b['lose']}/{b['tie']}) | {c['mean']:+.2f} |")
+    L.append("\n### 같은 요청에서 이동 가정만 바꾸면 (수요 고정 − 자동차 가정, 같은 날·같은 시드 평균)\n")
+    L.append("| 부하율 | 고유 인원: 신청순 | 근거리 | AI 최적화 | 동행 배정 건수(AI) |")
+    L.append("|---|---|---|---|---|")
+    for r in ("0.6", "0.9", "1.1"):
+        car, fx = have.get(("car", r)), have.get(("fixed", r))
+        if car is None or fx is None:
+            continue
+        both = pd.concat([car.assign(_sc="car"), fx.assign(_sc="fixed")])
+
+        def diff(algo: str, col: str) -> float:
+            x = both[both["algorithm"] == algo].pivot_table(index=["service_date", "seed"], columns="_sc", values=col)
+            return (x["fixed"] - x["car"]).mean()
+
+        L.append(f"| {r} | {diff('request_order', 'unique_beneficiaries'):+.2f} | "
+                 f"{diff('nearest', 'unique_beneficiaries'):+.2f} | {diff('optimize', 'unique_beneficiaries'):+.2f} | "
+                 f"{diff('optimize', 'assigned_escort'):+.2f} |")
+    L.append("\n- 이 절은 이동 '가정'의 영향이다. 대중교통 시간은 시각별 배차를 반영하지 않으며, 도보 속도 3km/h는 가정값이다.\n")
+    return L
+
+
 def main() -> None:
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -58,6 +135,8 @@ def main() -> None:
         pass
     L = ["# M2 효과 증명 수치표 (자동 생성 - 직접 고치지 말 것)\n",
          "> 가상 데이터 기반 실험 결과다. 실제 기관 효과가 아니다. `python -m tools.m2_summary` 로 다시 만든다.\n"]
+    L.append("> **병원동행 이동 가정:** 1~3절은 " + escort_label(["main_r0.9", "sens_base", "sens_cancel0.1"]) +
+             ". 자동차와 대중교통을 나란히 비교한 결과는 4절에 있다.\n")
 
     # ── 1. 기본 실험 ─────────────────────────────────────────────────────
     mains = {r: load(f"main_r{r}") for r in ("0.6", "0.9", "1.1")}
@@ -135,6 +214,7 @@ def main() -> None:
         L.append("- 취소율을 정하면 통보 시각은 30·60·120·240분 전 중 하나로 정했다(가정). '취소 반영'은 빈자리를 채우지 않고,"
                  " '취소 재배정'은 통보 시각 이후 빈자리를 다시 채운다.\n")
 
+    L += escort_scenarios()
     OUT.write_text("\n".join(L), encoding="utf-8")
     print(f"썼습니다: {OUT}")
 

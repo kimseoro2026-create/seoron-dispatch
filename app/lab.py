@@ -17,8 +17,11 @@ if str(ROOT) not in sys.path:
 import pandas as pd
 import streamlit as st
 
+from planner.data import escort_mode
 from simulator.lab import ALGO_KO, LabConfig, run_lab, seed_summary
 from store import Store
+
+ESCORT_WORDS = {"transit": "대중교통(ODsay)", "car": "자동차(OSRM)"}
 
 DATA = ROOT / "data" / "processed"
 # 실험 결과 폴더. 시험할 때는 SEORON_EXP_DIR 로 임시 폴더를 쓴다(저장소 파일을 건드리지 않게).
@@ -101,6 +104,7 @@ with tab1:
             st.caption(f"가정: 날짜 {len(meta.get('dates', []))}일 · 시드 {cfg.get('seeds')} · 부하율 {cfg.get('rhos')} · "
                        f"이동 ×{cfg.get('travel_factor')} · 병원 체류 ×{cfg.get('stay_factor')} · "
                        f"취소율 {'자료 그대로' if cfg.get('cancel_rate') is None else cfg.get('cancel_rate')} · "
+                       f"병원동행 이동 {ESCORT_WORDS.get(meta.get('escort_mode'), '자동차(대중교통 반영 전 실행)')} · "
                        f"엔진 {meta.get('engine_version')}")
         else:
             kind = next((v for k, v in PREFIX_DESC.items() if name.startswith(k)), "명령줄 실험")
@@ -140,6 +144,10 @@ with tab2:
                           help="취소율을 정하면 통보 시각은 30·60·120·240분 전 중 하나로 정합니다(가정). "
                                "취소율은 '+취소 재배정·반영' 방식에서만 결과에 영향을 줍니다.")
     tl = c7.number_input("AI 계산 제한(초)", 2, 10, 5)
+    escort = st.radio("병원동행 집↔병원 이동", ["transit", "car"], horizontal=True,
+                      index=0 if escort_mode() == "transit" else 1, format_func=lambda m: ESCORT_WORDS[m],
+                      help="인력이 다음 집으로 가는 이동은 어느 쪽이든 자동차입니다. "
+                           "대중교통은 출발 시각 기준이 없고(ODsay), 700m 이내는 시속 3km 도보로 셉니다(가정).")
     n_opt = n_days * len(seeds) * len(rhos) * (1 if "optimize" in algos else 0)
     est = n_opt * tl + n_days * len(seeds) * len(rhos) * max(0, len(algos) - (1 if "optimize" in algos else 0)) * 0.5
     st.caption(f"예상 계산 시간: 약 {int(est)}초 (AI 최적화 {n_opt}회)")
@@ -153,7 +161,8 @@ with tab2:
         else:
             cfg = LabConfig(n_days=int(n_days), seeds=[int(x) for x in seeds], rhos=[float(x) for x in rhos],
                             algorithms=list(algos), time_limit_sec=int(tl), travel_factor=float(travel_f),
-                            stay_factor=float(stay_f), cancel_rate=None if isinstance(cancel, str) else float(cancel))
+                            stay_factor=float(stay_f), cancel_rate=None if isinstance(cancel, str) else float(cancel),
+                            escort_mode=escort)
             total = n_days * len(seeds) * len(rhos) * len(algos)
             bar = st.progress(0.0, text="실험 중…")
             done = [0]

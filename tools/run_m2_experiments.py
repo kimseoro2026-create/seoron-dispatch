@@ -14,7 +14,8 @@ BASE3 = ["request_order", "nearest", "optimize"]
 CANCEL4 = ["request_order_replay", "nearest_replay", "request_order_cancel", "nearest_cancel"]
 
 JOBS = {
-    # 기본: 부하율 3단계 × 시드 10 × 30일, AI 10초
+    # 기본: 부하율 3단계 × 시드 10 × 30일, AI 10초.
+    # 2026-11-16 이전 결과(main_r*)는 병원동행 이동을 자동차로 계산했다. 이후 기본값은 대중교통이다.
     "main_r0.6": dict(rhos=[0.6], algorithms=BASE3, time_limit_sec=10),
     "main_r0.9": dict(rhos=[0.9], algorithms=BASE3, time_limit_sec=10),
     "main_r1.1": dict(rhos=[1.1], algorithms=BASE3, time_limit_sec=10),
@@ -24,6 +25,13 @@ JOBS = {
     "sens_travel1.3": dict(rhos=[0.9], algorithms=BASE3, time_limit_sec=5, travel_factor=1.3),
     "sens_stay0.8": dict(rhos=[0.9], algorithms=BASE3, time_limit_sec=5, stay_factor=0.8),
     "sens_stay1.3": dict(rhos=[0.9], algorithms=BASE3, time_limit_sec=5, stay_factor=1.3),
+    # 이동 가정 두 시나리오(docs/travel_modes_plan.md 4장): 병원동행 집↔병원만 바꾼다. 인력 이동은 둘 다 자동차.
+    #   car_*      자동차 가정(예전 기본)
+    #   transit_*  대중교통 기본 — 부하율도 대중교통 시간으로 잰다(같은 ρ면 요청 수가 적다)
+    #   fixed_*    수요 고정 — 자동차 기준 ρ로 고른 '같은 요청'을 대중교통 시간으로 배정
+    **{f"{sc}_r{r}": dict(rhos=[r], algorithms=BASE3, time_limit_sec=10, escort_mode=m, select_escort=sel)
+       for sc, m, sel in (("car", "car", "car"), ("transit", "transit", "transit"), ("fixed", "transit", "car"))
+       for r in (0.6, 0.9, 1.1)},
     # 취소율: 재배정·반영 방식(기준선 기반이라 빠름)
     "sens_cancel0.0": dict(rhos=[0.9], algorithms=CANCEL4, time_limit_sec=5, cancel_rate=0.0),
     "sens_cancel0.1": dict(rhos=[0.9], algorithms=CANCEL4, time_limit_sec=5, cancel_rate=0.1),

@@ -84,3 +84,36 @@ def test_fetch_stops_on_rate_limit_and_keeps_results(tmp_path):
 def test_walk_estimate_uses_elderly_speed():
     m, src = et.walk_minutes((37.2, 127.07), (37.2045, 127.07), walk_kmh=3.0)   # 직선 약 0.5km
     assert src == "walk_estimate" and 12 < m < 14                              # 0.5×1.3/3×60 ≈ 13분
+
+
+# ── 실험 시나리오(docs/travel_modes_plan.md 4장) ──────────────────────────
+import pytest
+
+from planner.data import service_dates
+
+DATA = __import__("pathlib").Path(__file__).resolve().parent.parent / "data" / "processed"
+needs_data = pytest.mark.skipif(not (DATA / et.OUT_NAME).exists(), reason="escort_travel.csv 없음")
+
+
+@needs_data
+def test_experiment_records_scenario_and_fixed_demand_keeps_requests():
+    from simulator.experiment import run_experiment
+    day = service_dates(DATA)[:1]
+    kw = dict(algorithms=["request_order"], load_factors=[0.9], seeds=[42], dates=day)
+    car = run_experiment(DATA, escort="car", **kw).iloc[0]
+    tr = run_experiment(DATA, escort="transit", **kw).iloc[0]
+    fx = run_experiment(DATA, escort="transit", select_escort="car", **kw).iloc[0]
+    assert (car.escort_mode, tr.escort_mode, fx.escort_mode, fx.select_escort) == ("car", "transit", "transit", "car")
+    assert fx.requests == car.requests                       # 수요 고정: 같은 요청 수
+    assert fx.actual_rho > car.actual_rho                    # 같은 요청이라도 대중교통이면 부하가 크다
+    assert tr.requests <= car.requests                       # 같은 ρ면 대중교통 쪽 요청이 적거나 같다
+    assert car.violations == tr.violations == fx.violations == 0
+
+
+@needs_data
+def test_lab_assumptions_name_escort_mode(tmp_path):
+    from simulator.lab import LabConfig, run_lab
+    out = run_lab(LabConfig(n_days=1, seeds=[42], algorithms=["nearest"], escort_mode="transit",
+                            select_escort="car", label="t"), DATA, out_dir=tmp_path)
+    assert out["meta"]["escort_mode"] == "transit" and out["meta"]["select_escort"] == "car"
+    assert any("대중교통" in n and "같은 요청" in n for n in out["meta"]["notes"])
