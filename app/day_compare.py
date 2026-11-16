@@ -49,8 +49,12 @@ st.caption("같은 날, 같은 요청과 같은 인력으로 **배정 방식만 
 def _data_stamp() -> str:
     """이동시간 행렬 파일(원본 또는 .gz) 수정시각을 캐시 키로 쓴다. 파일이 바뀌면 캐시가 무효화된다."""
     from planner.data import matrix_path
+    from planner.data import ESCORT_TRAVEL_NAME, escort_mode
     p = matrix_path(ROOT / "data" / "processed")
-    return f"{p.name}:{p.stat().st_mtime}" if p else "missing"
+    e = ROOT / "data" / "processed" / ESCORT_TRAVEL_NAME
+    # 병원동행 수단·구간 표가 바뀌어도 동행 점유시간이 바뀌므로 다시 계산해야 한다
+    esc = f"|escort={escort_mode()}:{e.stat().st_mtime if e.exists() else 'none'}"
+    return (f"{p.name}:{p.stat().st_mtime}" if p else "missing") + esc
 
 
 @st.cache_data(show_spinner="데이터 불러오는 중…")
@@ -141,6 +145,26 @@ def _matrix_source(stamp: str):  # stamp 는 캐시 키 역할
 
 
 @st.cache_data(show_spinner=False)
+def _escort_status(day: str, inputs_json: str, stamp: str) -> dict:
+    """그날 병원동행 구간이 대중교통·도보·자동차 대체 중 무엇으로 계산됐는지(planner 와 같은 표를 센다)."""
+    from planner.data import escort_travel_status, load_day
+    inst = load_day(ROOT / "data" / "processed", day, travel={}, **json.loads(inputs_json))
+    return escort_travel_status(inst.requests, ROOT / "data" / "processed")
+
+
+def _escort_words(es: dict) -> str:
+    if not es["legs"]:
+        return "병원동행 이동: 이 날짜에 병원동행 요청이 없습니다."
+    if es["mode"] != "transit":
+        return f"병원동행 이동: **자동차 가정**(설정 escort_travel.default_mode=car) · {es['legs']}구간"
+    bits = [f"대중교통(ODsay) {es['transit']}", f"700m 이내 도보 {es['walk']}"]
+    if es["car_fallback"]:
+        bits.append(f"**자동차 시간으로 대체 {es['car_fallback']}**(대중교통 조회 안 됨)")
+    return (f"병원동행 이동: **대중교통 기본** · {es['legs']}구간 중 " + " · ".join(bits)
+            + " · 대중교통은 출발 시각 기준 없음(ODsay)")
+
+
+@st.cache_data(show_spinner=False)
 def _raw_sources() -> dict[str, str]:
     """병원·인구 원천이 실제 API 수집인지 모의(mock)인지 데이터 자체로 판정한다.
 
@@ -198,7 +222,9 @@ with st.sidebar:
     src = _matrix_source(stamp)
     src_label = {"osrm": "OSRM 도로", "estimate": "직선거리 대략값", "kakao": "카카오 길찾기"}.get(src, src)
     st.markdown("**데이터 출처**")
-    st.caption(f"이동시간: **자동차 · {src_label}** (출발 시각·교통 상황 반영 안 함)")
+    st.caption(f"인력 이동시간: **자동차 · {src_label}** (출발 시각·교통 상황 반영 안 함)")
+    _es = _escort_status(date, json.dumps(_store.day_inputs(date), sort_keys=True, default=str), stamp)
+    st.caption(_escort_words(_es))
     for _label, _text in _raw_sources().items():
         st.caption(f"{_label}: **{_text}**")
     st.caption("어르신·인력·요청은 모두 가상으로 만든 데이터입니다.")
@@ -539,7 +565,7 @@ def _transit_rows(stamp: str) -> list[dict]:
     t = transit.load_cache(ROOT / "data" / "raw")
     if t is None or t.empty:
         return []
-    travel = load_travel(ROOT / "data" / "processed", set(t["from_id"]) | set(t["to_id"]))
+    travel = load_travel(ROOT / "data" / "processed", set(t["from_id"]) | set(t["to_id"]), escort="car")
     rows = []
     for r in t.to_dict("records"):
         r = {k: (None if isinstance(v, float) and pd.isna(v) else v) for k, v in r.items()}

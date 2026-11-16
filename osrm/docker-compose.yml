@@ -9,3 +9,13 @@ services:
     ports:
       - "5000:5000"
     restart: unless-stopped
+  # 도보 — prepare-foot.ps1 실행 후 'docker compose up -d osrm-foot'
+  osrm-foot:
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
+    command: osrm-routed --algorithm mld --max-table-size 1000 /data/${OSRM_BASE:-region}.osrm
+    volumes:
+      - ./data-foot:/data
+    ports:
+      - "5001:5000"
+    restart: unless-stopped
+    profiles: ["foot"]

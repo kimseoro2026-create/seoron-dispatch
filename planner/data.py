@@ -51,13 +51,85 @@ def matrix_path(data_dir: str | Path) -> Path | None:
     return None
 
 
-def load_travel(data_dir: str | Path, node_ids: set[str] | None = None) -> dict[tuple[str, str], float]:
+ESCORT_TRAVEL_NAME = "escort_travel.csv"
+
+
+def escort_mode(default: str = "car") -> str:
+    """config/region.yaml escort_travel.default_mode (transit / car). 설정이 없으면 예전 가정(car)."""
+    import yaml
+    p = Path(__file__).resolve().parent.parent / "config" / "region.yaml"
+    try:
+        cfg = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+    except OSError:
+        return default
+    mode = ((cfg.get("escort_travel") or {}).get("default_mode") or default)
+    if mode not in ("transit", "car"):
+        raise ValueError(f"escort_travel.default_mode 는 transit 또는 car 여야 합니다: {mode!r}")
+    return mode
+
+
+def load_escort_travel(data_dir: str | Path) -> pd.DataFrame:
+    """escort_travel.csv(병원동행 집↔병원 구간의 대중교통·도보 시간). 없으면 빈 표."""
+    p = Path(data_dir) / ESCORT_TRAVEL_NAME
+    cols = ["from_node", "to_node", "minutes", "mode", "source"]
+    if not p.exists():
+        return pd.DataFrame(columns=cols)
+    df = pd.read_csv(p)
+    m = pd.to_numeric(df["minutes"], errors="coerce")
+    return df[m.notna() & np.isfinite(m) & (m > 0)]          # 0·음수·NaN 은 쓰지 않는다(0분 대체 금지)
+
+
+def apply_escort_travel(travel: dict[tuple[str, str], float], data_dir: str | Path,
+                        mode: str | None = None) -> dict[tuple[str, str], float]:
+    """동행 수단이 transit 이면 (집, 병원)·(병원, 집) 구간을 escort_travel.csv 값으로 바꾼다.
+
+    병원 노드는 동행 안에서만 지나가므로(인력이 혼자 병원에 가는 일은 없다) 이 두 방향만 바꾸면
+    엔진·기준선·검증기·시뮬레이터가 같은 동행 점유시간을 쓴다. 표에 없는 구간은 자동차 값을 그대로 둔다
+    — 화면은 escort_travel_status 로 '자동차 시간 대체' 건수를 센다.
+    """
+    mode = mode or escort_mode()
+    if mode != "transit":
+        return travel
+    et = load_escort_travel(data_dir)
+    for a, b, m in zip(et["from_node"], et["to_node"], et["minutes"]):
+        if (a, b) in travel:                 # 하루치(node_ids)로 줄인 행렬이면 그 안의 구간만
+            travel[(a, b)] = float(m)
+    return travel
+
+
+def escort_travel_status(requests: list[dict], data_dir: str | Path, mode: str | None = None) -> dict:
+    """병원동행 구간(두 방향)이 무엇으로 계산됐는지 센다. {mode, legs, transit, walk, car_fallback, sources}."""
+    mode = mode or escort_mode()
+    legs = [(r["home_node"], r["hospital_node"]) for r in requests
+            if r.get("service_type") == "hospital_escort" and r.get("hospital_node")]
+    legs = legs + [(b, a) for a, b in legs]
+    out = {"mode": mode, "legs": len(legs), "transit": 0, "walk": 0, "car_fallback": 0, "sources": {}}
+    if mode != "transit":
+        out["car_fallback"] = 0
+        out["car"] = len(legs)
+        return out
+    et = load_escort_travel(data_dir)
+    kind = {(a, b): (md, src) for a, b, md, src in zip(et["from_node"], et["to_node"], et["mode"], et["source"])}
+    for leg in legs:
+        md, src = kind.get(leg, ("car_fallback", "osrm"))
+        out[md if md in ("transit", "walk") else "car_fallback"] += 1
+        out["sources"][src] = out["sources"].get(src, 0) + 1
+    return out
+
+
+def load_travel(data_dir: str | Path, node_ids: set[str] | None = None,
+                escort: str | None = None) -> dict[tuple[str, str], float]:
     """travel_matrix.csv → {(from, to): 분}.
 
     node_ids 를 주면 그 노드들 사이만 남긴다(하루치 화면에 필요한 구간만 쓰기 위함).
     파일이 없으면 nodes.csv 좌표로 추정 행렬을 만든다.
     (61MB 행렬을 저장소에 넣지 않기 위한 대체 경로. 추정값이므로 화면에 출처를 표시한다.)
+    escort: 병원동행 구간 수단(transit / car). None 이면 config 기본값. apply_escort_travel 참고.
     """
+    return apply_escort_travel(_load_matrix(data_dir, node_ids), data_dir, escort)
+
+
+def _load_matrix(data_dir: str | Path, node_ids: set[str] | None = None) -> dict[tuple[str, str], float]:
     path = matrix_path(data_dir)
     if path is None:
         return estimate_travel(data_dir, node_ids)

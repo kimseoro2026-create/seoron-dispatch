@@ -2,6 +2,8 @@
 
     python -m adapters.fetch weather            # 기상청 단기예보 → data/raw/weather_forecast.csv
     python -m adapters.fetch transit --n 5      # 병원동행 n건의 집→병원 대중교통 → data/raw/transit_sample.csv
+    python -m adapters.fetch escort --max 200   # 병원동행 전체 구간(두 방향) 대중교통, 이어받기 → transit_pairs.csv
+    python -m adapters.fetch escort --build     # 받은 결과로 data/processed/escort_travel.csv 다시 만들기(호출 없음)
 
 대중교통은 호출량 한도를 확인하지 못해 표본만 받는다(기본 5건). 실패한 건도 status 와 함께 저장한다.
 """
@@ -47,9 +49,13 @@ def transit_pairs(n: int) -> list[tuple[str, tuple, str, tuple, str]]:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("what", choices=["weather", "transit"])
+    ap.add_argument("what", choices=["weather", "transit", "escort"])
     ap.add_argument("--n", type=int, default=5)
+    ap.add_argument("--max", type=int, default=200, help="escort: 이번에 부를 최대 건수")
+    ap.add_argument("--build", action="store_true", help="escort: 호출하지 않고 escort_travel.csv 만 다시 만든다")
     a = ap.parse_args(argv)
+    if a.what == "escort":
+        return _escort(a)
     c = _client()
     if a.what == "weather":
         from adapters import weather
@@ -71,6 +77,25 @@ def main(argv=None) -> int:
     ok = sum(r["status"] == "ok" for r in rows)
     print(f"대중교통 {len(rows)}건 중 성공 {ok}건 저장: {p.name}")
     return 0 if ok else 1
+
+
+def _escort(a) -> int:
+    import os
+
+    import yaml
+
+    from adapters import escort_travel as et
+    cfg = (yaml.safe_load((ROOT / "config" / "region.yaml").read_text(encoding="utf-8")) or {}).get("escort_travel") or {}
+    pairs = et.escort_pairs(PROC)
+    if not a.build:
+        res = et.fetch(_client(), pairs, RAW, a.max)
+        print(f"조회 {res['called']}건 {res['counts']} · 남은 구간 {res['remaining']}/{len(pairs)}"
+              + (f" · 멈춤({res['stopped']})" if res["stopped"] else ""))
+    from dotenv import load_dotenv
+    load_dotenv(ROOT / ".env")
+    df = et.build(RAW, PROC, float(cfg.get("walk_kmh", 3.0)), os.environ.get("OSRM_FOOT_URL") or None)
+    print(f"{et.OUT_NAME}: {len(df)}구간 {df['source'].value_counts().to_dict()} (전체 {len(pairs)}구간)")
+    return 0
 
 
 if __name__ == "__main__":

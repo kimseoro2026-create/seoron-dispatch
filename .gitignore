@@ -16,6 +16,7 @@ data/processed/travel_matrix.csv
 
 # OSRM 지도 데이터(수 GB). prepare.bat 으로 다시 만든다.
 osrm/data/
+osrm/data-foot/
 
 # 한국 OSM 원본(약 700MB)
 data/raw/*.osm.pbf
