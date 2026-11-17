@@ -128,6 +128,70 @@ def escort_scenarios() -> list[str]:
     return L
 
 
+WK = {"0": "인력 모두 자차", "50": "인력 절반 대중교통", "100": "인력 모두 대중교통"}
+
+
+def worker_scenarios() -> list[str]:
+    """인력별 이동수단 시나리오(docs/travel_modes_plan.md 5단계)."""
+    L = ["\n## 5. 인력 이동수단 — 인력이 다음 집으로 대중교통을 타고 가면\n",
+         "- 병원동행 집↔병원은 세 시나리오 모두 대중교통이다. 요청은 자동차 기준 ρ로 골라 4절 '수요 고정'과 같다.",
+         "- 대중교통 인력의 이동은 보정 모형 값(estimate): min(a × 자동차분 + b, 도보) + 여유(학습 오차 80% 분위수).",
+         "  모형 계수·오차는 `data/processed/worker_transit_model.json`. 실제 자차/대중교통 비율은 확인되지 않아 시나리오로 나눴다.",
+         "- 대중교통 인력은 자격 묶음(동행 가능 / 가사만)마다 같은 비율로, 인력 ID 순서를 고정해 골랐다.\n"]
+    have = {(k, r): d for k in WK for r in ("0.6", "0.9", "1.1")
+            if (d := load(f"wk{k}_r{r}")) is not None}
+    if not have:
+        return L + ["(결과 없음 — `python -m tools.run_m2_experiments wk0_r0.9 wk50_r0.9 wk100_r0.9`)\n"]
+    allm = pd.concat(have.values())
+    L.append("- 파일: " + ", ".join(f"`{d['_file'].iloc[0]}`" for d in have.values()))
+    L.append(f"- 30일 × 시드 10개, AI 10초 · 하드 제약 위반 합계 **{int(allm['violations'].sum())}** · "
+             f"실패 **{int(failed(allm).sum())}** · "
+             f"AI 계산 상태: {allm[allm['algorithm']=='optimize']['status'].value_counts().to_dict()}\n")
+    L.append("| 부하율 | 시나리오 | 요청/일 | 방식 | 고유 인원/일 | 적기율 | 동행 배정/요청 | 이동(분/일) |")
+    L.append("|---|---|---|---|---|---|---|---|")
+    for r in ("0.6", "0.9", "1.1"):
+        for k in WK:
+            d = have.get((k, r))
+            if d is None:
+                continue
+            for algo in ("request_order", "nearest", "optimize"):
+                x = d[d["algorithm"] == algo]
+                L.append(f"| {r} | {WK[k]} | {x['requests'].mean():.1f} | {ALGO[algo]} | "
+                         f"{x['unique_beneficiaries'].mean():.1f} | {x['on_time_rate'].mean()*100:.1f}% | "
+                         f"{x['assigned_escort'].mean():.1f} / {x['requests_escort'].mean():.1f} | "
+                         f"{x['travel_minutes'].mean():.0f} |")
+    L.append("\n### 시나리오마다 방식 차이 (같은 날·같은 시드, 고유 인원 명/일)\n")
+    L.append("| 부하율 | 시나리오 | AI − 근거리 (이김/짐/같음) | AI − 신청순 (이김/짐/같음) |")
+    L.append("|---|---|---|---|")
+    for r in ("0.6", "0.9", "1.1"):
+        for k in WK:
+            d = have.get((k, r))
+            if d is None:
+                continue
+            a_, b_ = paired(d, "optimize", "nearest"), paired(d, "optimize", "request_order")
+            L.append(f"| {r} | {WK[k]} | {a_['mean']:+.2f} ({a_['win']}/{a_['lose']}/{a_['tie']}) | "
+                     f"{b_['mean']:+.2f} ({b_['win']}/{b_['lose']}/{b_['tie']}) |")
+    L.append("\n### 모두 자차와 비교 (같은 날·같은 시드 평균, 고유 인원 명/일)\n")
+    L.append("| 부하율 | 시나리오 | 신청순 | 근거리 | AI 최적화 |")
+    L.append("|---|---|---|---|---|")
+    for r in ("0.6", "0.9", "1.1"):
+        base = have.get(("0", r))
+        for k in ("50", "100"):
+            d = have.get((k, r))
+            if base is None or d is None:
+                continue
+            both = pd.concat([base.assign(_k="0"), d.assign(_k=k)])
+
+            def diff(algo: str) -> float:
+                x = both[both["algorithm"] == algo].pivot_table(index=["service_date", "seed"], columns="_k",
+                                                                values="unique_beneficiaries")
+                return (x[k] - x["0"]).mean()
+
+            L.append(f"| {r} | {WK[k]} | {diff('request_order'):+.2f} | {diff('nearest'):+.2f} | {diff('optimize'):+.2f} |")
+    L.append("\n- 모형 값은 실제 조회값이 아니다. 확정 후보안은 `python -m adapters.fetch worker-plan` 으로 연결 구간만 실제 조회해 다시 검증한다.\n")
+    return L
+
+
 def main() -> None:
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -215,6 +279,7 @@ def main() -> None:
                  " '취소 재배정'은 통보 시각 이후 빈자리를 다시 채운다.\n")
 
     L += escort_scenarios()
+    L += worker_scenarios()
     OUT.write_text("\n".join(L), encoding="utf-8")
     print(f"썼습니다: {OUT}")
 
