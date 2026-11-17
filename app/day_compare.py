@@ -954,9 +954,15 @@ else:
 
     st.dataframe(rs[shown].set_index(["인력 바쁨", "방식"]), width="stretch")
     n_obs = int(rs["관측수"].iloc[0]) if "관측수" in rs.columns else len(raw)
+    _esc = {"transit": "대중교통", "car": "자동차"}
+    if "escort_mode" in raw.columns:
+        _m = raw["escort_mode"].dropna().unique()
+        escort_txt = "병원동행 집↔병원 이동: " + ", ".join(_esc.get(str(m), str(m)) for m in _m)
+    else:
+        escort_txt = "병원동행 집↔병원 이동: 자동차(대중교통 반영 전 실행)"
     st.caption(
         f"하루 평균값입니다(가장 늦어진 시간만 전체 기간 최댓값). 관측 {n_obs}일·방식, "
-        f"출처 파일: {rp.name}"
+        f"{escort_txt}, 출처 파일: {rp.name}"
     )
     if "다른인력이동_평균" not in rs.columns:
         st.caption("이 실험 파일에는 '다른 인력이 맡음' 열이 없습니다(이전 버전 실험).")
