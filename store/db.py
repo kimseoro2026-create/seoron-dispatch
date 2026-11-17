@@ -136,9 +136,17 @@ def _snapshot_body(instance: dict) -> dict:
         tl = sorted([str(a), str(b), float(m)] for (a, b), m in travel.items())
     else:
         tl = sorted([str(t["from_node"]), str(t["to_node"]), float(t["minutes"])] for t in travel)
-    return {"workers": sorted(instance.get("workers", []), key=lambda w: str(w.get("worker_id"))),
+    body = {"workers": sorted(instance.get("workers", []), key=lambda w: str(w.get("worker_id"))),
             "requests": sorted(instance.get("requests", []), key=lambda r: str(r.get("request_id"))),
             "travel": tl}
+    # 인력별 이동수단 표(있을 때만 — 없으면 예전과 같은 해시)
+    wt = instance.get("worker_travel") or {}
+    if wt:
+        body["worker_travel"] = {
+            m: sorted([str(a), str(b), float(v)] for (a, b), v in t.items()) if isinstance(t, dict)
+            else sorted([str(r["from_node"]), str(r["to_node"]), float(r["minutes"])] for r in t)
+            for m, t in sorted(wt.items())}
+    return body
 
 
 def snapshot_hash(instance: dict) -> str:

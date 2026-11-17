@@ -148,3 +148,34 @@ def test_repair_retimes_without_new_legs_and_passes():
     assert {(l["from_id"], l["to_id"]) for l in wt.plan_legs(chk["instance"], fix["assignments"])} <= \
            {(l["from_id"], l["to_id"]) for l in legs}, "다시 맞추면서 새 연결 구간이 생겼다"
     assert len(fix["assignments"]) + len(fix["displaced"]) == len(a)
+
+
+def _fake_tools(t, extra_last=0, status="ok"):
+    legs0 = wt.plan_legs(t, _plan()[1])
+    table = (t["worker_travel"]["transit"])
+
+    def load_raw():
+        rows = []
+        for (a, b), m in table.items():
+            mm = m + (extra_last if (a, b) == (legs0[-1]["from_id"], legs0[-1]["to_id"]) else 0)
+            rows.append({"from_id": a, "to_id": b, "pair_status": status,
+                         "duration_seconds": mm * 60 if status == "ok" else None})
+        return pd.DataFrame(rows)
+    return (lambda legs: len(legs)), load_raw, (lambda a, b: None)
+
+
+def test_confirm_plan_repairs_and_confirms():
+    from verifier import verify
+    t, a = _plan()
+    q, lr, wk = _fake_tools(t, extra_last=5)
+    res = wt.confirm_plan(t, a, query=q, load_raw=lr, walk_km=wk, walk_kmh=4.0)
+    assert res["confirmed"]
+    assert verify(res["instance"], res["plan"]).ok
+    assert len(res["plan"]) + len(res["dropped"]) == len(a)
+
+
+def test_confirm_plan_not_confirmed_when_queries_fail():
+    t, a = _plan()
+    q, lr, wk = _fake_tools(t, status="rate_limited")
+    res = wt.confirm_plan(t, a, query=q, load_raw=lr, walk_km=wk, walk_kmh=4.0)
+    assert not res["confirmed"], "조회에 실패했는데 '확정 가능'으로 표시했다"

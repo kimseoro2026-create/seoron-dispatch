@@ -54,7 +54,10 @@ def _data_stamp() -> str:
     e = ROOT / "data" / "processed" / ESCORT_TRAVEL_NAME
     # 병원동행 수단·구간 표가 바뀌어도 동행 점유시간이 바뀌므로 다시 계산해야 한다
     esc = f"|escort={escort_mode()}:{e.stat().st_mtime if e.exists() else 'none'}"
-    return (f"{p.name}:{p.stat().st_mtime}" if p else "missing") + esc
+    # 대중교통 인력 이동 모형이 바뀌면 그 인력들의 이동시간이 바뀐다
+    wm = ROOT / "data" / "processed" / "worker_transit_model.json"
+    wkm = f"|wmodel={wm.stat().st_mtime if wm.exists() else 'none'}"
+    return (f"{p.name}:{p.stat().st_mtime}" if p else "missing") + esc + wkm
 
 
 @st.cache_data(show_spinner="데이터 불러오는 중…")
@@ -219,10 +222,32 @@ with st.sidebar:
 
     st.divider()
     stamp = _data_stamp()
+    # 인력별 이동수단(docs/travel_modes_plan.md 5단계). 실제 비율은 확인되지 않아 담당자가 시나리오로 고른다.
+    from adapters.worker_transit import load_model as _load_wmodel
+    from planner.data import worker_transit_share as _cfg_share
+    _wmodel = _load_wmodel(ROOT / "data" / "processed")
+    st.markdown("**인력 이동수단**")
+    if _wmodel is None:
+        transit_share = 0.0
+        st.caption("대중교통 인력 이동 모형이 없어 모든 인력을 자차로 계산합니다 "
+                   "(`python -m adapters.fetch worker-transit`).")
+    else:
+        _share_opts = {"모두 자차": 0.0, "절반 대중교통": 0.5, "모두 대중교통": 1.0}
+        _cfg = _cfg_share()
+        _idx = min(range(3), key=lambda i: abs(list(_share_opts.values())[i] - _cfg))
+        _share_label = st.radio("인력이 다음 집으로 가는 수단", list(_share_opts), index=_idx, key="worker_share",
+                                help="실제 자차·대중교통 비율은 아직 확인되지 않아 시나리오로 고릅니다. "
+                                     "대중교통 인력은 동행 가능·가사만 묶음마다 같은 비율로 정해 둔 인력입니다.")
+        transit_share = _share_opts[_share_label]
     src = _matrix_source(stamp)
     src_label = {"osrm": "OSRM 도로", "estimate": "직선거리 대략값", "kakao": "카카오 길찾기"}.get(src, src)
     st.markdown("**데이터 출처**")
-    st.caption(f"인력 이동시간: **자동차 · {src_label}** (출발 시각·교통 상황 반영 안 함)")
+    if transit_share > 0:
+        st.caption(f"인력 이동시간: 자차 인력은 **자동차 · {src_label}**, 대중교통 인력은 **대략값(보정 모형)** — "
+                   f"ODsay 표본 {_wmodel['n_pairs']}쌍으로 맞춘 식에 여유 {_wmodel['margin']:.0f}분을 더함. "
+                   f"검사 구간 평균 오차 {_wmodel['test_mae_min']:.0f}분. 승인 전 아래 '대중교통 구간 실제 확인'으로 다시 확인하세요.")
+    else:
+        st.caption(f"인력 이동시간: **자동차 · {src_label}** (출발 시각·교통 상황 반영 안 함)")
     _es = _escort_status(date, json.dumps(_store.day_inputs(date), sort_keys=True, default=str), stamp)
     st.caption(_escort_words(_es))
     for _label, _text in _raw_sources().items():
@@ -251,6 +276,7 @@ def _algo_key(a: str) -> str:
 def _compute(day: str, a: str, plan_exclude: list[str] | tuple = ()) -> dict:
     """한 날짜·한 방식 계산 + 실행 기록(FR-23). plan_exclude: 이번 계산에서만 뺄 요청(취소 아님)."""
     inputs = _store.day_inputs(day)
+    inputs["transit_share"] = transit_share
     if plan_exclude:
         inputs["exclude_ids"] = sorted(set(inputs["exclude_ids"]) | set(plan_exclude))
     inst, assignments, unassigned, timelines, rep, meta = _run(
@@ -443,8 +469,9 @@ def _timeline_html(worker_id: str, w: dict, timelines: list[dict]) -> str:
         bars += (f'<div style="display:inline-block;width:{(b - a) / span * 100:.3f}%;height:26px;'
                  f'background:{PALETTE[kind]};vertical-align:top;" title="{tip}"></div>')
     skills = "·".join(SKILL_KO.get(x, x) for x in w.get("skills", []))
+    mode = " · 대중교통 이동" if w.get("travel_mode") == "transit" else ""
     return (f'<div style="font-size:0.85rem;margin:2px 0 3px;"><b>{worker_id}</b> '
-            f'<span style="color:{MUTED};">{skills} · 근무 {_hhmm(shift_s)}~{_hhmm(shift_e)}</span></div>'
+            f'<span style="color:{MUTED};">{skills} · 근무 {_hhmm(shift_s)}~{_hhmm(shift_e)}{mode}</span></div>'
             f'<div style="height:26px;border-radius:4px;overflow:hidden;white-space:nowrap;">{bars}</div>'
             f'<div style="margin-bottom:10px;"></div>')
 
@@ -559,6 +586,73 @@ if tab_names:
                 st.dataframe(vdf, width="stretch", hide_index=True)
 
 
+# ── 대중교통 인력 이동 실제 확인 (docs/travel_modes_plan.md 3-2의 3번) ───────────
+# 엔진은 대중교통 인력의 이동을 대략값(보정 모형)으로 계산한다. 승인 전에 그 배정안이 실제로 지나는
+# 연결 구간만 ODsay 로 조회해 다시 검증하고, 늦어지는 인력의 일정만 같은 순서로 시각을 다시 맞춘다.
+if transit_share > 0 and results:
+    st.subheader("대중교통 구간 실제 확인")
+    st.caption("대중교통 인력의 이동은 대략값으로 계산했습니다. 버튼을 누르면 이 배정안이 실제로 지나는 연결 구간만 "
+               "ODsay 대중교통 길찾기로 조회해(이미 조회한 구간은 다시 부르지 않음) 규칙을 다시 확인합니다. "
+               "늦어지는 인력이 있으면 그 사람 일정만 순서는 그대로 두고 시각을 늦춰 맞추고, 시간창에 못 들어가는 요청은 따로 보여 줍니다.")
+    _chk_opts = [a for a in tab_names if results[a]["usable"] and not results[a]["rep"].violations]
+    if not _chk_opts:
+        st.info("확인할 수 있는 배정안이 없습니다.")
+    else:
+        c1, c2 = st.columns([2, 1])
+        _chk_algo = c1.selectbox("확인할 배정안", _chk_opts, key=f"chk_algo_{date}")
+        _ck = f"wchk|{date}|{_chk_algo}|{transit_share}|{results[_chk_algo]['run_id']}"
+        if c2.button("연결 구간 실제 조회", key=f"chk_btn_{date}", type="primary"):
+            import os
+
+            from dotenv import load_dotenv
+
+            from adapters import worker_transit as _wt
+            load_dotenv(ROOT / ".env")
+            try:
+                from f0.apiclient import PlatformClient
+                _q, _lr, _wk = _wt.live_tools(ROOT / "data" / "raw", ROOT / "data" / "processed" / "nodes.csv",
+                                              os.environ.get("OSRM_FOOT_URL") or None, PlatformClient())
+                _d = results[_chk_algo]
+                with st.spinner("연결 구간을 조회하고 다시 확인하는 중…"):
+                    st.session_state[_ck] = _wt.confirm_plan(
+                        _d["inst"].as_instance(), _d["assignments"], query=_q, load_raw=_lr, walk_km=_wk,
+                        walk_kmh=float(_wmodel.get("walk_kmh", 4.0)))
+            except Exception as e:      # 조회 실패를 '확인됨'으로 바꾸지 않는다
+                st.error(f"실제 확인을 하지 못했습니다: {type(e).__name__}")
+        _res = st.session_state.get(_ck)
+        if _res:
+            first = {a["request_id"]: a for a in _res["first_plan"]}
+            last = {a["request_id"]: a for a in _res["plan"]}
+            r_last = _res["rounds"][-1]
+            if _res["confirmed"]:
+                st.success(f"모든 연결 구간({r_last['n_legs']}개)을 실제 값으로 확인했고 규칙을 지킵니다. "
+                           f"시각이 바뀐 요청 {len(_res['retimed'])}건, 빠진 요청 {len(_res['dropped'])}건.")
+            elif r_last["n_unchecked"]:
+                st.warning(f"연결 구간 {r_last['n_unchecked']}개를 조회하지 못했습니다(인증키·호출 한도·경로 없음). "
+                           "확인되지 않은 구간은 대략값 그대로이므로, 담당자가 직접 확인해 주세요.")
+            else:
+                st.warning("정해진 횟수 안에 모든 구간이 확인된 안을 만들지 못했습니다. 담당자가 직접 확인해 주세요.")
+            ch = []
+            for rid in _res["retimed"]:
+                if rid in first and rid in last:
+                    ch.append({"요청": rid, "인력": last[rid]["worker_id"], "원래 도착": _hhmm(first[rid]["arrive_min"]),
+                               "실제 값 기준 도착": _hhmm(last[rid]["arrive_min"]), "바뀜": "시각 늦춤"})
+            for rid in _res["dropped"]:
+                if rid in first:
+                    ch.append({"요청": rid, "인력": first[rid]["worker_id"], "원래 도착": _hhmm(first[rid]["arrive_min"]),
+                               "실제 값 기준 도착": "—", "바뀜": "시간창에 못 들어가 빠짐"})
+            if ch:
+                st.dataframe(pd.DataFrame(ch), width="stretch", hide_index=True)
+                st.caption("이 변경은 아래 승인 표에 자동으로 들어가지 않습니다. 승인할 때 위 시각으로 고쳐 주세요.")
+            st.dataframe(pd.DataFrame([{"회차": r["round"], "연결 구간": r["n_legs"], "새로 조회": r["called"],
+                                        "확인": r["n_checked"], "확인 실패": r["n_unchecked"],
+                                        "실제−대략값 평균(분)": r["mean_diff_min"], "최대(분)": r["max_diff_min"],
+                                        "실제 값으로 규칙": "지킴" if r["ok"] else "어긋남",
+                                        "늦어지는 요청": ", ".join(r["late_requests"])} for r in _res["rounds"]]),
+                         width="stretch", hide_index=True)
+            st.caption("대중교통 시간은 출발 시각 기준이 없습니다(ODsay). 인력 보행 속도 시속 4km는 가정값입니다.")
+
+
 # ── 병원동행 대중교통 참고 시간(FR-49, AT-06·21·26) ─────────────────────────
 @st.cache_data(show_spinner=False)
 def _transit_rows(stamp: str) -> list[dict]:
@@ -587,8 +681,8 @@ with st.expander("병원동행: 대중교통으로 가면? (참고, ODsay 표본
         st.info("저장된 대중교통 조회가 없습니다. `python -m adapters.fetch transit` 로 표본을 받으면 여기에 보입니다.")
     else:
         st.dataframe(pd.DataFrame(_tr), width="stretch", hide_index=True)
-        st.caption("배정 계산은 모든 인력이 **자동차**로 이동한다고 보고 OSRM 도로 시간을 씁니다. 이 표는 어르신 집에서 병원까지 "
-                   "대중교통이면 얼마나 걸리는지 보여주는 참고값이며 배정 숫자에 쓰지 않습니다. ODsay는 출발 시각을 받지 않아 "
+        st.caption("처음 받은 대중교통 표본(5건)입니다. 지금 배정 계산은 병원동행 집↔병원을 전체 구간 대중교통 조회값"
+                   "(escort_travel.csv)으로 계산하며, 이 표의 숫자는 배정에 직접 쓰지 않습니다. ODsay는 출발 시각을 받지 않아 "
                    "'시간 기준 미지정'이고, 미래 서비스일의 확정 시간이 아닙니다. 대중교통 조회가 실패하면(가까워서 경로 없음 등) "
                    "0분으로 두지 않고 자동차 시간으로 대체해 그렇게 적습니다.")
 

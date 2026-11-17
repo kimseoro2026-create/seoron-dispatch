@@ -160,7 +160,6 @@ def _worker_plan(a) -> int:
     import yaml
     from dotenv import load_dotenv
 
-    from adapters import escort_travel as et
     from adapters import worker_transit as wt
     from planner.baseline import nearest, request_order
     from planner.data import load_day, load_travel, service_dates
@@ -183,40 +182,19 @@ def _worker_plan(a) -> int:
 
     plan = solve(inst)
     assert verify(inst, plan).ok, "모형 값 기준 배정안이 검증을 통과하지 못했습니다"
-    pos = pd.read_csv(PROC / "nodes.csv").set_index("node_id")
-    pt = lambda n: (float(pos.loc[n, "lat"]), float(pos.loc[n, "lon"]))      # noqa: E731
-    client = _client()
-    first_n, cur, log_rows = len(plan), inst, []
-    moved_total, dropped_total = 0, []
+    query, load_raw, walk = wt.live_tools(RAW, PROC / "nodes.csv", foot, _client())
+
+    def log(i):
+        print(f"[{i['round']}회] {date} {a.algo} 대중교통 인력 {int(a.share * 100)}% · 배정 {i['n_assigned']}건 · "
+              f"연결 구간 {i['n_legs']}개 (새로 조회 {i['called']}건, 확인 {i['n_checked']}, 확인 실패 {i['n_unchecked']})")
+        print(f"  실제 − 모형: 평균 {i['mean_diff_min']}분, 최대 {i['max_diff_min']}분 · 실제 값으로 검증 "
+              f"{'통과' if i['ok'] else '위반'} · 늦어지는 요청 {i['late_requests']}")
+
+    res = wt.confirm_plan(inst, plan, query=query, load_raw=load_raw, walk_km=walk, walk_kmh=walk_kmh, log=log)
+    print(f"  → {'확정 가능' if res['confirmed'] else '확인 미완료(담당자 확인 필요)'} · 배정 {len(res['plan'])}건"
+          f"(처음 {len(res['first_plan'])}건) · 시각 바뀜 {len(res['retimed'])}건 · 빠진 요청 {res['dropped']}")
     out = ROOT / "data" / "experiments" / f"requery-{date}-{a.algo}-s{int(a.share * 100)}.csv"
-    for rnd in range(1, 9):         # 다시 맞춘 안의 새 구간도 확인될 때까지(최대 8회, 회마다 새 구간 몇 개만 조회)
-        legs = wt.plan_legs(cur, plan)
-        pairs = [{"from_id": l["from_id"], "from": pt(l["from_id"]), "to_id": l["to_id"], "to": pt(l["to_id"]),
-                  "request_id": "PLAN"} for l in legs]
-        res = et.fetch(client, pairs, RAW, len(pairs), name=wt.RAW_NAME, log=lambda *_: None)
-        walk_km = ({(l["from_id"], l["to_id"]): wt.foot_km(pt(l["from_id"]), pt(l["to_id"]), foot) for l in legs}
-                   if foot else {})
-        acts = wt.actual_minutes(et.load_raw(RAW, wt.RAW_NAME), legs, walk_kmh, walk_km)
-        chk = wt.recheck(cur, plan, acts)
-        log_rows += [dict(x, round=rnd) for x in acts]
-        print(f"[{rnd}회] {date} {a.algo} 대중교통 인력 {int(a.share * 100)}% · 배정 {len(plan)}건 · 연결 구간 {chk['n_legs']}개 "
-              f"(새로 조회 {res['called']}건, 확인 {chk['n_checked']}, 확인 실패 {chk['n_unchecked']})")
-        print(f"  실제 − 모형: 평균 {chk['mean_diff_min']}분, 최대 {chk['max_diff_min']}분 · 실제 값으로 검증 "
-              f"{'통과' if chk['ok'] else '위반 ' + str(len(chk['violations'])) + '건'} · 늦어지는 요청 {chk['late_requests']}")
-        if chk["ok"]:
-            print(f"  → 최종: 모든 연결 구간 실제 확인, 검증 통과 · 배정 {len(plan)}건(처음 {first_n}건) · "
-                  f"시각 바뀜 {moved_total}건 · 빠진 요청 {dropped_total}")
-            break
-        cur = chk["instance"]
-        fix = wt.repair(cur, plan, chk["late_requests"])
-        plan = fix["assignments"]
-        moved_total += len(fix["retimed"])
-        dropped_total += fix["displaced"]
-        print(f"  실제 값으로 다시 맞춤(순서 유지): 인력 {fix['workers']} · 시각 바뀜 {len(fix['retimed'])}건 · "
-              f"빠짐 {fix['displaced']} → 배정 {len(plan)}건 (처음 {first_n}건)")
-    else:
-        print("  8회 안에 모든 구간이 확인된 안을 만들지 못했습니다 — 담당자 확인 필요")
-    pd.DataFrame(log_rows).to_csv(out, index=False, encoding="utf-8-sig")
+    pd.DataFrame(res["log_rows"]).to_csv(out, index=False, encoding="utf-8-sig")
     print(f"  저장: {out.relative_to(ROOT)}")
     return 0
 

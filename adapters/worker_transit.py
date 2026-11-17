@@ -270,3 +270,64 @@ def repair(instance: dict, assignments: list[dict], late_requests: list[str]) ->
         displaced += dp
     rep = verify(instance, out)
     return {"assignments": out, "ok": rep.ok, "retimed": retimed, "displaced": displaced, "workers": touched}
+
+
+def confirm_plan(instance: dict, plan: list[dict], *, query, load_raw, walk_km, walk_kmh: float,
+                 max_rounds: int = 8, log=None) -> dict:
+    """후보안 확인 반복: 연결 구간 조회 → 실제 값으로 검증 → 늦는 인력만 순서 유지 재조정 → 새 구간이 생기면 다시.
+
+    query(legs)      아직 조회하지 않은 연결 구간을 조회해 원본 기록에 합친다 → 새로 부른 건수.
+    load_raw()       원본 기록(DataFrame).  walk_km(from_id, to_id) → 도보 km 또는 None.
+    → {confirmed, plan, first_plan, rounds:[...], retimed, dropped, log_rows}
+      confirmed 는 '모든 연결 구간이 실제 값으로 확인되고 검증 통과'일 때만 True(확인 실패 구간이 있으면 False).
+    """
+    first = [dict(a) for a in plan]
+    cur, rounds, log_rows, retimed, dropped = instance, [], [], [], []
+    confirmed = False
+    for rnd in range(1, max_rounds + 1):
+        legs = plan_legs(cur, plan)
+        called = query(legs)
+        wk = {(l["from_id"], l["to_id"]): walk_km(l["from_id"], l["to_id"]) for l in legs}
+        acts = actual_minutes(load_raw(), legs, walk_kmh, {k: v for k, v in wk.items() if v is not None})
+        chk = recheck(cur, plan, acts)
+        log_rows += [dict(x, round=rnd) for x in acts]
+        info = {"round": rnd, "n_assigned": len(plan), "n_legs": chk["n_legs"], "called": called,
+                "n_checked": chk["n_checked"], "n_unchecked": chk["n_unchecked"],
+                "mean_diff_min": chk["mean_diff_min"], "max_diff_min": chk["max_diff_min"],
+                "ok": chk["ok"], "late_requests": chk["late_requests"]}
+        rounds.append(info)
+        if log:
+            log(info)
+        cur = chk["instance"]
+        if chk["ok"]:
+            confirmed = chk["n_unchecked"] == 0
+            break
+        fix = repair(cur, plan, chk["late_requests"])
+        plan = fix["assignments"]
+        retimed += [r for r in fix["retimed"] if r not in retimed]
+        dropped += fix["displaced"]
+        info["repair"] = {"workers": fix["workers"], "retimed": fix["retimed"], "displaced": fix["displaced"]}
+    return {"confirmed": confirmed, "plan": plan, "first_plan": first, "instance": cur, "rounds": rounds,
+            "retimed": retimed, "dropped": dropped, "log_rows": log_rows}
+
+
+def live_tools(raw_dir, nodes_path, foot_url: str | None, client):
+    """confirm_plan 에 넘길 실제 조회 도구(ODsay·OSRM 도보). 화면과 CLI 가 같이 쓴다."""
+    from adapters import escort_travel as et
+    pos = pd.read_csv(nodes_path).set_index("node_id")
+
+    def pt(n):
+        return float(pos.loc[n, "lat"]), float(pos.loc[n, "lon"])
+
+    def query(legs):
+        pairs = [{"from_id": l["from_id"], "from": pt(l["from_id"]), "to_id": l["to_id"], "to": pt(l["to_id"]),
+                  "request_id": "PLAN"} for l in legs]
+        return et.fetch(client, pairs, raw_dir, len(pairs), name=RAW_NAME, log=lambda *_: None)["called"]
+
+    def load_raw_():
+        return et.load_raw(raw_dir, RAW_NAME)
+
+    def walk(a, b):
+        return foot_km(pt(a), pt(b), foot_url) if foot_url else None
+
+    return query, load_raw_, walk
