@@ -62,6 +62,18 @@ def build(exp: Path, data_dir: Path) -> dict:
                 rho=sorted(days["target_rho"].unique().tolist()))
 
 
+def escort_words(days: pd.DataFrame) -> str:
+    """결과의 escort_mode·select_escort 열로 이동 가정을 밝힌다. 열이 없으면 2026-11-16 이전 실행(자동차)."""
+    if "escort_mode" not in days:
+        return "자동차(OSRM) — 대중교통 반영 전 실행"
+    words = {"transit": "대중교통(ODsay, 700m 이내 도보 3km/h 가정)", "car": "자동차(OSRM)"}
+    mode = " / ".join(words.get(m, m) for m in sorted(days["escort_mode"].astype(str).unique()))
+    sel = sorted(days["select_escort"].astype(str).unique()) if "select_escort" in days else []
+    if sel and sel != sorted(days["escort_mode"].astype(str).unique()):
+        mode += f" · 요청은 {' / '.join(words.get(m, m) for m in sel)} 기준 부하율로 고름(예전 결과와 같은 요청)"
+    return mode
+
+
 def _won(x) -> str:
     return NA if x is None or pd.isna(x) else f"{x:,.0f}원"
 
@@ -73,6 +85,7 @@ def to_markdown(r: dict) -> str:
          f"- 실험: `{r['days_path'].name}` ({len(r['days'])}행) · 요청별 결과 `{r['outcomes_path'].name}`",
          f"- 조건: 부하율 ρ {r['rho']} · {r['n_dates']}일 × 시드 {r['seeds']} · 같은 요청 집합에서 자원만 바꿔 다시 계산",
          f"- 하드 제약 위반 합계: {int(r['days']['violations'].sum())}",
+         f"- 병원동행 집↔병원 이동: {escort_words(r['days'])} (인력의 집 사이 이동은 자동차)",
          f"- 비용 가정: 시급 {_won(c.get('hourly_krw'))}(가정) · 유급시간 `{c['paid_time']}` · "
          f"월급 모델 {_won(c.get('monthly_salary_krw'))} · 이동 1분당 교통비 {_won(c.get('transport_krw_per_min'))}",
          "- 추가 인력은 기존 동행 인력의 근무시간·휴게·출발지를 복제해 다시 배정했다(부족 시간을 인원으로 환산하지 않음).",

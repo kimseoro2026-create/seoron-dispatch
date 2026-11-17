@@ -271,3 +271,26 @@ def test_break_either_or_is_enforced_in_solution():
     r = optimize(inst, time_limit_sec=1, repair=False, warm_start=False)
     assert r.assignments == []
     assert r.route_dropped == []
+
+
+def test_unreachable_appointment_is_time_window_not_route_unknown(inst):
+    """경로는 있는데 가장 일찍 떠나도 예약에 못 닿는 동행은 '시간창 불일치'다.
+
+    11/17 대중교통 실험에서 이런 요청이 ROUTE_UNKNOWN(확인됨)으로 잘못 기록됐다.
+    경로가 정말 없는 경우만 ROUTE_UNKNOWN 이어야 한다.
+    """
+    r01 = next(r for r in inst["requests"] if r["request_id"] == "R01")
+    r01["appointment_min"] = int(r01["earliest_start_min"]) + int(r01["arrival_buffer_min"])   # 이동 0분이어야 닿음
+    res = optimize(inst, time_limit_sec=TIME_LIMIT)
+    why = {u["request_id"]: u for u in res.unassigned}
+    assert why["R01"]["reason"] == "TIME_WINDOW_CONFLICT"
+    assert why["R01"]["certainty"] == "verified"
+
+
+def test_missing_escort_route_is_route_unknown(inst):
+    r01 = next(r for r in inst["requests"] if r["request_id"] == "R01")
+    inst["travel"] = [t for t in inst["travel"]
+                      if not (t["from_node"] == r01["home_node"] and t["to_node"] == r01["hospital_node"])]
+    res = optimize(inst, time_limit_sec=TIME_LIMIT)
+    why = {u["request_id"]: u for u in res.unassigned}
+    assert why["R01"]["reason"] == "ROUTE_UNKNOWN"

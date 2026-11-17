@@ -155,11 +155,13 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
                for a in (locked or []) if a["request_id"] in rpos and a["worker_id"] in wpos_all}
 
     # 요청별 점유 길이와 유효 시간창 (경로가 없으면 모델에서 제외)
-    spans, windows, skip = {}, {}, set()
+    # skip: 모델에서 뺀 요청. no_route: 그중 이동시간이 정말 없는 것(나머지는 시간창이 비어 있음)
+    spans, windows, skip, no_route = {}, {}, set(), set()
     for i, req in enumerate(requests):
         s = _span(req, travel)
         if s is None:
             skip.add(i)
+            no_route.add(i)
             continue
         lo = int(req["earliest_start_min"])
         hi = (_escort_latest(req, travel) if req["service_type"] == "hospital_escort"
@@ -376,7 +378,9 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
 
     for i, req in enumerate(requests):
         if i not in visited:
-            reason = "ROUTE_UNKNOWN" if i in skip else SOLVER_UNRESOLVED
+            # 경로는 있는데 가장 일찍 떠나도 예약·시간창에 못 닿으면 시간창 불일치(확인됨)
+            reason = ("ROUTE_UNKNOWN" if i in no_route else "TIME_WINDOW_CONFLICT" if i in skip
+                      else SOLVER_UNRESOLVED)
             certainty = "verified" if i in skip else "unknown"
             result.unassigned.append({"request_id": req["request_id"],
                                       "reason": reason, "certainty": certainty})

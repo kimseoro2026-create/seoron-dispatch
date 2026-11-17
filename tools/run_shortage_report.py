@@ -31,6 +31,10 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--seeds", type=int, nargs="+", default=[42, 43, 44])
     ap.add_argument("--days", type=int, default=None)
     ap.add_argument("--time-limit", type=int, default=10)
+    ap.add_argument("--escort-mode", choices=["transit", "car"], default=None,
+                    help="병원동행 집↔병원 이동 가정(기본: config/region.yaml)")
+    ap.add_argument("--select-escort", choices=["transit", "car"], default=None,
+                    help="요청 고르기(부하율)용 이동 가정. car 면 자동차 기준 요청을 그대로 써서 예전 결과와 짝지어 비교")
     ap.add_argument("--out-dir", default="data/experiments")
     a = ap.parse_args(argv)
 
@@ -45,7 +49,7 @@ def main(argv: list[str] | None = None) -> None:
         print(f"=== 시나리오 {n}/{len(a.scenarios)}: {sc.label} ===")
         sink: list = []
         df = run_experiment(a.data_dir, algorithms=a.algorithms, load_factors=[a.rho], seeds=a.seeds,
-                            dates=dates, time_limit_sec=a.time_limit, transform=sc.apply,
+                            dates=dates, time_limit_sec=a.time_limit, escort=a.escort_mode, select_escort=a.select_escort, transform=sc.apply,
                             progress=lambda msg: print("  " + msg), outcome_sink=sink)
         df.insert(0, "scenario", key)
         frames.append(df)
