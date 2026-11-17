@@ -1,0 +1,28 @@
+{
+  "a": 1.4825,
+  "b": 20.305,
+  "detour": 1.3034,
+  "walk_kmh": 4.0,
+  "margin": 9.39,
+  "margin_quantile": 0.8,
+  "source": "estimate",
+  "time_basis": "provider_unspecified",
+  "formula": "min(a × 자동차분 + b, 직선km × detour ÷ walk_kmh × 60) + margin",
+  "n_pairs": 400,
+  "status_counts": {
+    "ok": 385,
+    "too_close": 15
+  },
+  "n_train": 269,
+  "n_test": 120,
+  "test_mae_min": 10.74,
+  "test_median_abs_min": 9.46,
+  "test_p90_abs_min": 20.53,
+  "test_bias_min": 7.66,
+  "test_within_10min": 0.517,
+  "test_under_share": 0.242,
+  "test_under_10min_share": 0.033,
+  "raw_file": "worker_transit_pairs.csv",
+  "fitted_at": "2026-11-17T22:42:53+09:00",
+  "note": "보행 속도는 가정값. 대중교통 시간은 출발 시각 기준 없음(배차 시간대 미반영)."
+}

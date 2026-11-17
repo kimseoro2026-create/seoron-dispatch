@@ -33,9 +33,13 @@ class DayInstance:
     workers: list[dict]
     requests: list[dict]
     travel: dict[tuple[str, str], float]
+    worker_travel: dict | None = None      # {수단: {(from, to): 분}} — 대중교통 인력의 이동(planner.travel_modes)
 
     def as_instance(self) -> dict:
-        return {"workers": self.workers, "requests": self.requests, "travel": self.travel}
+        inst = {"workers": self.workers, "requests": self.requests, "travel": self.travel}
+        if self.worker_travel:
+            inst["worker_travel"] = self.worker_travel
+        return inst
 
 
 def matrix_path(data_dir: str | Path) -> Path | None:
@@ -187,7 +191,9 @@ def load_day(data_dir: str | Path, service_date: str,
              extra_requests: list[dict] | None = None,
              exclude_ids: set[str] | list[str] | None = None,
              worker_profiles: dict | None = None,
-             day_shifts: dict | None = None) -> DayInstance:
+             day_shifts: dict | None = None,
+             transit_share: float | None = None,
+             worker_transit: dict | None = None) -> DayInstance:
     """하루치 instance 를 만든다.
 
     travel 을 주지 않으면 그날 필요한 노드만으로 추정 행렬을 만든다.
@@ -198,6 +204,8 @@ def load_day(data_dir: str | Path, service_date: str,
     같은 대상자·서비스 요청이 이미 있으면 카드 값으로 바꾼다.
     exclude_ids: 담당자가 취소 처리한 요청(저장소). 계산에서 뺀다.
     worker_profiles·day_shifts: 담당자가 고친 인력 설정·날짜별 근무(저장소). apply_worker_settings 참고.
+    transit_share: 대중교통으로 다니는 인력 비율(None 이면 config worker_travel.transit_share, 기본 0).
+    worker_transit: 미리 만든 대중교통 인력 이동 표(load_worker_transit). 주지 않으면 그날 노드로 만든다.
     """
     d = Path(data_dir)
     req = pd.read_csv(d / "requests.csv", dtype={"request_id": str, "beneficiary_id": str})
@@ -229,7 +237,78 @@ def load_day(data_dir: str | Path, service_date: str,
             back = travel.get((r["hospital_node"], r["home_node"]))
             r["service_minutes"] = int(r["hospital_stay_min"]) + (
                 int(round(to_h)) + int(round(back)) if to_h is not None and back is not None else 0)
-    return DayInstance(service_date=service_date, workers=workers, requests=requests, travel=travel)
+    share = worker_transit_share() if transit_share is None else float(transit_share)
+    worker_travel = None
+    if share > 0:
+        workers = assign_worker_modes(workers, share)
+        if worker_transit is None:
+            worker_transit = load_worker_transit(d, {w["base_node"] for w in workers} | {r["home_node"] for r in requests})
+        worker_travel = {"transit": worker_transit}
+    return DayInstance(service_date=service_date, workers=workers, requests=requests, travel=travel,
+                       worker_travel=worker_travel)
+
+
+# ── 인력별 이동수단 (docs/travel_modes_plan.md 3-2, 5단계) ───────────────────
+
+def _worker_travel_cfg() -> dict:
+    import yaml
+    p = Path(__file__).resolve().parent.parent / "config" / "region.yaml"
+    if not p.exists():
+        return {}
+    return (yaml.safe_load(p.read_text(encoding="utf-8")) or {}).get("worker_travel") or {}
+
+
+def worker_transit_share() -> float:
+    """config worker_travel.transit_share(0~1). 실제 비율은 확인되지 않아 기본 0(모두 자차)."""
+    v = float(_worker_travel_cfg().get("transit_share", 0.0) or 0.0)
+    if not 0.0 <= v <= 1.0:
+        raise ValueError(f"worker_travel.transit_share 는 0~1 이어야 합니다: {v}")
+    return v
+
+
+def assign_worker_modes(workers: list[dict], share: float) -> list[dict]:
+    """같은 자격 묶음(동행 가능 / 가사만)마다 같은 비율로 대중교통 인력을 고른다.
+
+    고르는 순서는 인력 ID 해시로 고정한다(실행마다 같은 인력). 실제 수단 정보가 생기면 그 값으로 바꾼다.
+    """
+    import hashlib
+    groups: dict[tuple, list[dict]] = {}
+    for w in workers:
+        groups.setdefault(tuple(sorted(w.get("skills") or [])), []).append(w)
+    transit: set[str] = set()
+    for ws in groups.values():
+        order = sorted(ws, key=lambda w: hashlib.sha1(w["worker_id"].encode()).hexdigest())
+        transit |= {w["worker_id"] for w in order[:int(round(share * len(ws)))]}
+    return [dict(w, travel_mode="transit" if w["worker_id"] in transit else "car") for w in workers]
+
+
+def load_worker_transit(data_dir: str | Path, node_ids: set[str] | None = None) -> dict[tuple[str, str], float]:
+    """대중교통 인력의 이동 표(인력 출발지·어르신 집 사이) — 보정 모형 값(source=estimate).
+
+    모형(data/processed/worker_transit_model.json)이 없으면 멈춘다. 자동차 시간으로 대신하지 않는다.
+    자동차 시간이 없는 구간은 표에 넣지 않는다(엔진은 '이동시간 없음'으로 다룬다).
+    """
+    from adapters.worker_transit import load_model, predict, worker_nodes
+    d = Path(data_dir)
+    model = load_model(d)
+    if model is None:
+        raise FileNotFoundError("대중교통 인력 이동 모형이 없습니다. python -m adapters.fetch worker-transit 을 먼저 실행하세요.")
+    nodes = worker_nodes(d)
+    if node_ids is not None:
+        nodes = nodes[nodes["node_id"].isin(node_ids)]
+    pos = nodes.set_index("node_id")[["lat", "lon"]]
+    car = _load_matrix(d, set(pos.index))
+    if not car:
+        return {}
+    df = pd.DataFrame([(a, b, m) for (a, b), m in car.items()], columns=["a", "b", "car"])
+    df = df[df["a"].isin(pos.index) & df["b"].isin(pos.index) & (df["a"] != df["b"])]
+    la1, lo1 = np.radians(pos.loc[df["a"], "lat"].to_numpy()), np.radians(pos.loc[df["a"], "lon"].to_numpy())
+    la2, lo2 = np.radians(pos.loc[df["b"], "lat"].to_numpy()), np.radians(pos.loc[df["b"], "lon"].to_numpy())
+    h = np.sin((la2 - la1) / 2) ** 2 + np.cos(la1) * np.cos(la2) * np.sin((lo2 - lo1) / 2) ** 2
+    hav = 6371.0 * 2 * np.arcsin(np.sqrt(h))
+    mins = predict(df["car"].to_numpy(), hav, model)
+    ok = np.isfinite(mins)
+    return {(a, b): round(float(m), 1) for a, b, m in zip(df["a"][ok], df["b"][ok], mins[ok])}
 
 
 def apply_worker_settings(workers: list[dict], service_date: str, profiles: dict, shifts: dict) -> list[dict]:

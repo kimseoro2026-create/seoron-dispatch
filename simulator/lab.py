@@ -37,6 +37,7 @@ class LabConfig:
     label: str = ""
     escort_mode: str | None = None        # 병원동행 이동 가정 transit / car. None = config 기본값
     select_escort: str | None = None      # 요청 고르기용 이동 가정. None = escort_mode 와 같음
+    transit_share: float | None = None    # 대중교통으로 다니는 인력 비율(0~1). None = config 기본값(0)
 
 
 def apply_assumptions(instance: dict, cfg: LabConfig, seed: int) -> dict:
@@ -95,19 +96,20 @@ def seed_summary(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
 def run_lab(cfg: LabConfig, data_dir: str | Path, *, out_dir: str | Path, store=None, actor: str = "",
             progress=None) -> dict:
     """실험을 돌리고 원본·요약·가정을 저장한다. store 가 있으면 실험 기록(experiment_runs)도 남긴다."""
-    from planner.data import escort_mode, service_dates
+    from planner.data import escort_mode, service_dates, worker_transit_share
     from simulator.experiment import run_experiment
     from store.db import engine_version
 
     d = Path(data_dir)
     mode = cfg.escort_mode or escort_mode()
     sel_mode = cfg.select_escort or mode
+    share = worker_transit_share() if cfg.transit_share is None else float(cfg.transit_share)
     dates = service_dates(d)[: max(1, int(cfg.n_days))]
     raw = run_experiment(d, algorithms=cfg.algorithms, load_factors=cfg.rhos, seeds=cfg.seeds, dates=dates,
                          time_limit_sec=cfg.time_limit_sec, progress=progress,
                          transform=None if (cfg.travel_factor == 1.0 and cfg.stay_factor == 1.0
                                             and cfg.cancel_rate is None) else _Transform(cfg),
-                         escort=mode, select_escort=sel_mode)
+                         escort=mode, select_escort=sel_mode, transit_share=share)
     per_seed, summ = seed_summary(raw)
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -123,8 +125,8 @@ def run_lab(cfg: LabConfig, data_dir: str | Path, *, out_dir: str | Path, store=
                       f"취소율을 바꾸면 통보 시각은 {list(NOTICE_CHOICES)}분 전 중 하나로 정한다(가정)." if cfg.cancel_rate
                       is not None else "취소는 가상 자료에 있는 그대로 쓴다.",
                       "인력 추가 효과는 이 실험에 섞지 않는다.",
-                      _escort_note(mode, sel_mode)],
-            "escort_mode": mode, "select_escort": sel_mode}
+                      _escort_note(mode, sel_mode, share)],
+            "escort_mode": mode, "select_escort": sel_mode, "transit_share": share}
     assumptions_path = out / f"{tag}-assumptions.json"
     assumptions_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     if store is not None:
@@ -137,8 +139,13 @@ def run_lab(cfg: LabConfig, data_dir: str | Path, *, out_dir: str | Path, store=
 ESCORT_KO = {"transit": "대중교통(ODsay, 700m 이내 도보)", "car": "자동차(OSRM)"}
 
 
-def _escort_note(mode: str, sel_mode: str) -> str:
-    s = f"병원동행 집↔병원 이동: {ESCORT_KO.get(mode, mode)}. 인력의 집 사이 이동은 자동차(OSRM)."
+def _escort_note(mode: str, sel_mode: str, share: float = 0.0) -> str:
+    s = f"병원동행 집↔병원 이동: {ESCORT_KO.get(mode, mode)}."
+    if share > 0:
+        s += (f" 인력의 집 사이 이동: 인력 {share:.0%}는 대중교통(보정 모형, estimate — 자동차 시간 × a + b 와 도보 중 짧은 쪽),"
+              " 나머지는 자동차(OSRM). 요청은 모두 자차 기준 부하율로 골랐다(같은 요청).")
+    else:
+        s += " 인력의 집 사이 이동은 자동차(OSRM)."
     if sel_mode != mode:
         s += f" 요청은 {ESCORT_KO.get(sel_mode, sel_mode)} 기준 부하율로 골랐다(같은 요청, 이동 가정만 다름)."
     return s

@@ -4,6 +4,10 @@
     python -m adapters.fetch transit --n 5      # 병원동행 n건의 집→병원 대중교통 → data/raw/transit_sample.csv
     python -m adapters.fetch escort --max 200   # 병원동행 전체 구간(두 방향) 대중교통, 이어받기 → transit_pairs.csv
     python -m adapters.fetch escort --build     # 받은 결과로 data/processed/escort_travel.csv 다시 만들기(호출 없음)
+    python -m adapters.fetch worker-transit --max 400   # 인력 대중교통 보정 표본(이어받기) + 모형 맞추기
+    python -m adapters.fetch worker-transit --fit       # 호출 없이 모형만 다시 맞추기
+    python -m adapters.fetch worker-plan --date 2026-11-02 --algo optimize --share 1.0
+                                                # 계산한 배정안의 대중교통 인력 연결 구간만 실제 조회 → 다시 검증
 
 대중교통은 호출량 한도를 확인하지 못해 표본만 받는다(기본 5건). 실패한 건도 status 와 함께 저장한다.
 """
@@ -49,13 +53,24 @@ def transit_pairs(n: int) -> list[tuple[str, tuple, str, tuple, str]]:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("what", choices=["weather", "transit", "escort"])
+    ap.add_argument("what", choices=["weather", "transit", "escort", "worker-transit", "worker-plan"])
     ap.add_argument("--n", type=int, default=5)
     ap.add_argument("--max", type=int, default=200, help="escort: 이번에 부를 최대 건수")
     ap.add_argument("--build", action="store_true", help="escort: 호출하지 않고 escort_travel.csv 만 다시 만든다")
+    ap.add_argument("--fit", action="store_true", help="worker-transit: 호출하지 않고 모형만 다시 맞춘다")
+    ap.add_argument("--sample", type=int, default=400, help="worker-transit: 표본 쌍 수")
+    ap.add_argument("--date", default=None, help="worker-plan: 서비스일(기본 첫 날)")
+    ap.add_argument("--algo", default="optimize", choices=["request_order", "nearest", "optimize"])
+    ap.add_argument("--share", type=float, default=1.0, help="worker-plan: 대중교통 인력 비율")
+    ap.add_argument("--rho", type=float, default=0.9)
+    ap.add_argument("--seed", type=int, default=42)
     a = ap.parse_args(argv)
+    if a.what == "worker-plan":
+        return _worker_plan(a)
     if a.what == "escort":
         return _escort(a)
+    if a.what == "worker-transit":
+        return _worker_transit(a)
     c = _client()
     if a.what == "weather":
         from adapters import weather
@@ -95,6 +110,114 @@ def _escort(a) -> int:
     load_dotenv(ROOT / ".env")
     df = et.build(RAW, PROC, float(cfg.get("walk_kmh", 3.0)), os.environ.get("OSRM_FOOT_URL") or None)
     print(f"{et.OUT_NAME}: {len(df)}구간 {df['source'].value_counts().to_dict()} (전체 {len(pairs)}구간)")
+    return 0
+
+
+def _worker_transit(a) -> int:
+    import os
+
+    import yaml
+    from dotenv import load_dotenv
+
+    from adapters import escort_travel as et
+    from adapters import worker_transit as wt
+    from planner.data import _load_matrix
+    load_dotenv(ROOT / ".env")
+    cfg = (yaml.safe_load((ROOT / "config" / "region.yaml").read_text(encoding="utf-8")) or {}).get("worker_travel") or {}
+    walk_kmh = float(cfg.get("walk_kmh", 4.0))
+    ids = set(wt.worker_nodes(PROC)["node_id"])
+    travel = _load_matrix(PROC, ids)
+    pairs = wt.sample_pairs(PROC, travel, a.sample)
+    if not a.fit:
+        res = et.fetch(_client(), pairs, RAW, a.max, name=wt.RAW_NAME)
+        print(f"조회 {res['called']}건 {res['counts']} · 남은 표본 {res['remaining']}/{len(pairs)}"
+              + (f" · 멈춤({res['stopped']})" if res["stopped"] else ""))
+    raw = et.load_raw(RAW, wt.RAW_NAME)
+    if raw.empty:
+        print("조회 결과가 없습니다.")
+        return 1
+    raw = raw[raw["request_id"] == "SAMPLE"]
+    foot = os.environ.get("OSRM_FOOT_URL") or None
+    if not foot:
+        print("OSRM_FOOT_URL 이 없어 걷기 거리를 잴 수 없습니다(.env).")
+        return 1
+    obs = wt.observations(raw, travel, walk_kmh, foot)
+    model = wt.fit(obs, walk_kmh, wt.RAW_NAME, float(cfg.get("model_quantile", 0.8)))
+    p = wt.save_model(model, PROC)
+    obs.to_csv(PROC / "worker_transit_observations.csv", index=False, encoding="utf-8-sig")
+    print(f"{p.name}: a={model['a']} b={model['b']} 우회계수={model['detour']} 여유={model['margin']}분"
+          f"(분위수 {model['margin_quantile']}) · 검사 {model['n_test']}쌍 평균 오차 {model['test_mae_min']}분, "
+          f"짧게 잡은 비율 {model['test_under_share']}, 10분 넘게 짧게 {model['test_under_10min_share']}")
+    return 0
+
+
+def _worker_plan(a) -> int:
+    """실험과 같은 방식으로 하루 배정안을 만들고(자동차 기준 ρ로 요청 선택, 동행은 대중교통),
+    대중교통 인력의 연결 구간만 ODsay 로 조회해 다시 검증한다. 늦어지는 요청이 있으면 그 인력 일정만
+    같은 순서로 시각을 다시 맞추고(새 구간 없음), 못 들어가는 요청은 빼서 보여 준다."""
+    import os
+
+    import yaml
+    from dotenv import load_dotenv
+
+    from adapters import escort_travel as et
+    from adapters import worker_transit as wt
+    from planner.baseline import nearest, request_order
+    from planner.data import load_day, load_travel, service_dates
+    from planner.optimize import optimize
+    from simulator.experiment import select_requests
+    from verifier import verify
+    load_dotenv(ROOT / ".env")
+    cfg = (yaml.safe_load((ROOT / "config" / "region.yaml").read_text(encoding="utf-8")) or {}).get("worker_travel") or {}
+    walk_kmh = float(cfg.get("walk_kmh", 4.0))
+    foot = os.environ.get("OSRM_FOOT_URL") or None
+    date = a.date or service_dates(PROC)[0]
+    inst = load_day(PROC, date, travel=load_travel(PROC), transit_share=a.share).as_instance()
+    sel = load_day(PROC, date, travel=load_travel(PROC, escort="car"), transit_share=0).as_instance()
+    ids = {r["request_id"] for r in select_requests(sel, a.rho, a.seed)["requests"]}
+    inst = dict(inst, requests=[r for r in inst["requests"] if r["request_id"] in ids])
+
+    def solve(x):
+        return (optimize(x, time_limit_sec=10).assignments if a.algo == "optimize"
+                else {"request_order": request_order, "nearest": nearest}[a.algo](x).assignments)
+
+    plan = solve(inst)
+    assert verify(inst, plan).ok, "모형 값 기준 배정안이 검증을 통과하지 못했습니다"
+    pos = pd.read_csv(PROC / "nodes.csv").set_index("node_id")
+    pt = lambda n: (float(pos.loc[n, "lat"]), float(pos.loc[n, "lon"]))      # noqa: E731
+    client = _client()
+    first_n, cur, log_rows = len(plan), inst, []
+    moved_total, dropped_total = 0, []
+    out = ROOT / "data" / "experiments" / f"requery-{date}-{a.algo}-s{int(a.share * 100)}.csv"
+    for rnd in range(1, 9):         # 다시 맞춘 안의 새 구간도 확인될 때까지(최대 8회, 회마다 새 구간 몇 개만 조회)
+        legs = wt.plan_legs(cur, plan)
+        pairs = [{"from_id": l["from_id"], "from": pt(l["from_id"]), "to_id": l["to_id"], "to": pt(l["to_id"]),
+                  "request_id": "PLAN"} for l in legs]
+        res = et.fetch(client, pairs, RAW, len(pairs), name=wt.RAW_NAME, log=lambda *_: None)
+        walk_km = ({(l["from_id"], l["to_id"]): wt.foot_km(pt(l["from_id"]), pt(l["to_id"]), foot) for l in legs}
+                   if foot else {})
+        acts = wt.actual_minutes(et.load_raw(RAW, wt.RAW_NAME), legs, walk_kmh, walk_km)
+        chk = wt.recheck(cur, plan, acts)
+        log_rows += [dict(x, round=rnd) for x in acts]
+        print(f"[{rnd}회] {date} {a.algo} 대중교통 인력 {int(a.share * 100)}% · 배정 {len(plan)}건 · 연결 구간 {chk['n_legs']}개 "
+              f"(새로 조회 {res['called']}건, 확인 {chk['n_checked']}, 확인 실패 {chk['n_unchecked']})")
+        print(f"  실제 − 모형: 평균 {chk['mean_diff_min']}분, 최대 {chk['max_diff_min']}분 · 실제 값으로 검증 "
+              f"{'통과' if chk['ok'] else '위반 ' + str(len(chk['violations'])) + '건'} · 늦어지는 요청 {chk['late_requests']}")
+        if chk["ok"]:
+            print(f"  → 최종: 모든 연결 구간 실제 확인, 검증 통과 · 배정 {len(plan)}건(처음 {first_n}건) · "
+                  f"시각 바뀜 {moved_total}건 · 빠진 요청 {dropped_total}")
+            break
+        cur = chk["instance"]
+        fix = wt.repair(cur, plan, chk["late_requests"])
+        plan = fix["assignments"]
+        moved_total += len(fix["retimed"])
+        dropped_total += fix["displaced"]
+        print(f"  실제 값으로 다시 맞춤(순서 유지): 인력 {fix['workers']} · 시각 바뀜 {len(fix['retimed'])}건 · "
+              f"빠짐 {fix['displaced']} → 배정 {len(plan)}건 (처음 {first_n}건)")
+    else:
+        print("  8회 안에 모든 구간이 확인된 안을 만들지 못했습니다 — 담당자 확인 필요")
+    pd.DataFrame(log_rows).to_csv(out, index=False, encoding="utf-8-sig")
+    print(f"  저장: {out.relative_to(ROOT)}")
     return 0
 
 

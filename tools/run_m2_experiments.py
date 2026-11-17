@@ -32,6 +32,11 @@ JOBS = {
     **{f"{sc}_r{r}": dict(rhos=[r], algorithms=BASE3, time_limit_sec=10, escort_mode=m, select_escort=sel)
        for sc, m, sel in (("car", "car", "car"), ("transit", "transit", "transit"), ("fixed", "transit", "car"))
        for r in (0.6, 0.9, 1.1)},
+    # 인력별 이동수단(docs/travel_modes_plan.md 5단계): 동행은 대중교통, 요청은 자동차 기준 ρ(fixed_* 와 같은 요청).
+    #   wk{0,50,100}_*  대중교통으로 다니는 인력 0% / 50% / 100% (실제 비율 미확인 → 시나리오)
+    **{f"wk{int(sh * 100)}_r{r}": dict(rhos=[r], algorithms=BASE3, time_limit_sec=10, escort_mode="transit",
+                                       select_escort="car", transit_share=sh)
+       for sh in (0.0, 0.5, 1.0) for r in (0.6, 0.9, 1.1)},
     # 취소율: 재배정·반영 방식(기준선 기반이라 빠름)
     "sens_cancel0.0": dict(rhos=[0.9], algorithms=CANCEL4, time_limit_sec=5, cancel_rate=0.0),
     "sens_cancel0.1": dict(rhos=[0.9], algorithms=CANCEL4, time_limit_sec=5, cancel_rate=0.1),

@@ -63,13 +63,13 @@ def classify(route: dict) -> str:
     return route.get("status") or "unknown"
 
 
-def load_raw(raw_dir: str | Path) -> pd.DataFrame:
-    p = Path(raw_dir) / RAW_NAME
+def load_raw(raw_dir: str | Path, name: str = RAW_NAME) -> pd.DataFrame:
+    p = Path(raw_dir) / name
     return pd.read_csv(p) if p.exists() else pd.DataFrame()
 
 
-def save_raw(df: pd.DataFrame, raw_dir: str | Path) -> Path:
-    p = Path(raw_dir) / RAW_NAME
+def save_raw(df: pd.DataFrame, raw_dir: str | Path, name: str = RAW_NAME) -> Path:
+    p = Path(raw_dir) / name
     df.to_csv(p, index=False, encoding="utf-8-sig")
     return p
 
@@ -82,26 +82,26 @@ def pending(pairs: list[dict], raw: pd.DataFrame) -> list[dict]:
     return [p for p in pairs if (p["from_id"], p["to_id"]) not in done]
 
 
-def _merge(raw_dir: str | Path, rows: list[dict]) -> None:
+def _merge(raw_dir: str | Path, rows: list[dict], name: str = RAW_NAME) -> None:
     """새 결과를 raw 에 합친다(같은 구간은 새 결과로 바꿈)."""
     if not rows:
         return
-    raw, new = load_raw(raw_dir), pd.DataFrame(rows)
+    raw, new = load_raw(raw_dir, name), pd.DataFrame(rows)
     if not raw.empty:
         keep = raw.set_index(["from_id", "to_id"]).index.difference(new.set_index(["from_id", "to_id"]).index)
         raw = raw.set_index(["from_id", "to_id"]).loc[keep].reset_index()
         new = pd.concat([raw, new], ignore_index=True)
-    save_raw(new, raw_dir)
+    save_raw(new, raw_dir, name)
 
 
 def fetch(client, pairs: list[dict], raw_dir: str | Path, max_calls: int, log=print,
-          save_every: int = 50) -> dict:
+          save_every: int = 50, name: str = RAW_NAME) -> dict:
     """pending 구간을 max_calls 건까지 조회해 raw 에 합친다. 한도·인증 오류면 바로 멈춘다.
 
     save_every 건마다 저장한다 — 중간에 멈춰도 받은 결과는 남고, 다음 실행이 이어받는다.
     """
     from adapters import transit
-    todo = pending(pairs, load_raw(raw_dir))[:max_calls]
+    todo = pending(pairs, load_raw(raw_dir, name))[:max_calls]
     batch, counts, called, stopped = [], {}, 0, None
     for p in todo:
         r = transit.estimate(client, p["from_id"], p["from"], p["to_id"], p["to"])
@@ -117,12 +117,12 @@ def fetch(client, pairs: list[dict], raw_dir: str | Path, max_calls: int, log=pr
             log(f"  멈춤: {r['status']} — {str(r.get('message', ''))[:80]}")
             break
         if len(batch) >= save_every:
-            _merge(raw_dir, batch)
+            _merge(raw_dir, batch, name)
             batch = []
             log(f"  {called}/{len(todo)}건 저장 {counts}")
-    _merge(raw_dir, batch)
+    _merge(raw_dir, batch, name)
     return {"called": called, "counts": counts, "stopped": stopped,
-            "remaining": len(pending(pairs, load_raw(raw_dir)))}
+            "remaining": len(pending(pairs, load_raw(raw_dir, name)))}
 
 
 # ── 걷기 ─────────────────────────────────────────────────────────────────

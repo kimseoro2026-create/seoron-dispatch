@@ -489,7 +489,8 @@ def run_experiment(data_dir: str | Path,
                    transform: Callable[[dict], dict] | None = None,
                    outcome_sink: list | None = None,
                    escort: str | None = None,
-                   select_escort: str | None = None) -> pd.DataFrame:
+                   select_escort: str | None = None,
+                   transit_share: float | None = None) -> pd.DataFrame:
     """여러 날 × 여러 방식 × 여러 부하율 × 여러 시드를 돌려 한 표로 돌려준다.
 
     algorithms 에 'request_order_replay' 처럼 '_replay' 를 붙이면 취소 재배정을 포함한다.
@@ -504,14 +505,20 @@ def run_experiment(data_dir: str | Path,
     select_escort 요청을 고를 때(부하율 맞추기) 쓸 이동 가정. None 이면 escort 와 같다.
                   escort 와 다르게 주면 '같은 요청을 다른 이동 가정으로' 배정한다
                   (예: 자동차 기준 ρ로 고른 요청을 대중교통 시간으로 계산 → 수요 고정 비교).
+    transit_share 대중교통으로 다니는 인력 비율(0~1, None 이면 config). 0보다 크면 요청은 '모두 자차' 기준
+                  ρ로 고르고(같은 요청), 배정·검증은 인력 수단대로 한다(docs/travel_modes_plan.md 5단계).
     """
-    from planner.data import escort_mode, load_day, load_travel, service_dates
+    from planner.data import (escort_mode, load_day, load_travel, load_worker_transit, service_dates,
+                              worker_transit_share)
 
     d = Path(data_dir)
     mode = escort or escort_mode()
     sel_mode = select_escort or mode
     travel = load_travel(d, escort=mode)
     travel_sel = travel if sel_mode == mode else load_travel(d, escort=sel_mode)
+    share = worker_transit_share() if transit_share is None else float(transit_share)
+    wtab = load_worker_transit(d) if share > 0 else None
+    need_sel = travel_sel is not travel or share > 0
     area_of = _area_of(d) if outcome_sink is not None else {}
     all_dates = list(dates) if dates is not None else service_dates(d)
 
@@ -521,17 +528,18 @@ def run_experiment(data_dir: str | Path,
 
     for date in all_dates:
         if date not in cache:
-            cache[date] = load_day(d, date, travel=travel).as_instance()
-            cache_sel[date] = (cache[date] if travel_sel is travel
-                               else load_day(d, date, travel=travel_sel).as_instance())
+            cache[date] = load_day(d, date, travel=travel, transit_share=share,
+                                   worker_transit=wtab).as_instance()
+            cache_sel[date] = (load_day(d, date, travel=travel_sel, transit_share=0).as_instance()
+                               if need_sel else cache[date])
         base = cache[date]
 
         for rho in load_factors:
             for seed in seeds:
-                if travel_sel is travel:
+                if not need_sel:
                     inst = select_requests(base, rho, seed)
                 else:
-                    # 고르기는 select_escort 기준, 계산은 escort 기준(같은 요청 ID)
+                    # 고르기는 select_escort·모두 자차 기준, 계산은 escort·인력 수단 기준(같은 요청 ID)
                     ids = {r["request_id"] for r in select_requests(cache_sel[date], rho, seed)["requests"]}
                     inst = dict(base, requests=[r for r in base["requests"] if r["request_id"] in ids])
                 inst = dict(inst, service_date=date)
@@ -542,7 +550,8 @@ def run_experiment(data_dir: str | Path,
                     res = run_day(inst, algo, seed=seed, time_limit_sec=time_limit_sec)
                     res.target_rho = rho
                     res.actual_rho = actual
-                    rows.append(dict(res.as_row(), escort_mode=mode, select_escort=sel_mode))
+                    rows.append(dict(res.as_row(), escort_mode=mode, select_escort=sel_mode,
+                                     transit_share=share))
                     if outcome_sink is not None:
                         for o in res.outcomes:
                             o = dict(o, service_date=date, seed=seed, target_rho=rho, algorithm=algo)
