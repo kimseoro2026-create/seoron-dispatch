@@ -44,14 +44,16 @@ def service_span(req: dict, travel: dict) -> int | None:
     return int(round(to_h)) + int(req["hospital_stay_min"]) + int(round(back))
 
 
-def _min_pickup_travel(req: dict, workers: list[dict], travel: dict) -> int | None:
-    """자격 있는 인력 기지에서 대상자 집까지 최소 이동시간(분). 없으면 None."""
+def _min_pickup_travel(req: dict, workers: list[dict], travel: dict, wt: dict | None = None) -> int | None:
+    """자격 있는 인력 기지에서 대상자 집까지 최소 이동시간(분). 없으면 None.
+
+    wt: 인력별 이동 조회(planner.travel_modes.worker_travels). 주면 인력 수단대로 잰다."""
     need = set(req.get("required_skills") or [])
     best = None
     for w in workers:
         if not need.issubset(set(w.get("skills") or [])):
             continue
-        m = travel.get((w["base_node"], req["home_node"]))
+        m = (wt[w["worker_id"]] if wt else travel).get((w["base_node"], req["home_node"]))
         if m is None:
             continue
         m = float(m)
@@ -71,6 +73,8 @@ def load_factor(instance: dict) -> float:
     """ρ = (필수 점유 + 예상 이동) / 인력 가용시간."""
     travel = _travel_map(instance["travel"])
     workers = instance["workers"]
+    from planner.travel_modes import worker_travels
+    wt = worker_travels(instance, travel)
     cap = available_minutes(workers)
     if cap <= 0:
         return float("nan")
@@ -79,7 +83,7 @@ def load_factor(instance: dict) -> float:
         span = service_span(req, travel)
         if span is None:
             continue
-        pickup = _min_pickup_travel(req, workers, travel)
+        pickup = _min_pickup_travel(req, workers, travel, wt)
         need += span + (pickup or 0)
     return need / cap
 
@@ -319,7 +323,7 @@ IDLE_NO_SKILL = "NO_SKILL"   # 자격 맞는 인력이 없음
 IDLE_ROUTE = "ROUTE"         # 이동시간 없음
 
 
-def idle_check(req: dict, workers: list[dict], travel_map: dict) -> str:
+def idle_check(req: dict, workers: list[dict], travel_map: dict, wt: dict | None = None) -> str:
     """미배정 요청을 '빈 일정의 자격 인력'으로 다시 시험해 구조적 원인과 인력 여유 부족을 나눈다.
 
     배정 엔진의 사유 코드를 바꾸지 않는 진단용 분류다(부족 자원 리포트에서만 쓴다).
@@ -333,7 +337,7 @@ def idle_check(req: dict, workers: list[dict], travel_map: dict) -> str:
 
     def fits(w):
         return _try_assign(_State(worker=w, cursor=w["base_node"], free=int(w["shift_start_min"])),
-                           req, travel_map)
+                           req, wt[w["worker_id"]] if wt else travel_map)
 
     tried = [fits(w) for w in skilled]
     if any(t is not None for t, _ in tried):
@@ -409,10 +413,12 @@ def run_day(instance: dict, algorithm: str, seed: int = 42,
                             unassigned, instance.get("area_of"))
     if any(not o["assigned"] for o in outcomes):
         from planner.baseline import _travel_map
+        from planner.travel_modes import worker_travels
         tmap = _travel_map(instance["travel"])
+        wt = worker_travels(instance, tmap)
         for o, r in zip(outcomes, instance["requests"]):
             if not o["assigned"]:
-                o["idle_check"] = idle_check(r, instance["workers"], tmap)
+                o["idle_check"] = idle_check(r, instance["workers"], tmap, wt)
     high = [o for o in outcomes if o["priority"] >= HIGH_PRIORITY]
 
     req_by_id = {x["request_id"]: x for x in instance["requests"]}

@@ -483,14 +483,16 @@ def _unassigned_rows(d: dict) -> list[dict]:
         if not r_:
             return "진단 불가"
         try:
-            return idle_ko.get(ex.idle_check(r_, inst_d["workers"], tmap), "진단 불가")
+            return idle_ko.get(ex.idle_check(r_, inst_d["workers"], tmap, wt), "진단 불가")
         except Exception:
             return "진단 불가"
 
     try:
+        from planner.travel_modes import worker_travels
         tmap = ex._travel_map(inst_d["travel"])
+        wt = worker_travels(inst_d, tmap)
     except Exception:
-        tmap = None
+        tmap, wt = None, None
     rows = []
     for u in d["unassigned"]:
         r_ = req_by_id.get(u["request_id"])

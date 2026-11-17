@@ -55,6 +55,19 @@ class _State:
     cursor: str
     free: int
     work_min: int = 0
+    legs: dict | None = None   # 인력별 이동수단 표(planner.travel_modes). None 이면 공용 표
+
+
+def _legs(state: "_State", travel: dict):
+    """이 인력이 다음 집으로 가는 이동을 찾을 표. 병원동행 집↔병원은 언제나 공용 표(travel)."""
+    return state.legs if state.legs is not None else travel
+
+
+def _states(instance: dict, travel: dict) -> list["_State"]:
+    from planner.travel_modes import leg_maps
+    lm = leg_maps(instance, travel)
+    return [_State(worker=w, cursor=w["base_node"], free=int(w["shift_start_min"]), legs=lm[w["worker_id"]])
+            for w in instance["workers"]]
 
 
 def _travel_map(travel) -> dict[tuple[str, str], float]:
@@ -90,7 +103,7 @@ def _try_assign(state: _State, req: dict, travel: dict) -> tuple[int | None, str
     불가능하면 (None, 사유코드). 이동시간을 0으로 대체하지 않는다.
     """
     w = state.worker
-    leg = travel.get((state.cursor, req["home_node"]))
+    leg = _legs(state, travel).get((state.cursor, req["home_node"]))
     if leg is None:
         return None, ROUTE_UNKNOWN
     leg = int(round(leg))
@@ -156,7 +169,7 @@ def _diagnose(req: dict, states: list[_State], travel: dict) -> Unassigned:
                           f"필요 자격 {sorted(need)} 보유 인력 없음")
 
     no_route = [s for s in skilled
-                if travel.get((s.cursor, req["home_node"])) is None]
+                if _legs(s, travel).get((s.cursor, req["home_node"])) is None]
     if len(no_route) == len(skilled):
         return Unassigned(req["request_id"], ROUTE_UNKNOWN, "verified",
                           f"{req['home_node']} 로 가는 이동시간이 모든 후보에게 없음")
@@ -175,8 +188,7 @@ def _run(order: Iterable[dict], instance: dict, choose) -> BaselineResult:
     choose(req, feasible) → 고른 인력 상태. feasible 은 [(상태, 도착시각)].
     """
     travel = _travel_map(instance["travel"])
-    states = [_State(worker=w, cursor=w["base_node"], free=int(w["shift_start_min"]))
-              for w in instance["workers"]]
+    states = _states(instance, travel)
     result = BaselineResult(algorithm="")
 
     for req in order:
@@ -193,7 +205,7 @@ def _run(order: Iterable[dict], instance: dict, choose) -> BaselineResult:
             continue
 
         st, t = choose(req, feasible, travel)
-        leg = int(round(travel[(st.cursor, req["home_node"])]))
+        leg = int(round(_legs(st, travel)[(st.cursor, req["home_node"])]))
         end, span = _occupancy(req, travel, t)
         result.assignments.append({"request_id": req["request_id"],
                                    "worker_id": st.worker["worker_id"],
@@ -233,7 +245,7 @@ def nearest(instance: dict) -> BaselineResult:
     def choose(req, feasible, travel):
         def key(f):
             st, t = f
-            leg = travel.get((st.cursor, req["home_node"]))
+            leg = _legs(st, travel).get((st.cursor, req["home_node"]))
             return (float("inf") if leg is None else round(float(leg), 3),
                     t, st.worker["worker_id"])
         return min(feasible, key=key)

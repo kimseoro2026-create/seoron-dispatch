@@ -174,6 +174,8 @@ def verify(instance: dict, assignments: Iterable[dict]) -> Report:
     workers = {w["worker_id"]: w for w in instance["workers"]}
     requests = {r["request_id"]: r for r in instance["requests"]}
     travel = _Travel(instance["travel"])
+    # 인력별 이동수단(docs/travel_modes_plan.md 5단계): 인력의 집 사이 이동만 수단 표로 계산한다.
+    mode_tables = {m: _Travel(rows) for m, rows in (instance.get("worker_travel") or {}).items()}
 
     # ── 입력 자체의 일관성 (PRD 6.3-7: 확인되지 않은 값 임의 보완 금지) ──
     # 필수값이 빠진 요청은 여기서 기록하고, 배정 루프에서는 계산하지 않고 건너뛴다.
@@ -231,6 +233,16 @@ def verify(instance: dict, assignments: Iterable[dict]) -> Report:
     for wid, items in rows_by_worker.items():
         w = workers[wid]
         base = w["base_node"]
+        mode = w.get("travel_mode") or "car"
+        if mode == "car":
+            legs = travel
+        elif mode in mode_tables:
+            legs = mode_tables[mode]      # 이 표에 없는 구간은 자동차 시간으로 메우지 않는다
+        else:
+            # 수단 표가 없다. 자동차 시간으로 대신 계산하지 않는다.
+            rep.violations.append(Violation(
+                DATA_INCONSISTENT, None, wid, f"이동수단 '{mode}' 의 이동시간 표가 입력에 없음"))
+            continue
         shift_start, shift_end = int(w["shift_start_min"]), int(w["shift_end_min"])
         brk_start = int(w["break_start_min"])
         brk_end = brk_start + int(w["break_minutes"])
@@ -254,7 +266,7 @@ def verify(instance: dict, assignments: Iterable[dict]) -> Report:
                     f"필요 자격 {sorted(need)} 중 부족: {sorted(need - have)}"))
 
             # 이동: 직전 위치 → 이번 요청 집
-            leg = travel.minutes(cursor, req["home_node"])
+            leg = legs.minutes(cursor, req["home_node"])
             if leg is None:
                 rep.violations.append(Violation(
                     ROUTE_UNKNOWN, rid, wid,

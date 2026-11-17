@@ -148,6 +148,8 @@ def plan_event(instance: dict, confirmed: list[dict], ev: dict, *, refill: bool 
     travel = _travel_map(instance["travel"])
     by_id = {r["request_id"]: copy.deepcopy(r) for r in instance["requests"]}
     workers = {w["worker_id"]: w for w in instance["workers"]}
+    from planner.travel_modes import worker_travels
+    wt = worker_travels(instance, travel)      # 인력별 이동수단(인력 이동만 수단 표)
     before = sorted((_strip(a) for a in confirmed), key=lambda a: (a["worker_id"], a["arrive_min"], a["request_id"]))
     sched = [dict(a) for a in before]
     rid, kind = ev["request_id"], ev["kind"]
@@ -178,7 +180,7 @@ def plan_event(instance: dict, confirmed: list[dict], ev: dict, *, refill: bool 
                            "현장을 확인한 뒤 담당자가 중단 처리해 주세요.")
         cancelled = [rid]
         if mine:
-            fixed, _ = _split(workers[wid], [a for a in sched if a["worker_id"] == wid], by_id, travel, t0)
+            fixed, _ = _split(workers[wid], [a for a in sched if a["worker_id"] == wid], by_id, wt[wid], t0)
             if any(a["request_id"] == rid for a in fixed):
                 notes.append("인력이 이미 출발해 헛걸음 이동이 생깁니다(기록만 하고 막지 못합니다).")
             sched.remove(mine)
@@ -219,9 +221,9 @@ def plan_event(instance: dict, confirmed: list[dict], ev: dict, *, refill: bool 
     lost: list[str] = []
     for w_id in sorted(affected):
         jobs = [a for a in sched if a["worker_id"] == w_id]
-        fixed, flex = _split(workers[w_id], jobs, by_id, travel, t0,
+        fixed, flex = _split(workers[w_id], jobs, by_id, wt[w_id], t0,
                              force_flex={rid} if kind == KIND_DELAY else frozenset())
-        kept, _ret, disp = _resequence(workers[w_id], fixed, flex, by_id, travel, t0)
+        kept, _ret, disp = _resequence(workers[w_id], fixed, flex, by_id, wt[w_id], t0)
         sched = [a for a in sched if a["worker_id"] != w_id] + kept
         lost += disp
 
@@ -229,7 +231,7 @@ def plan_event(instance: dict, confirmed: list[dict], ev: dict, *, refill: bool 
     for lr in list(lost):
         orig_w = next(a["worker_id"] for a in before if a["request_id"] == lr)
         for w_id in sorted(w for w in workers if w != orig_w):
-            kept = _insert(workers[w_id], [a for a in sched if a["worker_id"] == w_id], by_id[lr], by_id, travel, t0)
+            kept = _insert(workers[w_id], [a for a in sched if a["worker_id"] == w_id], by_id[lr], by_id, wt[w_id], t0)
             if kept is not None:
                 sched = [a for a in sched if a["worker_id"] != w_id] + kept
                 lost.remove(lr)
@@ -251,7 +253,7 @@ def plan_event(instance: dict, confirmed: list[dict], ev: dict, *, refill: bool 
         done = False
         for c in cands:
             for w_id in order:
-                kept = _insert(workers[w_id], [a for a in sched if a["worker_id"] == w_id], c, by_id, travel, t0)
+                kept = _insert(workers[w_id], [a for a in sched if a["worker_id"] == w_id], c, by_id, wt[w_id], t0)
                 if kept is not None:
                     sched = [a for a in sched if a["worker_id"] != w_id] + kept
                     done = True

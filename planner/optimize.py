@@ -138,6 +138,10 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
     workers = instance["workers"]
     requests = instance["requests"]
     W, R = len(workers), len(requests)
+    # 인력별 이동수단: 인력의 집 사이 이동만 수단 표(planner.travel_modes). 동행 집↔병원은 공용 표.
+    from planner.travel_modes import leg_maps
+    _lm = leg_maps(instance, travel)
+    wlegs = [_lm[w["worker_id"]] if _lm[w["worker_id"]] is not None else travel for w in workers]
     if W == 0 or R == 0:
         return OptimizeResult(status=STATUS_INFEASIBLE,
                               unassigned=[{"request_id": r["request_id"],
@@ -183,10 +187,10 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
     def _service(node: int) -> int:
         return spans.get(node - W, 0) if node >= W else 0
 
-    def _travel(a: int, b: int) -> int:
+    def _travel(a: int, b: int, k: int) -> int:
         if a == b or b < W:
             return 0        # 기지로 돌아오는 이동은 근무에 넣지 않는다(기준선·검증기와 같은 기준)
-        m = travel.get((_location(a), _location(b)))
+        m = wlegs[k].get((_location(a), _location(b)))
         return BIG_M if m is None else int(round(m))
 
     # ── 시간 차원: cumul = 서비스 시작(도착) 시각 ─────────────────────────
@@ -202,7 +206,7 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
             a, b = manager.IndexToNode(frm), manager.IndexToNode(to)
             if b >= W and not need_ok[b - W][k]:
                 return BIG_M            # 자격이 없는 요청에는 갈 수 없다
-            return _service(a) + _travel(a, b)
+            return _service(a) + _travel(a, b, k)
         return cb
 
     time_ids = [routing.RegisterTransitCallback(_time_transit(k)) for k in range(W)]
@@ -265,18 +269,31 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
             routing.AddVariableMinimizedByFinalizer(time_dim.CumulVar(routing.End(k)))
 
     # ── 근무 차원: 휴게를 빼고 이동 + 서비스만 누적(초과근무 금지) ─────────
-    def work_cb(frm: int, to: int) -> int:
-        a, b = manager.IndexToNode(frm), manager.IndexToNode(to)
-        return _service(a) + _travel(a, b)
+    def _work_cb(k: int):
+        def cb(frm: int, to: int) -> int:
+            a, b = manager.IndexToNode(frm), manager.IndexToNode(to)
+            return _service(a) + _travel(a, b, k)
+        return cb
 
-    work_idx = routing.RegisterTransitCallback(work_cb)
     caps = [int(w.get("max_work_minutes") or 0) or 24 * 60 for w in workers]
-    routing.AddDimensionWithVehicleCapacity(work_idx, 0, caps, True, "Work")
+    # 수단이 하나뿐이면 콜백 하나를 함께 쓴다(예전과 같은 모델).
+    same = all(wl is travel for wl in wlegs)
+    if same:
+        work_idx = routing.RegisterTransitCallback(_work_cb(0))
+        routing.AddDimensionWithVehicleCapacity(work_idx, 0, caps, True, "Work")
+    else:
+        work_ids = [routing.RegisterTransitCallback(_work_cb(k)) for k in range(W)]
+        routing.AddDimensionWithVehicleTransitAndCapacity(work_ids, 0, caps, True, "Work")
 
     # ── 비용: 이동시간만 ──────────────────────────────────────────────────
-    cost_idx = routing.RegisterTransitCallback(
-        lambda frm, to: _travel(manager.IndexToNode(frm), manager.IndexToNode(to)))
-    routing.SetArcCostEvaluatorOfAllVehicles(cost_idx)
+    def _cost_cb(k: int):
+        return lambda frm, to: _travel(manager.IndexToNode(frm), manager.IndexToNode(to), k)
+
+    if same:
+        routing.SetArcCostEvaluatorOfAllVehicles(routing.RegisterTransitCallback(_cost_cb(0)))
+    else:
+        for k in range(W):
+            routing.SetArcCostEvaluatorOfVehicle(routing.RegisterTransitCallback(_cost_cb(k)), k)
 
     # ── 미배정 허용(우선순위별 벌점) ───────────────────────────────────────
     for i, req in enumerate(requests):
@@ -341,12 +358,15 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
     # (모델 시각은 finalizer 로 정해지지만, 기준선·검증기와 똑같은 계산으로 한 번 더 맞춘다.
     #  모델과 실제 계산이 어긋나 빠지는 요청은 route_dropped 에 남긴다 — 11/12 수정 후 표본 20일에서 0건.)
     # 순서가 정해지면 가장 이르게 도착하는 것이 늘 가장 낫다(시간창·휴게·근무 종료 모두 '늦을수록 불리').
-    from planner.baseline import _State, _occupancy, _travel_map, _try_assign
+    from planner.baseline import _State, _legs, _occupancy, _travel_map, _try_assign
     tmap = _travel_map(instance["travel"])
+    lm = leg_maps(instance, tmap)
+    from planner.travel_modes import worker_travels
+    wtv = worker_travels(instance, tmap)       # 인력 한 명을 다루는 보조 함수(_fits_at)용
     visited: set[int] = set()
     for k in range(W):
         st = _State(worker=workers[k], cursor=workers[k]["base_node"],
-                    free=int(workers[k]["shift_start_min"]))
+                    free=int(workers[k]["shift_start_min"]), legs=lm[workers[k]["worker_id"]])
         idx = routing.Start(k)
         while not routing.IsEnd(idx):
             node = manager.IndexToNode(idx)
@@ -356,12 +376,12 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
                 req = requests[i]
                 if i in lock_of:
                     from planner.reschedule import _fits_at
-                    t, _ = ((lock_of[i][1], "") if _fits_at(st, req, tmap, lock_of[i][1])
+                    t, _ = ((lock_of[i][1], "") if _fits_at(st, req, wtv[workers[k]["worker_id"]], lock_of[i][1])
                             else (None, "LOCKED_TIME_NOT_FEASIBLE"))
                 else:
                     t, _ = _try_assign(st, req, tmap)  # _ = 불가 사유
                 if t is not None:
-                    leg = int(round(tmap[(st.cursor, req["home_node"])]))
+                    leg = int(round(_legs(st, tmap)[(st.cursor, req["home_node"])]))
                     end, span = _occupancy(req, tmap, t)
                     st.work_min += leg + span
                     st.cursor = req["home_node"]
@@ -487,12 +507,14 @@ def _repair(instance: dict, assignments: list[dict], dropped_ids: list[str],
 
     정직하게: 이 후처리를 켠 optimize 는 'OR-Tools 결과 + 조건부 덧붙이기'다.
     """
-    from planner.baseline import _State, _occupancy, _try_assign
+    from planner.baseline import _State, _legs, _occupancy, _try_assign
+    from planner.travel_modes import leg_maps
 
     workers = {w["worker_id"]: w for w in instance["workers"]}
     reqs = {r["request_id"]: r for r in instance["requests"]}
+    lm = leg_maps(instance, travel)
 
-    states = {wid: _State(worker=w, cursor=w["base_node"], free=int(w["shift_start_min"]))
+    states = {wid: _State(worker=w, cursor=w["base_node"], free=int(w["shift_start_min"]), legs=lm[wid])
               for wid, w in workers.items()}
 
     # 기존 배정을 시간순으로 재생하며 각 인력의 상태를 맞춘다
@@ -503,7 +525,7 @@ def _repair(instance: dict, assignments: list[dict], dropped_ids: list[str],
         st = states[wid]
         for a in sorted(alist, key=lambda x: x["arrive_min"]):
             req = reqs[a["request_id"]]
-            leg = travel.get((st.cursor, req["home_node"]))
+            leg = _legs(st, travel).get((st.cursor, req["home_node"]))
             leg = int(round(leg)) if leg is not None else 0
             end, span = _occupancy(req, travel, int(a["arrive_min"]))
             if end is None:
@@ -532,7 +554,7 @@ def _repair(instance: dict, assignments: list[dict], dropped_ids: list[str],
             continue
 
         st, t = best
-        leg = travel.get((st.cursor, req["home_node"]))
+        leg = _legs(st, travel).get((st.cursor, req["home_node"]))
         leg = int(round(leg)) if leg is not None else 0
         end, span = _occupancy(req, travel, t)
         if end is None:

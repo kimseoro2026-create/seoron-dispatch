@@ -454,6 +454,9 @@ def replay(instance: dict, algorithm: str = "request_order",
     travel = _travel_map(instance["travel"])
     by_id = {r["request_id"]: r for r in instance["requests"]}
     workers = {w["worker_id"]: w for w in instance["workers"]}
+    # 인력별 이동수단: 인력 한 명을 다루는 보조 함수에는 그 인력용 조회를 넘긴다(planner.travel_modes).
+    from planner.travel_modes import worker_travels
+    wt = worker_travels(instance, travel)
 
     initial = _initial(instance, algorithm)
     result = ReplayResult(algorithm=algorithm,
@@ -497,7 +500,7 @@ def replay(instance: dict, algorithm: str = "request_order",
                     continue
                 trial = _attempt_insert(workers[wid],
                                         _jobs_of(wid, assignments),
-                                        cand, travel, eff)
+                                        cand, wt[wid], eff)
                 if trial is None:
                     continue
                 kept_jobs, _more, _none = trial
@@ -535,14 +538,14 @@ def replay(instance: dict, algorithm: str = "request_order",
                 pos = next(i for i, j in enumerate(jobs) if j["request_id"] == d.request_id)
                 prev_node = (workers[worker_id]["base_node"] if pos == 0
                              else by_id[jobs[pos - 1]["request_id"]]["home_node"])
-                leg = travel.get((prev_node, by_id[d.request_id]["home_node"]))
+                leg = wt[worker_id].get((prev_node, by_id[d.request_id]["home_node"]))
                 depart = (int(a["arrive_min"]) - int(round(leg))
                           if leg is not None else int(a["arrive_min"]))
                 already_departed = d.notice_min >= depart
 
                 eff = _eff_requests(by_id, shift)
                 kept_jobs, r_retimed, r_displaced = _retime(
-                    workers[worker_id], jobs, travel, eff)
+                    workers[worker_id], jobs, wt[worker_id], eff)
                 assignments[:] = ([x for x in assignments
                                    if x["worker_id"] != worker_id] + kept_jobs)
                 displaced_ids.update(r_displaced)
@@ -562,7 +565,7 @@ def replay(instance: dict, algorithm: str = "request_order",
                         continue
                     trial = _attempt_insert(workers[alt_wid],
                                             _jobs_of(alt_wid, assignments),
-                                            eff_move[d.request_id], travel, eff_move)
+                                            eff_move[d.request_id], wt[alt_wid], eff_move)
                     if trial is None:
                         continue
                     kept_alt, _r2, _d2 = trial
@@ -610,7 +613,7 @@ def replay(instance: dict, algorithm: str = "request_order",
             pos = next(i for i, j in enumerate(jobs) if j["request_id"] == ev_c.request_id)
             prev_node = (workers[worker_id]["base_node"] if pos == 0
                          else by_id[jobs[pos - 1]["request_id"]]["home_node"])
-            leg = travel.get((prev_node, req["home_node"]))
+            leg = wt[worker_id].get((prev_node, req["home_node"]))
             depart = (int(a["arrive_min"]) - int(round(leg))
                       if leg is not None else int(a["arrive_min"]))
             already_departed = ev_c.notice_min >= depart
@@ -623,7 +626,7 @@ def replay(instance: dict, algorithm: str = "request_order",
             eff = _eff_requests(by_id, shift)
             kept, retimed, displaced = _retime(workers[worker_id],
                                                _jobs_of(worker_id, assignments),
-                                               travel, eff)
+                                               wt[worker_id], eff)
             assignments = [x for x in assignments if x["worker_id"] != worker_id] + kept
             displaced_ids.update(displaced)
 

@@ -61,6 +61,8 @@ def plan_with_locks(instance: dict, locked: list[dict], strategy: str) -> Baseli
     travel = _travel_map(instance["travel"])
     by_id = {r["request_id"]: r for r in instance["requests"]}
     workers = {w["worker_id"]: w for w in instance["workers"]}
+    from planner.travel_modes import worker_travels
+    wt = worker_travels(instance, travel)      # 인력별 이동수단(인력 이동만 수단 표)
     locked = [{"request_id": a["request_id"], "worker_id": a["worker_id"], "arrive_min": int(a["arrive_min"])}
               for a in locked if a["request_id"] in by_id]
     locked_ids = {a["request_id"] for a in locked}
@@ -89,25 +91,25 @@ def plan_with_locks(instance: dict, locked: list[dict], strategy: str) -> Baseli
                 continue
             skilled = True
             jobs = sched[wid]
-            before = _travel_sum(w, jobs, by_id, travel)
+            before = _travel_sum(w, jobs, by_id, wt[wid])
             for pos in range(len(jobs) + 1):
                 trial = jobs[:pos] + [{"request_id": rid, "arrive_min": None}] + jobs[pos:]
-                seq = _sequence(w, trial, by_id, travel, locked_ids)
+                seq = _sequence(w, trial, by_id, wt[wid], locked_ids)
                 if seq is None:
                     continue
                 arrive = next(a["arrive_min"] for a in seq if a["request_id"] == rid)
                 if strategy == "request_order":
                     key = (arrive, wid)
                 else:
-                    key = (round(_travel_sum(w, seq, by_id, travel) - before, 3), arrive, wid)
+                    key = (round(_travel_sum(w, seq, by_id, wt[wid]) - before, 3), arrive, wid)
                 if best is None or key < best[0]:
                     best = (key, wid, seq, arrive)
                 break     # 이 인력에서는 가장 앞쪽 가능한 자리 하나만 본다(기준선의 '가장 이른 자리')
         if best is None:
             if not skilled:
                 reason = NO_SKILL_MATCH
-            elif all(travel.get((n, req["home_node"])) is None for n in
-                     [w["base_node"] for w in workers.values()] + [r["home_node"] for r in by_id.values()]):
+            elif all(wt[k].get((n, req["home_node"])) is None for k in workers for n in
+                     [workers[k]["base_node"]] + [r["home_node"] for r in by_id.values()]):
                 reason = ROUTE_UNKNOWN
             else:
                 reason = TIME_WINDOW_CONFLICT
