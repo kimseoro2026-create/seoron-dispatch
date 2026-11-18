@@ -178,3 +178,45 @@ def test_separation_words_never_picks_a_side_without_evidence():
     # 실제 권역처럼 거리·요청 수가 함께 움직이고 둘 다 고정하면 약해지는 경우 → 단정하지 않음
     assert "나눌 수 없음" in rp.separation_words(0.16, 0.19, 0.49, 0.50)
     assert "뚜렷한 관계 없음" in rp.separation_words(0.1, 0.1, 0.2, 0.1)
+
+
+def _inst_for_shift():
+    ws = [{"worker_id": f"W{i:02d}", "skills": ["hospital_escort", "household_support"] if i <= 4 else ["household_support"],
+           "shift_start_min": 540, "shift_end_min": 1080, "break_start_min": 720, "break_minutes": 60}
+          for i in range(1, 7)]
+    return {"workers": ws, "requests": []}
+
+
+def test_move_shifts_escort_only_same_length():
+    from simulator.report import move_shifts
+    inst = _inst_for_shift()
+    out = move_shifts(inst, -60)
+    by = {w["worker_id"]: w for w in out["workers"]}
+    assert [by[f"W0{i}"]["shift_start_min"] for i in range(1, 5)] == [480] * 4
+    assert all(by[f"W0{i}"]["shift_end_min"] == 1020 for i in range(1, 5))
+    assert by["W05"]["shift_start_min"] == 540 and by["W06"]["shift_end_min"] == 1080   # 가사 전담은 그대로
+    assert inst["workers"][0]["shift_start_min"] == 540                                # 원본 불변
+
+
+def test_move_shifts_every_other_and_break_kept_inside():
+    from simulator.report import move_shifts
+    out = move_shifts(_inst_for_shift(), -60, every=2)
+    starts = {w["worker_id"]: w["shift_start_min"] for w in out["workers"]}
+    assert starts == {"W01": 480, "W02": 540, "W03": 480, "W04": 540, "W05": 540, "W06": 540}
+    inst = _inst_for_shift()
+    inst["workers"][0]["break_start_min"] = 1000                # 새 근무(480~1020) 안에 휴게가 안 들어감 → 같이 옮김
+    w = move_shifts(inst, -60)["workers"][0]
+    assert w["shift_start_min"] <= w["break_start_min"] <= w["shift_end_min"] - w["break_minutes"]
+    with pytest.raises(ValueError):
+        move_shifts(_inst_for_shift(), -600)
+
+
+def test_escort_scenarios_cost_nothing():
+    from simulator.report import BY_KEY, ESCORT_SCENARIOS, added_paid_minutes
+    inst = _inst_for_shift()
+    for sc in ESCORT_SCENARIOS:
+        assert sc.key in BY_KEY
+        assert added_paid_minutes(inst, sc) == 0
+        out = sc.apply(inst)
+        assert all(w["shift_start_min"] <= w["break_start_min"] <= w["shift_end_min"] - w["break_minutes"]
+                   for w in out["workers"])

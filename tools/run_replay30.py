@@ -15,6 +15,8 @@ ap.add_argument("--escort-mode", choices=["transit", "car"], default=None,
                 help="병원동행 집↔병원 이동 (기본: config/region.yaml)")
 ap.add_argument("--select-escort", choices=["transit", "car"], default=None,
                 help="부하율로 요청을 고를 때 쓰는 이동 가정 (기본: --escort-mode 와 같음)")
+ap.add_argument("--align-pickup", action=argparse.BooleanOptionalAction, default=None,
+                help="동행이 대중교통일 때 픽업창을 대중교통 시간에 맞춤(기본: config escort_travel.align_pickup)")
 a = ap.parse_args()
 
 out = Path("data/experiments")
@@ -28,6 +30,7 @@ df = run_experiment(
     seeds=(42, 7, 13),
     escort=a.escort_mode,
     select_escort=a.select_escort,
+    align_pickup=a.align_pickup,
 )
 p = out / f"30day-{stamp}.csv"
 df.to_csv(p, index=False, encoding="utf-8-sig")

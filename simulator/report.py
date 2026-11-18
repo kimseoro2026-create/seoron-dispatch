@@ -25,11 +25,37 @@ class Scenario:
     staggered: bool = False  # 휴게 시작을 11·12·13·14시로 나눔
     extend_end: int = 0      # 특정 시간대 근무 확대: 근무 끝을 이만큼(분) 늦춤(FR-42). 하루 최대 근무도 같이 늘림
     extend_scope: str = "escort"   # escort(동행 가능 인력) / all(모든 인력)
+    shift_offset: int = 0    # 동행 가능 인력의 근무 시작·끝을 같이 옮김(분, 음수 = 앞당김). 근무 길이는 그대로
+    offset_every: int = 1    # 1 = 동행 인력 모두, 2 = worker_id 순서로 한 명 건너 한 명(절반)
 
     def apply(self, instance: dict) -> dict:
         out = change_staffing(instance, add=self.add) if self.add else instance
+        out = move_shifts(out, self.shift_offset, self.offset_every) if self.shift_offset else out
         out = stagger_breaks(out) if self.staggered else out
         return extend_shifts(out, self.extend_end, self.extend_scope) if self.extend_end else out
+
+
+def move_shifts(instance: dict, minutes: int, every: int = 1) -> dict:
+    """동행 가능 인력의 근무 시작·끝을 minutes 만큼 같이 옮긴 새 instance(시차 출근). 근무 길이·휴게 길이는 그대로라
+    유급시간과 인건비는 바뀌지 않는다. every=2 면 동행 인력을 worker_id 순서로 한 명 건너 한 명만 옮긴다.
+    휴게가 새 근무시간 밖으로 나가면 같은 만큼 옮긴다. 0시~24시를 벗어나면 오류. 원래 instance 는 바꾸지 않는다."""
+    if every < 1:
+        raise ValueError("every 는 1 이상이어야 합니다")
+    escort = sorted((w["worker_id"] for w in instance["workers"] if "hospital_escort" in (w.get("skills") or [])))
+    pick = set(escort[::every])
+    workers = []
+    for w in instance["workers"]:
+        w = dict(w)
+        if w["worker_id"] in pick:
+            lo, hi = int(w["shift_start_min"]) + int(minutes), int(w["shift_end_min"]) + int(minutes)
+            if lo < 0 or hi > 24 * 60:
+                raise ValueError(f"{w['worker_id']} 근무시간이 하루 밖으로 나갑니다({lo}~{hi}분)")
+            w["shift_start_min"], w["shift_end_min"] = lo, hi
+            b = w.get("break_start_min")
+            if b is not None and not lo <= int(b) <= hi - int(w.get("break_minutes") or 0):
+                w["break_start_min"] = int(b) + int(minutes)
+        workers.append(w)
+    return dict(instance, workers=workers)
 
 
 def extend_shifts(instance: dict, minutes: int, scope: str = "escort") -> dict:
@@ -58,7 +84,14 @@ SCENARIOS = [
     Scenario("stagger_add1", "휴게 분산 + 동행 인력 +1", add=1, staggered=True),
     Scenario("stagger_add2", "휴게 분산 + 동행 인력 +2", add=2, staggered=True),
 ]
-BY_KEY = {s.key: s for s in SCENARIOS}
+# 병원동행 개선 실험용(기본 6개 리포트에는 넣지 않음). 모두 추가 인건비 0.
+ESCORT_SCENARIOS = [
+    Scenario("stagger_early30", "휴게 분산 + 동행 인력 30분 일찍 출근", staggered=True, shift_offset=-30),
+    Scenario("stagger_early60", "휴게 분산 + 동행 인력 60분 일찍 출근", staggered=True, shift_offset=-60),
+    Scenario("stagger_split60", "휴게 분산 + 동행 인력 절반만 60분 일찍 출근", staggered=True, shift_offset=-60, offset_every=2),
+]
+ALL_SCENARIOS = SCENARIOS + ESCORT_SCENARIOS
+BY_KEY = {s.key: s for s in ALL_SCENARIOS}
 
 
 def paid_minutes(worker: dict, paid_time: str = "shift_minus_break") -> int:
@@ -109,7 +142,7 @@ def scenario_table(days: pd.DataFrame, extra_cost: dict[str, float | None],
         escort=("assigned_escort", "mean"), requests_escort=("requests_escort", "mean"),
         requests=("requests", "mean"), travel=("travel_minutes", "mean"),
         utilization=("utilization", "mean"), violations=("violations", "sum"))
-    order = [s.key for s in SCENARIOS if s.key in g.index]
+    order = [s.key for s in ALL_SCENARIOS if s.key in g.index]
     g = g.loc[order]
     base = g.loc["base"] if "base" in g.index else None
     g.insert(0, "label", [BY_KEY[k].label for k in g.index])

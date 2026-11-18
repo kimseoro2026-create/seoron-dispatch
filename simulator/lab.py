@@ -96,7 +96,7 @@ def seed_summary(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
 def run_lab(cfg: LabConfig, data_dir: str | Path, *, out_dir: str | Path, store=None, actor: str = "",
             progress=None) -> dict:
     """실험을 돌리고 원본·요약·가정을 저장한다. store 가 있으면 실험 기록(experiment_runs)도 남긴다."""
-    from planner.data import escort_mode, service_dates, worker_transit_share
+    from planner.data import align_pickup_default, escort_mode, service_dates, worker_transit_share
     from simulator.experiment import run_experiment
     from store.db import engine_version
 
@@ -110,6 +110,7 @@ def run_lab(cfg: LabConfig, data_dir: str | Path, *, out_dir: str | Path, store=
                          transform=None if (cfg.travel_factor == 1.0 and cfg.stay_factor == 1.0
                                             and cfg.cancel_rate is None) else _Transform(cfg),
                          escort=mode, select_escort=sel_mode, transit_share=share)
+    pickup_rule = "travel_aligned" if (mode == "transit" and align_pickup_default()) else "f0_car"
     per_seed, summ = seed_summary(raw)
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -126,7 +127,7 @@ def run_lab(cfg: LabConfig, data_dir: str | Path, *, out_dir: str | Path, store=
                       is not None else "취소는 가상 자료에 있는 그대로 쓴다.",
                       "인력 추가 효과는 이 실험에 섞지 않는다.",
                       _escort_note(mode, sel_mode, share)],
-            "escort_mode": mode, "select_escort": sel_mode, "transit_share": share}
+            "escort_mode": mode, "select_escort": sel_mode, "transit_share": share, "pickup_rule": pickup_rule}
     assumptions_path = out / f"{tag}-assumptions.json"
     assumptions_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     if store is not None:

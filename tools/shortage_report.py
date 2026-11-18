@@ -40,14 +40,14 @@ def latest_pair(exp: Path) -> tuple[Path, Path]:
 def build(exp: Path, data_dir: Path) -> dict:
     """리포트에 들어가는 표를 계산해 돌려준다(화면에서도 같은 함수를 쓴다)."""
     from planner.data import load_day, service_dates
-    from simulator.report import SCENARIOS, added_labor_cost_per_day, load_cost_config, scenario_table, unmet_breakdown
+    from simulator.report import ALL_SCENARIOS, added_labor_cost_per_day, load_cost_config, scenario_table, unmet_breakdown
 
     d_path, o_path = latest_pair(exp)
     days = pd.read_csv(d_path)
     outcomes = pd.read_csv(o_path)
     cost = load_cost_config(ROOT)
     inst = load_day(data_dir, service_dates(data_dir)[0]).as_instance()
-    extra = {s.key: added_labor_cost_per_day(inst, s, cost.get("hourly_krw"), cost["paid_time"]) for s in SCENARIOS}
+    extra = {s.key: added_labor_cost_per_day(inst, s, cost.get("hourly_krw"), cost["paid_time"]) for s in ALL_SCENARIOS}
     tables = {a: scenario_table(days, extra, algorithm=a) for a in sorted(days["algorithm"].unique())}
     unmet_algo = "optimize" if "optimize" in set(outcomes["algorithm"]) else "nearest"
     unmet = {by: unmet_breakdown(outcomes, by, algorithm=unmet_algo)

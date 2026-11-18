@@ -138,7 +138,9 @@ def widen_windows(instance: dict, escort_width: int | None = None, household_ext
     for q in instance["requests"]:
         q = dict(q)
         if q["service_type"] == "hospital_escort" and escort_width is not None:
-            q["earliest_start_min"] = max(shift_lo, int(q["latest_start_min"]) - int(escort_width))
+            lat = int(q["latest_start_min"])
+            # 픽업 상한이 근무 시작 전이면(대중교통 맞춤 창) 창을 뒤집지 않는다 — 그대로 맡을 수 없는 요청
+            q["earliest_start_min"] = max(min(shift_lo, lat), lat - int(escort_width))
         elif q["service_type"] == "household_support" and household_extra:
             q["earliest_start_min"] = max(shift_lo, int(q["earliest_start_min"]) - int(household_extra))
             q["latest_start_min"] = min(shift_hi - int(q["service_minutes"]),
@@ -490,7 +492,8 @@ def run_experiment(data_dir: str | Path,
                    outcome_sink: list | None = None,
                    escort: str | None = None,
                    select_escort: str | None = None,
-                   transit_share: float | None = None) -> pd.DataFrame:
+                   transit_share: float | None = None,
+                   align_pickup: bool | None = None) -> pd.DataFrame:
     """여러 날 × 여러 방식 × 여러 부하율 × 여러 시드를 돌려 한 표로 돌려준다.
 
     algorithms 에 'request_order_replay' 처럼 '_replay' 를 붙이면 취소 재배정을 포함한다.
@@ -507,9 +510,11 @@ def run_experiment(data_dir: str | Path,
                   (예: 자동차 기준 ρ로 고른 요청을 대중교통 시간으로 계산 → 수요 고정 비교).
     transit_share 대중교통으로 다니는 인력 비율(0~1, None 이면 config). 0보다 크면 요청은 '모두 자차' 기준
                   ρ로 고르고(같은 요청), 배정·검증은 인력 수단대로 한다(docs/travel_modes_plan.md 5단계).
+    align_pickup  escort 가 transit 일 때 병원동행 픽업창을 대중교통 시간에 맞춤(planner.data.align_escort_pickup).
+                  None 이면 config escort_travel.align_pickup. 요청 고르기(select_escort=car)는 f0 창 그대로라 같은 요청이다.
     """
-    from planner.data import (escort_mode, load_day, load_travel, load_worker_transit, service_dates,
-                              worker_transit_share)
+    from planner.data import (align_pickup_default, escort_mode, load_day, load_travel, load_worker_transit,
+                              service_dates, worker_transit_share)
 
     d = Path(data_dir)
     mode = escort or escort_mode()
@@ -517,8 +522,11 @@ def run_experiment(data_dir: str | Path,
     travel = load_travel(d, escort=mode)
     travel_sel = travel if sel_mode == mode else load_travel(d, escort=sel_mode)
     share = worker_transit_share() if transit_share is None else float(transit_share)
+    align = align_pickup_default() if align_pickup is None else bool(align_pickup)
+    align_main, align_sel = align and mode == "transit", align and sel_mode == "transit"
+    pickup_rule = "travel_aligned" if align_main else "f0_car"
     wtab = load_worker_transit(d) if share > 0 else None
-    need_sel = travel_sel is not travel or share > 0
+    need_sel = travel_sel is not travel or share > 0 or align_main != align_sel
     area_of = _area_of(d) if outcome_sink is not None else {}
     all_dates = list(dates) if dates is not None else service_dates(d)
 
@@ -529,8 +537,9 @@ def run_experiment(data_dir: str | Path,
     for date in all_dates:
         if date not in cache:
             cache[date] = load_day(d, date, travel=travel, transit_share=share,
-                                   worker_transit=wtab).as_instance()
-            cache_sel[date] = (load_day(d, date, travel=travel_sel, transit_share=0).as_instance()
+                                   worker_transit=wtab, align_pickup=align_main).as_instance()
+            cache_sel[date] = (load_day(d, date, travel=travel_sel, transit_share=0,
+                                        align_pickup=align_sel).as_instance()
                                if need_sel else cache[date])
         base = cache[date]
 
@@ -551,7 +560,7 @@ def run_experiment(data_dir: str | Path,
                     res.target_rho = rho
                     res.actual_rho = actual
                     rows.append(dict(res.as_row(), escort_mode=mode, select_escort=sel_mode,
-                                     transit_share=share))
+                                     transit_share=share, pickup_rule=pickup_rule))
                     if outcome_sink is not None:
                         for o in res.outcomes:
                             o = dict(o, service_date=date, seed=seed, target_rho=rho, algorithm=algo)

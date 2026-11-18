@@ -6,6 +6,7 @@
 
 실행: python -m tools.run_shortage_report                    # 6시나리오, ρ0.9, 30일 × 3시드
       python -m tools.run_shortage_report --days 1 --seeds 42  # 빠른 확인
+      python -m tools.run_shortage_report --prefix escortshift --scenarios stagger stagger_early30 stagger_early60 stagger_split60
 리포트 작성: python -m tools.shortage_report
 """
 from __future__ import annotations
@@ -36,6 +37,10 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--select-escort", choices=["transit", "car"], default=None,
                     help="요청 고르기(부하율)용 이동 가정. car 면 자동차 기준 요청을 그대로 써서 예전 결과와 짝지어 비교")
     ap.add_argument("--out-dir", default="data/experiments")
+    ap.add_argument("--prefix", default="shortage",
+                    help="결과 파일 이름 앞부분. 기본 리포트(tools.shortage_report)는 shortage-* 만 읽는다")
+    ap.add_argument("--align-pickup", action=argparse.BooleanOptionalAction, default=None,
+                    help="동행이 대중교통일 때 픽업창을 대중교통 시간에 맞춤(기본: config escort_travel.align_pickup)")
     a = ap.parse_args(argv)
 
     from planner.data import service_dates
@@ -49,7 +54,7 @@ def main(argv: list[str] | None = None) -> None:
         print(f"=== 시나리오 {n}/{len(a.scenarios)}: {sc.label} ===")
         sink: list = []
         df = run_experiment(a.data_dir, algorithms=a.algorithms, load_factors=[a.rho], seeds=a.seeds,
-                            dates=dates, time_limit_sec=a.time_limit, escort=a.escort_mode, select_escort=a.select_escort, transform=sc.apply,
+                            dates=dates, time_limit_sec=a.time_limit, escort=a.escort_mode, select_escort=a.select_escort, align_pickup=a.align_pickup, transform=sc.apply,
                             progress=lambda msg: print("  " + msg), outcome_sink=sink)
         df.insert(0, "scenario", key)
         frames.append(df)
@@ -59,8 +64,8 @@ def main(argv: list[str] | None = None) -> None:
     out_dir = Path(a.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
-    p1 = out_dir / f"shortage-{stamp}.csv"
-    p2 = out_dir / f"shortage-outcomes-{stamp}.csv.gz"
+    p1 = out_dir / f"{a.prefix}-{stamp}.csv"
+    p2 = out_dir / f"{a.prefix}-outcomes-{stamp}.csv.gz"
     days.to_csv(p1, index=False, encoding="utf-8-sig")
     pd.DataFrame(outcomes).to_csv(p2, index=False, encoding="utf-8-sig", compression="gzip")
     print(f"\n저장: {p1} ({len(days)}행) · {p2} ({len(outcomes)}행) · 위반 합계 {int(days.violations.sum())}")

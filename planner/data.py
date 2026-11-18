@@ -101,6 +101,51 @@ def apply_escort_travel(travel: dict[tuple[str, str], float], data_dir: str | Pa
     return travel
 
 
+ESCORT_PICKUP_WIDTH = 20   # f0 픽업창 폭: 예약 − 이동 − 30분 ~ 예약 − 이동 − 10분 (f0/generate.py)
+
+
+def align_pickup_default() -> bool:
+    """config escort_travel.align_pickup (기본 False = f0 픽업창 그대로). 동행 수단이 transit 일 때만 쓴다."""
+    try:
+        import yaml
+        cfg = yaml.safe_load((Path(__file__).resolve().parent.parent / "config" / "region.yaml").read_text(encoding="utf-8")) or {}
+    except Exception:
+        return False
+    return bool((cfg.get("escort_travel") or {}).get("align_pickup", False))
+
+
+def align_escort_pickup(requests: list[dict], travel: dict[tuple[str, str], float],
+                        skip_ids: set[str] | None = None) -> int:
+    """병원동행 픽업창을 실제로 쓰는 집→병원 이동시간에 맞춰 다시 정한다(제자리 수정). 바꾼 요청 수를 돌려준다.
+
+    f0 는 픽업창을 '자동차 추정 이동'으로 만들었다(가장 늦은 픽업 = 예약 − 이동 − 도착 여유).
+    동행을 대중교통으로 계산하면 그 창 안에서 출발해도 예약에 못 닿는 요청이 생긴다 — 실제 담당자라면
+    가는 수단에 맞춰 픽업 시각을 정한다. 같은 규칙을 그 이동시간으로 다시 적용한다:
+      가장 늦은 픽업 = floor(예약 − 이동 − 도착 여유), 가장 이른 픽업 = 그보다 20분 앞.
+    예약 시각·도착 여유·체류는 바꾸지 않는다. 근무 시작 전으로 당겨져도 자르지 않는다
+    (그 요청은 그대로 맡을 수 없다고 나온다 — 예약을 늦추어 성공으로 바꾸지 않음).
+    구간이 없는 요청과 skip_ids(담당자가 확인한 요청 카드)는 그대로 둔다.
+    """
+    import math
+    skip = skip_ids or set()
+    n = 0
+    for r in requests:
+        if r.get("service_type") != "hospital_escort" or r["request_id"] in skip or r.get("appointment_min") is None:
+            continue
+        to_h = travel.get((r["home_node"], r["hospital_node"]))
+        back = travel.get((r["hospital_node"], r["home_node"]))
+        if to_h is None or back is None:
+            continue
+        latest = int(math.floor(int(r["appointment_min"]) - float(to_h) - int(r.get("arrival_buffer_min") or 0)))
+        earliest = latest - ESCORT_PICKUP_WIDTH
+        if (earliest, latest) != (r["earliest_start_min"], r["latest_start_min"]):
+            n += 1
+        r["earliest_start_min"], r["latest_start_min"] = earliest, latest
+        r["service_minutes"] = int(r["hospital_stay_min"]) + int(round(to_h)) + int(round(back))
+        r["pickup_rule"] = "travel_aligned"
+    return n
+
+
 def escort_travel_status(requests: list[dict], data_dir: str | Path, mode: str | None = None) -> dict:
     """병원동행 구간(두 방향)이 무엇으로 계산됐는지 센다. {mode, legs, transit, walk, car_fallback, sources}."""
     mode = mode or escort_mode()
@@ -193,7 +238,8 @@ def load_day(data_dir: str | Path, service_date: str,
              worker_profiles: dict | None = None,
              day_shifts: dict | None = None,
              transit_share: float | None = None,
-             worker_transit: dict | None = None) -> DayInstance:
+             worker_transit: dict | None = None,
+             align_pickup: bool | None = None) -> DayInstance:
     """하루치 instance 를 만든다.
 
     travel 을 주지 않으면 그날 필요한 노드만으로 추정 행렬을 만든다.
@@ -206,6 +252,8 @@ def load_day(data_dir: str | Path, service_date: str,
     worker_profiles·day_shifts: 담당자가 고친 인력 설정·날짜별 근무(저장소). apply_worker_settings 참고.
     transit_share: 대중교통으로 다니는 인력 비율(None 이면 config worker_travel.transit_share — 실제 인력은 대중교통 기준이라 1).
     worker_transit: 미리 만든 대중교통 인력 이동 표(load_worker_transit). 주지 않으면 그날 노드로 만든다.
+    align_pickup: 병원동행 픽업창을 travel 의 집→병원 시간에 맞춤(align_escort_pickup). None 이면
+                  config 동행 수단이 transit 이고 escort_travel.align_pickup 이 켜져 있을 때만. 요청 카드는 그대로.
     """
     d = Path(data_dir)
     req = pd.read_csv(d / "requests.csv", dtype={"request_id": str, "beneficiary_id": str})
@@ -237,6 +285,10 @@ def load_day(data_dir: str | Path, service_date: str,
             back = travel.get((r["hospital_node"], r["home_node"]))
             r["service_minutes"] = int(r["hospital_stay_min"]) + (
                 int(round(to_h)) + int(round(back)) if to_h is not None and back is not None else 0)
+    if align_pickup is None:
+        align_pickup = escort_mode() == "transit" and align_pickup_default()
+    if align_pickup:
+        align_escort_pickup(requests, travel, skip_ids={c["request_id"] for c in cards})
     share = worker_transit_share() if transit_share is None else float(transit_share)
     worker_travel = None
     if share > 0:
