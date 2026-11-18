@@ -294,3 +294,17 @@ def test_missing_escort_route_is_route_unknown(inst):
     res = optimize(inst, time_limit_sec=TIME_LIMIT)
     why = {u["request_id"]: u for u in res.unassigned}
     assert why["R01"]["reason"] == "ROUTE_UNKNOWN"
+
+
+def test_window_before_every_shift_is_verified_conflict(inst):
+    """가장 늦은 시작이 자격 인력 누구의 근무 시작보다 이르면 '시간창 충돌(확인됨)'이다(미해결로 남기지 않음)."""
+    import copy
+    inst = copy.deepcopy(inst)
+    first = min(int(w["shift_start_min"]) for w in inst["workers"])
+    r = next(q for q in inst["requests"] if q["service_type"] == "household_support")
+    r["earliest_start_min"], r["latest_start_min"] = first - 60, first - 20
+    res = optimize(inst, time_limit_sec=TIME_LIMIT)
+    u = {x["request_id"]: x for x in res.unassigned}
+    assert u[r["request_id"]]["reason"] == "TIME_WINDOW_CONFLICT"
+    assert u[r["request_id"]]["certainty"] == "verified"
+    assert verify(inst, res.assignments).ok

@@ -172,7 +172,11 @@ def optimize(instance: dict, time_limit_sec: int = TIME_LIMIT_SEC,
               else int(req["latest_start_min"]))
         if i in lock_of:
             lo = hi = lock_of[i][1]      # 확정 시각 한 점
-        if hi < lo:
+        # 가장 늦은 시작이 자격 인력 누구의 근무 시작보다도 이르면 맡을 수 없음이 증명된다
+        # (예: 대중교통에 맞춘 픽업창이 근무 전으로 당겨진 동행). 시간창 충돌(확인됨)으로 둔다.
+        need = set(req.get("required_skills") or [])
+        starts = [int(w["shift_start_min"]) for w in workers if need.issubset(set(w.get("skills") or []))]
+        if hi < lo or (i not in lock_of and starts and hi < min(starts)):
             skip.add(i)
             continue
         spans[i], windows[i] = s, (lo, hi)
