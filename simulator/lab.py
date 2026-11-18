@@ -37,7 +37,7 @@ class LabConfig:
     label: str = ""
     escort_mode: str | None = None        # 병원동행 이동 가정 transit / car. None = config 기본값
     select_escort: str | None = None      # 요청 고르기용 이동 가정. None = escort_mode 와 같음
-    transit_share: float | None = None    # 대중교통으로 다니는 인력 비율(0~1). None = config 기본값(0)
+    transit_share: float | None = None    # 대중교통으로 다니는 인력 비율(0~1). None = config 기본값(1, 대중교통)
 
 
 def apply_assumptions(instance: dict, cfg: LabConfig, seed: int) -> dict:

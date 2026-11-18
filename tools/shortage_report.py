@@ -74,6 +74,18 @@ def escort_words(days: pd.DataFrame) -> str:
     return mode
 
 
+def worker_words(days: pd.DataFrame) -> str:
+    """결과의 transit_share 열로 인력의 집 사이 이동 가정을 밝힌다. 열이 없으면 모두 자동차였던 실행."""
+    if "transit_share" not in days:
+        return "자동차"
+    shares = sorted(float(x) for x in days["transit_share"].dropna().unique())
+    if shares == [0.0]:
+        return "자동차"
+    if shares == [1.0]:
+        return "모두 대중교통(보정 모형 estimate)"
+    return "대중교통 비율 " + " / ".join(f"{x:.0%}" for x in shares) + "(나머지 자동차, 대중교통은 보정 모형 estimate)"
+
+
 def _won(x) -> str:
     return NA if x is None or pd.isna(x) else f"{x:,.0f}원"
 
@@ -85,7 +97,7 @@ def to_markdown(r: dict) -> str:
          f"- 실험: `{r['days_path'].name}` ({len(r['days'])}행) · 요청별 결과 `{r['outcomes_path'].name}`",
          f"- 조건: 부하율 ρ {r['rho']} · {r['n_dates']}일 × 시드 {r['seeds']} · 같은 요청 집합에서 자원만 바꿔 다시 계산",
          f"- 하드 제약 위반 합계: {int(r['days']['violations'].sum())}",
-         f"- 병원동행 집↔병원 이동: {escort_words(r['days'])} (인력의 집 사이 이동은 자동차)",
+         f"- 병원동행 집↔병원 이동: {escort_words(r['days'])} (인력의 집 사이 이동: {worker_words(r['days'])})",
          f"- 비용 가정: 시급 {_won(c.get('hourly_krw'))}(가정) · 유급시간 `{c['paid_time']}` · "
          f"월급 모델 {_won(c.get('monthly_salary_krw'))} · 이동 1분당 교통비 {_won(c.get('transport_krw_per_min'))}",
          "- 추가 인력은 기존 동행 인력의 근무시간·휴게·출발지를 복제해 다시 배정했다(부족 시간을 인원으로 환산하지 않음).",

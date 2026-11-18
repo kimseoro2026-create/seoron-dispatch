@@ -204,7 +204,7 @@ def load_day(data_dir: str | Path, service_date: str,
     같은 대상자·서비스 요청이 이미 있으면 카드 값으로 바꾼다.
     exclude_ids: 담당자가 취소 처리한 요청(저장소). 계산에서 뺀다.
     worker_profiles·day_shifts: 담당자가 고친 인력 설정·날짜별 근무(저장소). apply_worker_settings 참고.
-    transit_share: 대중교통으로 다니는 인력 비율(None 이면 config worker_travel.transit_share, 기본 0).
+    transit_share: 대중교통으로 다니는 인력 비율(None 이면 config worker_travel.transit_share — 실제 인력은 대중교통 기준이라 1).
     worker_transit: 미리 만든 대중교통 인력 이동 표(load_worker_transit). 주지 않으면 그날 노드로 만든다.
     """
     d = Path(data_dir)
@@ -259,7 +259,7 @@ def _worker_travel_cfg() -> dict:
 
 
 def worker_transit_share() -> float:
-    """config worker_travel.transit_share(0~1). 실제 비율은 확인되지 않아 기본 0(모두 자차)."""
+    """config worker_travel.transit_share(0~1). 실제 인력은 대중교통 기준(사용자 확인 2026-11-18) → 1. 설정이 없으면 0."""
     v = float(_worker_travel_cfg().get("transit_share", 0.0) or 0.0)
     if not 0.0 <= v <= 1.0:
         raise ValueError(f"worker_travel.transit_share 는 0~1 이어야 합니다: {v}")
