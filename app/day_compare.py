@@ -617,6 +617,7 @@ if transit_share > 0 and results:
                     st.session_state[_ck] = _wt.confirm_plan(
                         _d["inst"].as_instance(), _d["assignments"], query=_q, load_raw=_lr, walk_km=_wk,
                         walk_kmh=float(_wmodel.get("walk_kmh", 4.0)))
+                    st.session_state[_ck]["foot_down"] = _wk.state.get("up") is False
             except Exception as e:      # 조회 실패를 '확인됨'으로 바꾸지 않는다
                 st.error(f"실제 확인을 하지 못했습니다: {type(e).__name__}")
         _res = st.session_state.get(_ck)
@@ -643,13 +644,19 @@ if transit_share > 0 and results:
                                "실제 값 기준 도착": "—", "바뀜": "시간창에 못 들어가 빠짐"})
             if ch:
                 st.dataframe(pd.DataFrame(ch), width="stretch", hide_index=True)
-                st.caption("이 변경은 아래 승인 표에 자동으로 들어가지 않습니다. 승인할 때 위 시각으로 고쳐 주세요.")
+                if _res["confirmed"]:
+                    st.caption("아래 '담당자 승인'에서 같은 배정안을 고르고 '실제 조회 반영안'을 선택하면 이 시각으로 승인합니다.")
+                else:
+                    st.caption("모든 구간이 확인되지 않아 이 변경은 승인에 쓰지 않습니다. 담당자가 직접 확인해 주세요.")
             st.dataframe(pd.DataFrame([{"회차": r["round"], "연결 구간": r["n_legs"], "새로 조회": r["called"],
                                         "확인": r["n_checked"], "확인 실패": r["n_unchecked"],
                                         "실제−대략값 평균(분)": r["mean_diff_min"], "최대(분)": r["max_diff_min"],
                                         "실제 값으로 규칙": "지킴" if r["ok"] else "어긋남",
                                         "늦어지는 요청": ", ".join(r["late_requests"])} for r in _res["rounds"]]),
                          width="stretch", hide_index=True)
+            if _res.get("foot_down"):
+                st.caption("도보 경로 서버(OSRM 도보)가 꺼져 있어 도보 시간은 비교하지 못했습니다. "
+                           "대중교통 조회값만 썼고, 700m 이내라 대중교통 경로가 없는 구간은 '확인 실패'로 남습니다.")
             st.caption("대중교통 시간은 출발 시각 기준이 없습니다(ODsay). 인력 보행 속도 시속 4km는 가정값입니다.")
 
 
@@ -709,6 +716,31 @@ else:
     d_sel = results[approve_algo]
     proposal = d_sel["assignments"]
     run_id = d_sel["run_id"]
+    # 승인 재검증에 쓸 입력. 대중교통 인력은 기본이 대략값(모형)이고, 실제 확인을 마친 안을 고르면 실제 값이 든 입력으로 바꾼다.
+    approve_inst = d_sel["inst"].as_instance()
+    approve_basis = None
+    rq_retimed: set = set()
+    if transit_share > 0 and proposal:
+        from app._approval_rows import requery_choice
+        _rq_raw = st.session_state.get(f"wchk|{date}|{approve_algo}|{transit_share}|{run_id}")
+        _rq = requery_choice(_rq_raw)
+        if _rq is not None:
+            _use = st.radio("승인할 시각", ["실제 조회 반영안", "대략값으로 계산한 안"], horizontal=True,
+                            key=f"rq_use_{run_id}",
+                            help="실제 조회 반영안: 대중교통 연결 구간을 실제로 조회해 늦어지는 일정만 시각을 늦춘 안입니다. "
+                                 "승인할 때도 실제 조회값으로 규칙을 다시 검사합니다.")
+            if _use == "실제 조회 반영안":
+                proposal, approve_inst, approve_basis = _rq["proposal"], _rq["instance"], "transit_actual"
+                rq_retimed = _rq["retimed"]
+                msg = f"실제 조회 반영안입니다. 시각을 늦춘 요청 {len(_rq['retimed'])}건"
+                if _rq["dropped"]:
+                    msg += f", 시간창에 못 들어가 빠진 요청 {len(_rq['dropped'])}건({', '.join(_rq['dropped'])})은 표에 없습니다"
+                st.caption(msg + ".")
+        elif _rq_raw:
+            st.warning("대중교통 구간 실제 확인에서 모든 구간이 확인되지 않았습니다. 아래 표는 대략값 시각입니다.")
+        else:
+            st.info("대중교통으로 이동하는 인력이 있습니다. 아래 표의 시각은 대략값입니다. "
+                    "승인 전에 위 '대중교통 구간 실제 확인'을 먼저 해 보세요.")
 
     # 담당자가 이 배정안을 처음 본 시점의 일정 버전. 그사이 다른 승인이 있으면 오래된 화면으로 보고 막는다(PRD 7장).
     seen_key = f"seen_version_{date}_{run_id}"
@@ -759,6 +791,8 @@ else:
             return " · ".join(bits)
 
         def _vs_prev(rid, a):
+            if rid in rq_retimed:
+                return "실제 조회로 시각 늦춤"
             if prev is None:
                 return "처음 계산"
             b = prev_map.get(rid)
@@ -808,7 +842,7 @@ else:
                 "바꿀 도착": st.column_config.TextColumn(
                     "바꿀 도착", help="수락하면서 도착 시각을 바꿀 때만 13:10 형식으로 적습니다. 승인할 때 다시 검사합니다."),
             },
-            key=f"editor_{date}_{approve_algo}_{fill}_{current_version}",
+            key=f"editor_{date}_{approve_algo}_{fill}_{current_version}_{approve_basis or 'model'}",
         )
         if prev is not None:
             st.caption(f"'기존 대비'는 같은 날짜·방식의 바로 앞 계산(`{prev['run_id']}`)과 비교한 것입니다.")
@@ -842,15 +876,15 @@ else:
             else:
                 # 같은 화면에서 같은 결정을 두 번 눌러도 한 번만 반영되도록(AT-08) 결정 내용으로 키를 만든다.
                 idem = hashlib.sha256(json.dumps(
-                    [date, run_id, seen_version, [(d.request_id, d.action, d.reason) for d in decisions],
+                    [date, run_id, approve_basis, seen_version, [(d.request_id, d.action, d.reason) for d in decisions],
                      sorted((k, v["worker_id"], v["arrive_min"]) for k, v in modified.items())],
                     ensure_ascii=False).encode()).hexdigest()
                 if modified:
                     st.caption(f"담당자가 바꾼 {len(modified)}건을 포함해 규칙을 다시 검사합니다.")
                 try:
-                    res = _store.approve(date, d_sel["inst"].as_instance(), final_proposal, decisions,
+                    res = _store.approve(date, approve_inst, final_proposal, decisions,
                                          expected_version=seen_version, actor=approver or "담당자",
-                                         idempotency_key=idem, run_id=run_id)
+                                         idempotency_key=idem, run_id=run_id, basis=approve_basis)
                 except Exception as e:
                     st.error(f"승인 처리 중 오류: {e}")
                 else:

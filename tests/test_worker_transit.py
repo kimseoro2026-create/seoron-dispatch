@@ -179,3 +179,70 @@ def test_confirm_plan_not_confirmed_when_queries_fail():
     q, lr, wk = _fake_tools(t, status="rate_limited")
     res = wt.confirm_plan(t, a, query=q, load_raw=lr, walk_km=wk, walk_kmh=4.0)
     assert not res["confirmed"], "조회에 실패했는데 '확정 가능'으로 표시했다"
+
+
+def test_requery_choice_only_when_confirmed():
+    from app._approval_rows import requery_choice
+    t, a = _plan()
+    q, lr, wk = _fake_tools(t, status="rate_limited")
+    bad = wt.confirm_plan(t, a, query=q, load_raw=lr, walk_km=wk, walk_kmh=4.0)
+    assert requery_choice(bad) is None, "확인되지 않은 안을 승인용 실제 조회 반영안으로 내주었다"
+    assert requery_choice(None) is None
+    q, lr, wk = _fake_tools(t, extra_last=5)
+    ok = wt.confirm_plan(t, a, query=q, load_raw=lr, walk_km=wk, walk_kmh=4.0)
+    ch = requery_choice(ok)
+    assert ch is not None and ch["instance"] is ok["instance"]
+    assert [x["request_id"] for x in ch["proposal"]] == [x["request_id"] for x in ok["plan"]]
+
+
+def test_approve_requery_plan_with_actual_instance(tmp_path):
+    """실제 조회 반영안은 실제 값이 든 입력으로 재검증해 승인되고, 감사 기록에 근거가 남는다."""
+    from app._approval_rows import requery_choice
+    from planner.approval import ACCEPT, Decision
+    from store import Store
+    t, a = _plan()
+    q, lr, wk = _fake_tools(t, extra_last=5)
+    ch = requery_choice(wt.confirm_plan(t, a, query=q, load_raw=lr, walk_km=wk, walk_kmh=4.0))
+    st = Store(tmp_path / "ops.db")
+    date = t["requests"][0]["service_date"]
+    res = st.approve(date, ch["instance"], ch["proposal"],
+                     [Decision(x["request_id"], ACCEPT) for x in ch["proposal"]],
+                     expected_version=st.schedule_version(date), basis="transit_actual")
+    assert res.ok, res.message
+    assert {c["request_id"]: c["arrive_min"] for c in st.confirmed(date)} == \
+        {x["request_id"]: int(x["arrive_min"]) for x in ch["proposal"]}
+    acc = [r for r in st.audit() if r["action"] == ACCEPT]
+    assert acc and all(r["detail"].get("basis") == "transit_actual" for r in acc)
+
+
+def test_original_plan_fails_on_actual_instance():
+    """늦어지는 구간이 있는 처음 안은 실제 값 입력으로 승인 재검증을 통과하지 못한다 — 실제 입력을 넘기는 이유."""
+    from verifier import verify
+    t, a = _plan()
+    q, lr, wk = _fake_tools(t, extra_last=5)
+    res = wt.confirm_plan(t, a, query=q, load_raw=lr, walk_km=wk, walk_kmh=4.0)
+    if not res["retimed"] and not res["dropped"]:
+        pytest.skip("이 예제에서는 늦어지는 구간이 생기지 않았다")
+    assert not verify(res["instance"], a).ok
+
+
+def test_live_tools_probes_foot_server_once(tmp_path, monkeypatch):
+    """도보 서버가 꺼져 있으면 한 번만 확인하고 값 없음(None)을 돌려준다 — 구간마다 시간 초과를 기다리지 않는다."""
+    pd.DataFrame([{"node_id": "A", "lat": 37.5, "lon": 127.0}, {"node_id": "B", "lat": 37.51, "lon": 127.01},
+                  {"node_id": "C", "lat": 37.52, "lon": 127.02}]).to_csv(tmp_path / "nodes.csv", index=False)
+    probes, calls = [], []
+    monkeypatch.setattr(wt, "foot_alive", lambda url, timeout=3.0: probes.append(url) or False)
+    monkeypatch.setattr(wt, "foot_km", lambda *a: calls.append(a) or 1.0)
+    _, _, walk = wt.live_tools(tmp_path, tmp_path / "nodes.csv", "http://localhost:5001", client=None)
+    assert walk("A", "B") is None and walk("B", "C") is None
+    assert len(probes) == 1 and not calls and walk.state["up"] is False
+
+
+def test_live_tools_caches_walk_when_up(tmp_path, monkeypatch):
+    pd.DataFrame([{"node_id": "A", "lat": 37.5, "lon": 127.0},
+                  {"node_id": "B", "lat": 37.51, "lon": 127.01}]).to_csv(tmp_path / "nodes.csv", index=False)
+    calls = []
+    monkeypatch.setattr(wt, "foot_alive", lambda url, timeout=3.0: True)
+    monkeypatch.setattr(wt, "foot_km", lambda *a: calls.append(a) or 0.6)
+    _, _, walk = wt.live_tools(tmp_path, tmp_path / "nodes.csv", "http://localhost:5001", client=None)
+    assert walk("A", "B") == 0.6 and walk("A", "B") == 0.6 and len(calls) == 1

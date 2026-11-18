@@ -191,6 +191,17 @@ def plan_legs(instance: dict, assignments: list[dict]) -> list[dict]:
     return out
 
 
+def foot_alive(foot_url: str, timeout: float = 3.0) -> bool:
+    """OSRM 도보 서버가 응답하는지 한 번 확인한다. HTTP 응답이 오면 살아 있다고 본다."""
+    import requests
+    try:
+        requests.get(f"{foot_url.rstrip('/')}/route/v1/foot/127.0,37.5;127.001,37.501",
+                     params={"overview": "false"}, timeout=timeout)
+        return True
+    except Exception:       # noqa: BLE001 — 연결 거부·시간 초과
+        return False
+
+
 def actual_minutes(raw: pd.DataFrame, legs: list[dict], walk_kmh: float, walk_km: dict) -> list[dict]:
     """조회 결과로 구간별 실제 값. ok → min(대중교통, 도보), 700m 이내 → 도보.
     조회 실패·경로 없음은 실제 값을 비워 두고 '확인 실패'로 표시한다(모형 값을 실제처럼 쓰지 않음).
@@ -327,7 +338,19 @@ def live_tools(raw_dir, nodes_path, foot_url: str | None, client):
     def load_raw_():
         return et.load_raw(raw_dir, RAW_NAME)
 
-    def walk(a, b):
-        return foot_km(pt(a), pt(b), foot_url) if foot_url else None
+    state = {"up": None}         # 도보 서버 확인은 한 번만 — 꺼져 있으면 구간마다 시간 초과를 기다리지 않는다
+    cache: dict = {}
 
+    def walk(a, b):
+        if not foot_url:
+            return None
+        if state["up"] is None:
+            state["up"] = foot_alive(foot_url)
+        if not state["up"]:
+            return None             # 값 없음 → 700m 이내 구간은 '확인 실패'로 남는다(0분으로 메우지 않음)
+        if (a, b) not in cache:
+            cache[(a, b)] = foot_km(pt(a), pt(b), foot_url)
+        return cache[(a, b)]
+
+    walk.state = state
     return query, load_raw_, walk

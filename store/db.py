@@ -860,7 +860,10 @@ class Store:
 
     def approve(self, service_date: str, instance: dict, proposal: list[dict],
                 decisions: list[Decision], *, expected_version: int, actor: str = "담당자",
-                idempotency_key: str | None = None, run_id: str | None = None) -> ApprovalResult:
+                idempotency_key: str | None = None, run_id: str | None = None,
+                basis: str | None = None) -> ApprovalResult:
+        """basis: 이 제안의 시각이 무엇을 근거로 하는지(예: 'transit_actual' = 대중교통 연결 구간 실제 조회 반영).
+        감사 기록에 남긴다. 재검증은 넘겨받은 instance 로 하므로, 실제 조회 반영안은 실제 값이 든 instance 와 함께 넘긴다."""
         by_pid = {a["request_id"]: a for a in proposal}
         decided: dict[str, Decision] = {}
         for d in decisions:
@@ -932,7 +935,7 @@ class Store:
                              a["arrive_min"], after, actor, now, now))
                 self._audit(con, actor, ACCEPT, "assignment", a["request_id"], service_date, current, after,
                             {"worker_id": a["worker_id"], "arrive_min": a["arrive_min"], "run_id": run_id,
-                             "modified_by_staff": a["modified"]})
+                             "modified_by_staff": a["modified"], **({"basis": basis} if basis else {})})
             rejected, pending = [], []
             for a in proposal:
                 d = decided.get(a["request_id"])

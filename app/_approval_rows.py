@@ -51,3 +51,15 @@ def parse_decisions(rows: list[dict], proposal: list[dict], confirmed_ids: set[s
             decisions.append(Decision(rid, action, reason))
     final = [modified.get(a["request_id"], a) for a in proposal]
     return final, decisions, errors
+
+
+def requery_choice(res: dict | None) -> dict | None:
+    """'대중교통 구간 실제 확인' 결과 → 승인에 쓸 제안·입력. 모든 연결 구간이 실제 값으로 확인된 경우에만 돌려준다.
+
+    확인되지 않은 구간이 남았으면 None — 대략값 안을 '실제 확인됨'으로 바꾸지 않는다.
+    돌려주는 instance 는 실제 조회값이 든 입력이다. 승인 재검증을 이 입력으로 해야 늦춘 시각이 규칙에 맞는지 제대로 본다.
+    """
+    if not res or not res.get("confirmed"):
+        return None
+    return {"proposal": [dict(a) for a in res["plan"]], "instance": res["instance"],
+            "retimed": set(res.get("retimed") or []), "dropped": list(res.get("dropped") or [])}
